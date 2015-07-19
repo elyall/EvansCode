@@ -55,10 +55,6 @@ end
 %% Load In Acquisition Information
 load(InfoFile, 'info'); %load in 'info' variable
 
-% Update header
-if any(~isfield(info, {'Height', 'numChannels', 'numFrames', 'Width', 'scanbox_version'}))
-    info = updateInfoFile(SbxFile, InfoFile);
-end
 % Parse acquisition information
 Config = parseSbxHeader(InfoFile);
 Config.loadType = LoadType;
@@ -100,9 +96,9 @@ switch LoadType
         
         % Preallocate output
         if info.scanbox_version == 1
-            Images = zeros(numChannelsBeingRead, info.Width/xavg, info.Height, numFramesToLoad, 'uint16');
+            Images = zeros(numChannelsBeingRead, Config.Width/xavg, Config.Height, numFramesToLoad, 'uint16');
         elseif info.scanbox_version == 2
-            Images = zeros(numChannelsBeingRead, info.Width, info.Height, numFramesToLoad, 'uint16');
+            Images = zeros(numChannelsBeingRead, Config.Width, Config.Height, numFramesToLoad, 'uint16');
         end
 
         
@@ -123,20 +119,24 @@ switch LoadType
             % Load Images
             fprintf('Loading\t%d\tframe(s) from\t%s...', numel(Frames), SbxFile);
             for index = 1:length(seekoperations)
-                if(fseek(info.fid, info.Height * info.Width * 2 * Frames(seekoperations(index)) * info.numChannels, 'bof')==0) % "2" b/c assumes uint16 => 2 bytes per record
-                    temp = fread(info.fid, info.Height * info.Width * info.numChannels * numframesperread(index), 'uint16=>uint16');
+                if(fseek(info.fid, Config.Height * Config.Width * 2 * Frames(seekoperations(index)) * Config.Channels, 'bof')==0) % "2" b/c assumes uint16 => 2 bytes per record
+                    temp = fread(info.fid, Config.Height * Config.Width * Config.Channels * numframesperread(index), 'uint16=>uint16');
                     if info.scanbox_version == 1 % downsample/averaging
-                        temp = mean(reshape(temp,[info.numChannels xavg info.Width/xavg info.Height numframesperread(index)]), 2);
-                        info.Width = info.Width/xavg;
-                        temp = reshape(temp,[info.numChannels info.Width info.Height numframesperread(index)]);
+                        temp = mean(reshape(temp,[Config.Channels xavg Config.Width/xavg Config.Height numframesperread(index)]), 2);
+                        temp = reshape(temp,[Config.numChannels Config.Width/xavg Config.Height numframesperread(index)]);
                     elseif info.scanbox_version == 2
-                        temp = reshape(temp,[info.numChannels info.Width info.Height numframesperread(index)]);
+                        temp = reshape(temp,[Config.Channels Config.Width Config.Height numframesperread(index)]);
                     end
                     Images(:,:,:,seekoperations(index):seekoperations(index)+numframesperread(index)-1) = temp(Channels,:,:,:); % save only requested channels
                 else
                     warning('fseek error...');
                     Images = [];
                 end
+            end
+            
+            % Update dimensions (v.1 only)
+            if info.scanbox_version == 1
+                Config.Width = Config.Width/xavg;
             end
             
             % Reorder dimensions
@@ -151,10 +151,10 @@ switch LoadType
             if info.scanbox_version == 1
                 S = sparseint;
                 info.Width = size(S,2);
-                good = zeros(info.Height, info.Width, 1, numChannelsBeingRead, info.numFrames);
+                good = zeros(Config.Height, Config.Width, 1, numChannelsBeingRead, Config.Frames);
                 for ii = 1:numChannelsBeingRead
                     for iii = 1:1
-                        for iiii = 1:info.numFrames
+                        for iiii = 1:Config.Frames
                             good(:,:,iii,ii,iiii) = Images(:,:,iii,ii,iiii) * S; % correct for non-uniform sampling
                         end
                     end
@@ -169,9 +169,7 @@ switch LoadType
         fclose(info.fid);
         
         Config.DimensionOrder = Config.DimensionOrder([3 2 5 1 4]);
-        if info.scanbox_version == 1
-            Config.Width = info.Width;
-        end
+        
         Config.size = size(Images);
         
         fprintf('\tComplete\n');

@@ -55,6 +55,8 @@ if ~exist('ImageFiles', 'var') || isempty(ImageFiles)
             ImageFiles{index} = fullfile(p,ImageFiles{index});
         end
     end
+elseif ischar(ImageFiles)
+    ImageFiles = {ImageFiles};
 end
 
 if ~exist('ExperimentFiles', 'var') || isempty(ExperimentFiles)
@@ -73,6 +75,8 @@ if ~exist('ExperimentFiles', 'var') || isempty(ExperimentFiles)
             ExperimentFiles{index} = fullfile(p,ExperimentFiles{index});
         end
     end
+elseif ischar(ExperimentFiles)
+    ExperimentFiles = {ExperimentFiles};
 end
 
 %% Pull out all sbx files from any input directories
@@ -122,7 +126,7 @@ if ProcessFrames
     for index = 1:numFiles;
         if ~any(strcmp({variables{index}.name}, 'ImageFiles')) || override
             fprintf('\nFile %d of %d:\t', index, numFiles);
-            computeProjections(ImageFiles{index}, [2,inf], ExperimentFiles{index}); %[2,500]
+            computeProjections(ImageFiles{index}, [2,inf], ExperimentFiles{index}, 'MotionCorrect', true, 'Avg', true, 'Min', true, 'Max', true, 'Var', true, 'Save'); %[2,500]
         end
     end
 end
@@ -132,7 +136,7 @@ if ProcessExperiment
     for index = 1:numFiles;
         if ~any(strcmp({variables{index}.name}, 'AnalysisInfo')) || override
             fprintf('\nFile %d of %d:\t', index, numFiles);
-            sbxPostProcess(ExperimentFiles{index}, ImageFiles{index}, true);
+            sbxPostProcess2(ExperimentFiles{index}, ImageFiles{index}, true);
         end
     end
 end

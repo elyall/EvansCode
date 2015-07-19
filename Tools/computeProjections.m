@@ -8,12 +8,16 @@ computeKur = false; % dependent upon average and variance
 
 saveOut = false;
 saveFile = ''; % defaults to ExperimentFile if input
-loadType = 'MemMap'; % 'MemMap' or 'Direct'
+loadType = 'Direct'; % 'MemMap' or 'Direct'
 loadPrevious = false;
 MotionCorrect = false; % false, filename to load MCdata from, or true to prompt for file selection
 
 % default settings
 framedim = 5;
+
+% Memory settings
+portionOfMemory = 0.08; % find 10% or less works best
+sizeRAM = 32000000000; % amount of memory on your computer (UNIX-only)
 
 %% Initialize Parameters
 index = 1;
@@ -142,10 +146,14 @@ if iscellstr(Images) % filename input
             numFramesPerLoad = numFrames; % all frames already mapped
         case 'Direct'
             [Images, loadObj, Config] = load2P(ImageFile, 'Type', 'Direct', 'Frames', 2, 'Double');
-            mem = memory;
             sizeFrame = whos('Images');
             sizeFrame = sizeFrame.bytes;
-            numFramesPerLoad = max(1, floor(0.1*mem.MaxPossibleArrayBytes/sizeFrame));
+            if ispc
+                mem = memory;
+                numFramesPerLoad = max(1, floor(portionOfMemory*mem.MaxPossibleArrayBytes/sizeFrame));
+            else
+                numFramesPerLoad = max(1, floor(portionOfMemory*sizeRAM/sizeFrame));
+            end
             numFrames = sum([Config(:).Frames]);
     end
     dim = loadObj.size;
@@ -353,9 +361,9 @@ if saveOut
         ImageFiles(index).Kur = Kurtosis;
     end
     if ~exist(saveFile, 'file')
-        save(saveFile, 'ImageFiles');
+        save(saveFile, 'ImageFiles', '-mat');
     else
-        save(saveFile, 'ImageFiles', '-append');
+        save(saveFile, 'ImageFiles', '-mat', '-append');
     end
     fprintf('Saved projections to: %s\n', saveFile);
 end

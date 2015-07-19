@@ -40,7 +40,6 @@ end
 config.type = 'sbx';
 config.FullFilename = SbxFile;
 [~, config.Filename, ~] = fileparts(config.FullFilename);
-config.Tag = getTag(config.Filename);
 
 
 %% Identify header information from file
@@ -48,33 +47,49 @@ config.Tag = getTag(config.Filename);
 % Load header
 load(ConfigFile, 'info');
 
-% Update header
-if ~isfield(info, 'Width')
-    info = updateInfoFile(SbxFile, ConfigFile);
-end
-
 % Save header
 config.header = {info};
 
-% Save important information
-config.Height = info.Height;
-config.Width = info.Width;
+% Save frame dimensions
+config.Height = info.recordsPerBuffer;
+if isfield(info,'scanbox_version') && info.scanbox_version >= 2
+    config.Width = info.sz(2);
+else
+    info.scanbox_version = 1;
+    info.Width = info.postTriggerSamples;
+end
 
-% Determine # of channels and # of frames
-config.Channels = info.numChannels;
-config.Frames = info.numFrames;
+% Determine # of channels
+switch info.channels
+    case 1
+        config.Channels = 2;      % both PMT0 & 1
+    case 2
+        config.Channels = 1;      % PMT 0
+    case 3
+        config.Channels = 1;      % PMT 1
+end
 
+% Determine # of frames
+d = dir(SbxFile);
+config.Frames =  d.bytes/(config.Height*config.Width*config.Channels*2); % "2" b/c assumes uint16 encoding => 2 bytes per sample
+    
 % Determine magnification
 config.ZoomFactor = info.config.magnification;
 
+% Determine frame rate
+if info.scanmode == 1
+    config.FrameRate = 15.45; % dependent upon mirror speed
+else
+    config.FrameRate = 30;
+end
+    
 %% DEFAULTS
 % config.Processing = {};
 % config.info = [];
 % config.MotionCorrected = false;
-config.FrameRate = 15.5; % current default
 config.Depth = 1; % current default
 config.ZStepSize = 0; % current default
 config.Precision = 'uint16'; % default
 config.DimensionOrder = {'Channels','Width','Height','Frames','Depth'}; % default
 config.Colors = {'green', 'red'};
-config.size = sizeDimensions(config);
+config.size = [config.Height, config.Width, config.Depth, config.Channels, config.Frames];
