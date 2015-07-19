@@ -130,8 +130,12 @@ if ~exist('FrameIndex', 'var') || isempty(FrameIndex)
     FrameIndex = [1, inf];
 end
 
-%% Load in Data and determine dimensions
+%% Determine file to save to
+if saveOut && isempty(saveFile)
+    saveFile = ExperimentFile;
+end
 
+%% Load in Data and determine dimensions
 if iscellstr(Images) % filename input
     ImageFile = Images;
     switch loadType
