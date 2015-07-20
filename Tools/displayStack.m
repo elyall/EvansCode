@@ -12,8 +12,12 @@ if ischar(Images)
 else
     gd.Images = Images;
 end
-% gd.numFrames = size(Images, 4);
-gd.numFrames = size(Images, 5);
+
+% Format images
+while ndims(gd.Images) < 5
+    gd.Images = permute(gd.Images, [1:ndims(gd.Images)-1, ndims(gd.Images)+1, ndims(gd.Images)]);
+end
+gd.dim = size(gd.Images);
 
 % Determine color limits
 if ~exist('CLim', 'var') || isempty(CLim)
@@ -37,33 +41,59 @@ end
 gd.fig = figure;
 
 % Create axes
-gd.axes = axes();
+gd.axes = axes('Parent', gd.fig, 'Units', 'normalized', 'Position', [0, 0, 1, .9]);
 
-% Create slider
-minorstep = 1/(gd.numFrames-1);
-gd.slider = uicontrol(...
-    'Style',                'slider',...
-    'Parent',               gd.fig,...
-    'Units',                'normalized',...
-    'Position',             [0,.95,1,.05],...
-    'Min',                  1,...
-    'Max',                  gd.numFrames,...
-    'Value',                1,...
-    'SliderStep',           [minorstep,max(2*minorstep,.1)],...
-    'Callback',             @(hObject,eventdata)plotmainaxes(round(get(hObject, 'Value')), eventdata, guidata(hObject)));
+% Create sliders
+sliderIndex = find(gd.dim(3:end)>1);
+ndim = numel(sliderIndex);
+for sindex = 1:ndim
+    maxvalue = gd.dim(sliderIndex(sindex)+2);
+    minorstep = 1/(maxvalue-1);
+    yloc = .9+(ndim-sindex)*.1/ndim;
+    gd.sliders(sindex) = uicontrol(...
+        'Style',                'slider',...
+        'Parent',               gd.fig,...
+        'Units',                'normalized',...
+        'Position',             [.1,yloc,.9,.1/ndim],...
+        'Min',                  1,...
+        'Max',                  maxvalue,...
+        'Value',                1,...
+        'SliderStep',           [minorstep,max(2*minorstep,.1)],...
+        'ToolTipString',        sprintf('Dimension %d', sliderIndex(sindex)),...
+        'UserData',             [sindex, sliderIndex(sindex), maxvalue],...
+        'Callback',             @(hObject,eventdata)updateindex(hObject, eventdata, guidata(hObject)));
+    gd.text(sindex) = uicontrol(...
+        'Style',                'text',...
+        'Parent',               gd.fig,...
+        'Units',                'normalized',...
+        'Position',             [0,yloc,.1,.1/ndim],...
+        'String',               sprintf('1/%d', maxvalue),...
+        'HorizontalAlignment',  'right');
+end
+gd.Position = ones(1,3);
 
 guidata(gd.fig, gd);
 
 % Plot first image
-plotmainaxes(1, [], gd);
+plotmainaxes(gd);
 
 % If output: wait for figure to be closed
 % waitfor(gd.fig);
 
-function plotmainaxes(frameIndex, ~, gd)
-axes(gd.axes)
-% imagesc(gd.Images(:,:,1,frameIndex), gd.CLim)
-imagesc(gd.Images(:,:,1,1,frameIndex), gd.CLim);
-colormap(gd.CMap)
-xlabel(sprintf('Frame %d', frameIndex));
+function updateindex(hObject, ~, gd)
+% update index
+gd.Position(hObject.UserData(2)) = round(hObject.Value);
+guidata(hObject, gd);
 
+% update text
+gd.text(hObject.UserData(1)).String = sprintf('%d/%d', gd.Position(hObject.UserData(2)), hObject.UserData(3));
+
+% plot new image
+plotmainaxes(gd)
+
+function plotmainaxes(gd)
+axes(gd.axes)
+imagesc(gd.Images(:,:, gd.Position(1), gd.Position(2), gd.Position(3)), gd.CLim);
+colormap(gd.CMap)
+axis off
+% xlabel(sprintf('Frame %d', Index));
