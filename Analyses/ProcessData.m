@@ -6,6 +6,8 @@ ProcessFrames = false;
 ProcessExperiment = false;
 compAvgResponse = false;
 
+minrunspeed = 100;
+
 override = false;
 
 %% Process input arguments
@@ -111,6 +113,16 @@ end
 %     ImageFiles{F} = convertSbx(SbxFiles{F});
 % end
 
+%% Determine Stimulus Frames
+if ProcessExperiment
+    for index = 1:numFiles;
+        if ~any(strcmp({variables{index}.name}, 'AnalysisInfo')) || override
+            fprintf('\nFile %d of %d:\t', index, numFiles);
+            sbxPostProcess2(ExperimentFiles{index}, ImageFiles{index}, true);
+        end
+    end
+end
+
 %% Perform motion correction
 if MotionCorrect
     for index = 1:numFiles;
@@ -131,22 +143,13 @@ if ProcessFrames
     end
 end
 
-%% Determine Stimulus Frames
-if ProcessExperiment
-    for index = 1:numFiles;
-        if ~any(strcmp({variables{index}.name}, 'AnalysisInfo')) || override
-            fprintf('\nFile %d of %d:\t', index, numFiles);
-            sbxPostProcess2(ExperimentFiles{index}, ImageFiles{index}, true);
-        end
-    end
-end
-
 %% Compute Average Response for Each Stimulus & Create Tuning Curves
 if compAvgResponse
     for index = 1:numFiles;
         if ~any(strcmp({variables{index}.name}, 'AvgEvokedDFoF')) || override
             fprintf('\nFile %d of %d:\t', index, numFiles);
-            computeAverageStimResponse(ImageFiles{index}, ExperimentFiles{index});
+            TrialIndex = determineRunning(ExperimentFiles{index}, [], minrunspeed);
+            computeAverageStimResponse(ImageFiles{index}, ExperimentFiles{index}, TrialIndex, true, 'Save');
         end
     end
 end

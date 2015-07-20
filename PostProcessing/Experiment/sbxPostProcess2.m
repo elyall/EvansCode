@@ -136,10 +136,8 @@ for t = 1:nTrials
     end
     if any(ismember(InputNames, 'I_RunWheelA'))
         AnalysisInfo.meanRunningSpeed{t} = zeros(AnalysisInfo.nFrames(t),1);
-        indexA = find(strcmp(InputNames, 'I_RunWheelA'));
-        indexB = find(strcmp(InputNames, 'I_RunWheelB'));
-        data = DataIn(AnalysisInfo.ExpScans(t,1):min(end,AnalysisInfo.ExpScans(t,2)),indexA);
-        dataB = DataIn(AnalysisInfo.ExpScans(t,1):min(end,AnalysisInfo.ExpScans(t,2)),indexB);
+        data = DataIn(AnalysisInfo.ExpScans(t,1):min(end,AnalysisInfo.ExpScans(t,2)),find(strcmp(InputNames, 'I_RunWheelB')));
+        dataB = DataIn(AnalysisInfo.ExpScans(t,1):min(end,AnalysisInfo.ExpScans(t,2)),find(strcmp(InputNames, 'I_RunWheelA')));
         data = (data - [0; data(1:end-1)]);
         data(data<0) = 0;
         dataB(~data) = 0;
@@ -177,5 +175,6 @@ end
 
 if saveout
     save(SaveFile, VariablesToSave{:}, '-mat', '-append');
+    fprintf('AnalysisInfo saved to: %s\n', SaveFile);
 end
 
