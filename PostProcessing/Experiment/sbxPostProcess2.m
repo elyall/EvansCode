@@ -64,7 +64,6 @@ if ischar(DataInFile)
     fclose(DataInFID);
 end
 
-
 % Format DataIn
 InputNames = DAQChannels(~cellfun(@isempty,strfind(DAQChannels, 'I_')));
 nInputChannels = numel(InputNames);
