@@ -1,0 +1,227 @@
+function [Image, Origin] = spatialOverlay(ROIs, Data, ROIindex, FileIndex, ColorIndex, Labels, Colors, Brightness, varargin)
+% labels - for discrete data, labels is a cell array of N strings
+% corresponding to the <= N unique values in ColorIndex, and the N unique
+% colors.
+% Labels - for continuous data, labels is a 2x1 vector specifying the lower
+% and upper bounds of the colors (the same thing as CLim)
+
+% Data
+DataType = 'continuous'; % 'discrete' or 'continuous'
+
+% Display Properties
+transparency = .8; % value from 0 to 1
+ImgToDisplay = 'average'; % 'average' or 'none' or 'var' or 'max' or 'min'
+mergetype = 'quick'; % 'quick' or 'pretty'
+showColorBar = false;
+colorbarLabel = 'Metric';
+Crop = false;
+
+% Default variables
+Origin = [];
+hA = [];
+Image = [];
+Map = [];
+
+%% Parse input arguments
+if ~exist('ROIs','var') || isempty(ROIs)
+    directory = CanalSettings('DataDirectory');
+    [ROIs, p] = uigetfile({'*.mat'},'Choose ROI file(s)', directory, 'MultiSelect', 'on');
+    if isnumeric(ROIs)
+        return
+    end
+    if iscell(ROIs)
+        for findex = 1:numel(ROIs)
+            ROIs{findex} = fullfile(p,ROIs{findex});
+        end
+    elseif ischar(ROIs)
+        ROIs = {fullfile(p,ROIs)};
+    end
+elseif ischar(ROIs)
+    ROIs = {fullfile(p,ROIs)};
+end
+
+if ~exist('Data','var') || isempty(Data)
+    directory = CanalSettings('DataDirectory');
+    [Data, p] = uigetfile({'*.mat;*.ciexp'},'Choose Experiment file(s)', directory, 'MultiSelect', 'on');
+    if isnumeric(Data)
+        return
+    end
+    if iscell(Data)
+        for findex = 1:numel(Data)
+            Data{findex} = fullfile(p,Data{findex});
+        end
+    elseif ischar(Data)
+        Data = {fullfile(p,Data)};
+    end
+elseif ischar(Data)
+    Data = {Data};
+end
+
+if ~exist('ROIindex', 'var') || isempty(ROIindex)
+    ROIindex = 'all';
+end
+
+index = 1;
+while index<=length(varargin)
+    switch varargin{index}
+        case 'DataType'
+            DataType = varargin{index+1};
+            index = index + 2;
+        case 'Crop'
+            Crop = varargin{index+1};
+            index = index + 2;
+        case 'Image'
+            Image = varargin{index+1};
+            index = index + 2;
+        case 'Map'
+            Map = varargin{index+1};
+            index = index + 2;
+        case 'Origin'
+            Origin = varargin{index+1};
+            index = index + 2;
+        case 'transparency'
+            transparency = varargin{index+1};
+            index = index + 2;
+        case 'ImgToDisplay'
+            ImgToDisplay = varargin{index+1};
+            index = index + 2;
+        case 'mergetype'
+            mergetype = varargin{index+1};
+            index = index + 2;
+        case 'colorbarLabel'
+            colorbarLabel = varargin{index+1};
+            index = index + 2;
+        case 'axes'
+            hA = varargin{index+1};
+            index = index + 2;
+        case 'showColorBar'
+            showColorBar = true;
+            index = index + 1;
+        otherwise
+            warning('Argument ''%s'' not recognized',varargin{index});
+            index = index + 1;
+    end
+end
+
+%% Load data
+numFiles = numel(ROIs);
+if iscellstr(ROIs)
+    ROIFiles = ROIs;
+    ROIs = cell(numFiles, 1);
+    for findex = 1:numFiles
+        load(ROIFiles, 'ROIdata');
+        ROIs{findex} = ROIdata;
+    end
+end
+totalROIs = numel(ROIindex);
+
+%% Build colormap
+if ~exist('Colors', 'var') || isempty(Colors)
+    [Vals, ~, ColorIndex] = unique(ColorIndex);
+    Colors = jet(numel(Vals));
+end
+if ~exist('Brightness', 'var') || isempty(Brightness)
+    Brightness = ones(totalROIs, 3);
+else
+    Brightness = bsxfun(@times, ones(totalROIs, 3), Brightness);
+end
+
+%% Determine colormap labels
+switch DataType
+    case 'discrete'
+        if ~exist('Labels', 'var') || isempty(Labels)
+            Labels = cellstr(num2str((1:size(Colors,1))'));
+        end
+    case 'continuous'
+        if ~exist('Labels', 'var') || isempty(Labels)
+            Labels = [min(ColorIndex), max(ColorIndex)];
+        end
+        Labels = cellstr(num2str((Labels(1):(Labels(2)-Labels(1))/10:Labels(2))'));
+end
+
+%% Build image
+if iscellstr(Data)
+    ExperimentFiles = Data;
+    clear Data;
+    if ~iscell(ImgToDisplay) && any(strcmp(ImgToDisplay, {'average', 'variance', 'max', 'min'}))
+        for findex = 1:numFiles
+            Data(findex) = load(ExperimentFiles{findex}, 'Map', 'ImageFiles', '-mat');
+        end
+    else
+        for findex = 1:numFiles
+            Data(findex) = load(ExperimentFiles{findex}, 'Map', '-mat');
+        end
+    end
+    for findex = 1:numFiles
+        Data(findex).file = ExperimentFiles{findex};
+        if ~isfield(Data, 'Map')
+            Data(findex).Map = [];
+        end
+        Data(findex).origMap = Data(findex).Map;
+        Data(findex).cropped = false;
+    end
+end
+if isempty(Image)
+    [Image, newOrigin, ~, Data] = createMultiFoVImage(Data, ImgToDisplay, mergetype, Crop, Map);
+    if newOrigin ~= false
+        Origin = newOrigin;
+    end
+end
+
+%% Determine Offsets & Shift ROIs
+Shift = zeros(numFiles, 2);
+for findex = 1:numFiles
+    Shift(findex,:) = [Data(findex).Map.XWorldLimits(1)-Origin(1), Data(findex).Map.YWorldLimits(1)-Origin(2)];
+end
+for rindex = 1:totalROIs
+    ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).vertices =...
+        ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).vertices +...
+        repmat(Shift(FileIndex(rindex),:), size(ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).vertices,1), 1);
+end
+
+%% Display Image
+if isempty(hA)
+    hf = figure();
+    hA(rindex) = axes();
+end
+switch ImgToDisplay
+    case 'none'
+        imshow(Image);
+    otherwise
+        image(Image);
+end
+
+% Plot overlay
+hold on
+for rindex = 1:totalROIs
+    vertices = ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).vertices;
+    patch(vertices(:,1),...
+        vertices(:,2),...
+        Colors(ColorIndex(rindex),:).*Brightness(rindex,:),...
+        'EdgeColor',Colors(ColorIndex(rindex),:),...
+        'FaceAlpha',transparency,...
+        'EdgeAlpha',transparency);
+end
+axis off
+
+% Plot colorbar
+if showColorBar
+    cmap = colormap;            % determine colormap of image
+    cbH = colorbar;             % place colorbar
+    YLim = get(cbH, 'Limits');  % determine colorbar limits
+    NewCMap = cat(1,cmap,Colors); % concatenate plot colors to colormap
+    colormap(NewCMap);          % set new colormap
+    HeightNewCMapInColorbar = size(Colors,1)*(YLim(2)/size(NewCMap,1)); % determine portion of colorbar taken by colors that were added
+    NewYLim = [YLim(2)-HeightNewCMapInColorbar, YLim(2)]; % limit the colormap to this range
+    Split = (NewYLim(2)-NewYLim(1))/numel(Labels); % determine the distance on the colorbar between two colors
+    switch DataType
+        case 'discrete'
+            set(cbH, 'Limits', NewYLim, 'Ticks', NewYLim(1)+Split/2:Split:NewYLim(2), 'YTickLabel', Labels);
+        case 'continuous'
+            set(cbH, 'Limits', NewYLim, 'Ticks', NewYLim(1):(NewYLim(2)-NewYLim(1))/(numel(Labels)-1):NewYLim(2), 'YTickLabel', Labels);
+    end
+    % set(cbH, 'Ticks', YLim(1):(YLim(2)-YLim(1))/(numel(Labels)-1):YLim(2), 'YTickLabel', Labels);
+    ylabel(cbH, colorbarLabel);
+end
+
+

@@ -2,15 +2,16 @@ function [MCdata, Template] = fullDoLucasKanade(Images, Template, varargin)
 
 % Default settings
 Parameters.Nbasis = 16;
-Parameters.niter = 25;
+Parameters.niter = 30;
 Parameters.damping = 1;
-Parameters.deltacorr = .0005;
+Parameters.deltacorr = .0009;
 
 Channel2AlignFrom = 1;
 numFramesInitialTemplate = 500;
 numFramesSecondPass = 0;
 MCdataFilename = false;
 MCImgsFilename = false;
+FrameIndex = [1 inf];
 
 % Memory settings
 portionOfMemory = 0.08; % find 10% or less works best
@@ -37,6 +38,9 @@ while index<=length(varargin)
             index = index + 2;
         case 'MCdata'
             MCdata = varargin{index+1};
+            index = index + 2;
+        case 'Frames'
+            FrameIndex = varargin{index+1};
             index = index + 2;
         otherwise
             warning('Argument ''%s'' not recognized',varargin{index});
@@ -89,13 +93,34 @@ if MCImgsFilename == true
     MCImgsFilename = fullfile(p, MCImgsFilename);
 end
 
-%% Determine number of frames and batches
+%% Determine frames to register
+Config = load2PConfig(ImageFiles);
+
+if strcmp(FrameIndex, 'new')
+    if exist('MCdata', 'var')
+        frameCounter = 0;
+        FrameIndex = [];
+        for findex = 1:numel(Config)
+            FrameIndex = [FrameIndex, frameCounter+find(isnan(MCdata(findex).dpx(1, :, 1)))];
+            frameCounter = frameCounter + Config(findex).Frames;
+        end
+    else
+        FrameIndex = [1 inf];
+    end
+end
+
+if FrameIndex(end) == inf
+    FrameIndex = [FrameIndex(1:end-1), FrameIndex(end-1)+1:sum([Config(:).Frames])];
+end
+
+totalFrames = numel(FrameIndex);
+
+%% Determine number batches
 if LoadImgs
     numFiles = numel(ImageFiles);
-    [Images, loadObj, Config] = load2P(ImageFiles, 'Type', 'Direct', 'Frames', 2, 'Double');
+    [Images, loadObj] = load2P(ImageFiles, 'Type', 'Direct', 'Frames', 2, 'Double');
     sizeFrame = whos('Images');
     sizeFrame = sizeFrame.bytes;
-    totalFrames = sum([Config(:).Frames]);
     if ispc
         mem = memory;
         nFramesPerLoad = max(1, floor(portionOfMemory*mem.MaxPossibleArrayBytes/sizeFrame));
@@ -115,25 +140,34 @@ else
     numBatches = 1;
 end
 fprintf('Performing fullDoLucasKanade on %d file(s) with %d frames...\n', numFiles, totalFrames);
-fprintf('\t%s\n', ImageFiles{:});
+fprintf('\t%s\n', ImageFiles{:}); % display each filename
 fprintf('Calculation requires %d batches with %d frames per batch...\n', numBatches, nFramesPerLoad);
 
 %% Initialize MCdata struct
 if ~exist('MCdata', 'var')
     for findex = 1:numFiles
         MCdata(findex).type = 'doLucasKanade';
+        MCdata(findex).date = datestr(now);
         MCdata(findex).FullFilename = ImageFiles{findex};
-        MCdata(findex).dpx = zeros(Parameters.Nbasis + 1, Config(findex).Frames, Config(findex).Depth);
-        MCdata(findex).dpy = zeros(Parameters.Nbasis + 1, Config(findex).Frames, Config(findex).Depth);
-        MCdata(findex).Parameters = Parameters;
         MCdata(findex).Channel2AlignFrom = Channel2AlignFrom;
+        MCdata(findex).Parameters = Parameters;
+        MCdata(findex).dpx = nan(Parameters.Nbasis + 1, Config(findex).Frames, Config(findex).Depth);
+        MCdata(findex).dpy = nan(Parameters.Nbasis + 1, Config(findex).Frames, Config(findex).Depth);
+    end
+else
+    for findex = 1:numFiles
+        MCdata(findex).type = 'doLucasKanade';
+        MCdata(findex).date = datestr(now);
+        MCdata(findex).FullFilename = ImageFiles{findex};
+        MCdata(findex).Channel2AlignFrom = Channel2AlignFrom;
+        MCdata(findex).Parameters = Parameters;
     end
 end
 
 %% Compute template
 if ~Template
     if LoadImgs
-        Images = load2P(ImageFiles, 'Type', 'Direct', 'Frames', 1:min(totalFrames, numFramesInitialTemplate), 'Double');
+        Images = load2P(ImageFiles, 'Type', 'Direct', 'Frames', 2:min(totalFrames, numFramesInitialTemplate+1), 'Double');
     end
     Template = mean(Images(:,:,:,Channel2AlignFrom,1:min(totalFrames, numFramesInitialTemplate)),5);
 end
@@ -156,13 +190,13 @@ end
 
 % Load each frames in batches and correct for motion
 for bindex = 1:numBatches
-    fprintf('\n\tbatch %d:', bindex);
+    fprintf('\tbatch %d:', bindex);
     
     % Determine frames
     FirstFrame = (bindex-1)*nFramesPerLoad + 1;
     LastFrame = min(FirstFrame+nFramesPerLoad-1, totalFrames);
     if LoadImgs
-        [Images, loadObj] = load2P(ImageFiles, 'Type', 'Direct', 'Frames', FirstFrame:LastFrame, 'Double');
+        [Images, loadObj] = load2P(ImageFiles, 'Type', 'Direct', 'Frames', FrameIndex(FirstFrame):FrameIndex(LastFrame), 'Double');
     end
     numFrames = size(loadObj.FrameIndex, 1);
     
@@ -234,23 +268,26 @@ for bindex = 1:numBatches
         fprintf('\tFrames saved to file.');
     end
     
+    % Save map
+    if ischar(MCdataFilename)
+        if bindex == 1 && ~exist(MCdataFilename, 'file')
+            save(MCdataFilename, 'MCdata', '-mat');
+        else
+            save(MCdataFilename, 'MCdata', '-mat', '-append');
+        end
+        fprintf('\tTransform saved to file.');
+    end
+    
+    fprintf('\n'); 
 end %batch
-fprintf('\nRegistration complete.');
+fprintf('Registration complete\n');
 
 % Notify of file saving
 if ischar(MCImgsFilename)
-    fprintf('\nRegistered images saved to: %s', MCImgsFilename);
+    fprintf('Registered images saved to: %s\n', MCImgsFilename);
 end
-
-% Save map
 if ischar(MCdataFilename)
-    fprintf('\nSaving registration map to file: %s...',MCdataFilename);
-    if exist(MCdataFilename, 'file')
-        save(MCdataFilename, 'MCdata', '-mat', '-append');
-    else
-        save(MCdataFilename, 'MCdata', '-mat');
-    end
-    fprintf('\tComplete\n');
+    fprintf('Registration map saved to: %s\n',MCdataFilename);
 end
 
 

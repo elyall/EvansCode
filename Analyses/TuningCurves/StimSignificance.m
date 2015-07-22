@@ -2,10 +2,14 @@ function ROIdata = StimSignificance(ROIdata,ROIid,baseline,stimulus,minrunspeed,
 
 FitTuningCurves = true;
 
-saveToROIFile = false;
+saveToROIFile = true;
+ROIFile = '';
 saveToPDF = false;
 
-ControlIndex = false;
+ControlIndex = 0;
+
+BaselineFrames = repmat([1, 22],9,1);
+StimFrames = repmat([23, 44],9,1);
 
 %% Check input arguments
 if ~exist('ROIdata','var') || isempty(ROIdata)
@@ -118,7 +122,7 @@ for rindex = 1:numROIs
         
         BaselineData = CaTraces(:,baselinefirstframe:baselinelastframe);
         StimulusData = CaTraces(:,stimfirstframe:stimlastframe);
-        BaselineAvg = mean(BaselineData,2);
+        BaselineAvg = median(BaselineData,2);
         StimulusDFoF = bsxfun(@rdivide,bsxfun(@minus,StimulusData,BaselineAvg),BaselineAvg);
         StimulusDFoF = mean(StimulusDFoF,2);
         
@@ -275,11 +279,11 @@ for rindex = 1:numROIs
 end %cycle ROIs
 
 
-if saveToROIFile && ischar(ROIdata)
+if saveToROIFile && ischar(ROIFile)
     for rindex = 1:numROIs
         if ~isempty(ROIdata.rois(rindex).label) && strcmp(ROIdata.rois(rindex).label{1}, 'none')
             ROIdata.rois(rindex).label = {};
         end
     end
-    save(ROIdata, 'ROIdata', '-append', '-mat');
+    save(ROIFile, 'ROIdata', '-append', '-mat');
 end

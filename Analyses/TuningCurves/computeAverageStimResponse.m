@@ -1,4 +1,4 @@
-function [AvgTrial, AvgTrialdFoF] = computeAverageStimResponse(ImageFile, ExperimentFile, TrialIndex, MotionCorrect, varargin)
+function [AvgTrial, AvgTrialdFoF, StimResponse] = computeAverageStimResponse(ImageFile, ExperimentFile, TrialIndex, MotionCorrect, varargin)
 
 saveOut = false;
 saveFile = '';
@@ -91,7 +91,7 @@ numStims = numel(StimIDs);
 
 
 %% Motion correction
-if MotionCorrect && ~exist('MCdata', 'var')
+if MotionCorrect == true && ~exist('MCdata', 'var')
     load(ExperimentFile, 'MCdata', '-mat');
 end
 
@@ -119,7 +119,7 @@ for sindex = 1:numStims
     numFrames = mode(AnalysisInfo.nFrames(currentTrials));
     AvgTrial{sindex} = zeros([Config.size(1:end-1), numFrames]);
     AvgTrialdFoF{sindex} = zeros([Config.size(1:end-2), numFrames]);
-%     trialdFoF{sindex} = zeros([Config.size(1:end-2), numTrials]);
+    trialdFoF{sindex} = zeros([Config.size(1:end-2), numTrials]);
     
     % Cycle through trials adding each to the average
     for tindex = find(currentTrials)'
@@ -138,41 +138,43 @@ for sindex = 1:numStims
         
         % Compute trial's dFoF
         lastFrame = AnalysisInfo.TrialStimFrames(tindex,1)-1;
-        baseline = mean(frames(:,:,:,1,1:lastFrame),5);
+        baseline = median(frames(:,:,:,1,1:lastFrame),5);
+        baseline(baseline<1) = 1; % in reality this never happens
         frames = bsxfun(@rdivide, bsxfun(@minus, frames(:,:,:,1,:), baseline), baseline);
         AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex} + permute(frames, [1,2,3,5,4])/numTrials;
         
-%         trialdFoF{sindex}(:,:,:,tindex) = mean(frames(:,:,:,1,AnalysisInfo.TrialStimFrames(tindex,1):AnalysisInfo.TrialStimFrames(tindex,2)), 5);
+        % Save for later calculation
+        trialdFoF{sindex}(:,:,:,tindex) = mean(frames(:,:,:,1,AnalysisInfo.TrialStimFrames(tindex,1):AnalysisInfo.TrialStimFrames(tindex,2)), 5);
     end
     
-    fprintf('\tstim %d of %d: calculated response (%d trials)\n',sindex,numStims,numTrials);
+    fprintf('\tfinished stim %d of %d (%d trials)\n',sindex,numStims,numTrials);
 end
    
 
 %% Compute average response
-% StimdFoF = zeros([Config.size(1:end-2), numStims]);
-% StimdFoFSE = zeros([Config.size(1:end-2), numStims]);
-% StimdFoFPValue = nan([Config.size(1:end-2), numStims]);
-% StimExcited = nan([Config.size(1:end-2), numStims]);
-% for sindex = 1:numStims
-%     StimdFoF(:,:,:,sindex) = mean(trialdFoF{sindex}, 4);
-%     StimdFoFSE(:,:,:,sindex) = std(trialdFoF{sindex},[],4)/sqrt(size(trialdFoF{sindex},4));
-%     if sindex ~= 1
-%         [~, StimdFoFPValue(:,:,:,sindex)] = ttest2(...
-%             trialdFoF{1},....
-%             trialdFoF{sindex},...
-%             'dim', 4);
-%         StimExcited(:,:,:,sindex) = StimdFoF(:,:,:,sindex) >= StimdFoF(:,:,:,1);
-%     end
-% end
+StimResponse.avg = nan([Config.size(1:end-2), numStims]);
+StimResponse.se = nan([Config.size(1:end-2), numStims]);
+StimResponse.pvalue = ones([Config.size(1:end-2), numStims]);
+StimResponse.excited = nan([Config.size(1:end-2), numStims]);
+for sindex = 1:numStims
+    StimResponse.avg(:,:,:,sindex) = mean(trialdFoF{sindex}, 4);
+    StimResponse.se(:,:,:,sindex) = std(trialdFoF{sindex},[],4)/sqrt(size(trialdFoF{sindex},4));
+    if sindex ~= 1
+        [~, StimResponse.pvalue(:,:,:,sindex)] = ttest2(...
+            trialdFoF{1},....
+            trialdFoF{sindex},...
+            'dim', 4);
+        StimResponse.excited(:,:,:,sindex) = StimResponse.avg(:,:,:,sindex) >= StimResponse.avg(:,:,:,1);
+    end
+end
 
 
 %% Save to file
 if saveOut
     if ~exist(saveFile, 'file')
-        save(saveFile, 'AvgTrial', 'AvgTrialdFoF', '-mat', '-v7.3');
+        save(saveFile, 'AvgTrial', 'AvgTrialdFoF', 'StimResponse', '-mat', '-v7.3');
     else
-        save(saveFile, 'AvgTrial', 'AvgTrialdFoF', '-mat','-append');
+        save(saveFile, 'AvgTrial', 'AvgTrialdFoF', 'StimResponse', '-mat','-append');
     end
     fprintf('Saved average stimuli to: %s\n', saveFile);
 end

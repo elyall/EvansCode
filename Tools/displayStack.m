@@ -12,6 +12,7 @@ if ischar(Images)
 else
     gd.Images = Images;
 end
+gd.class = class(Images);
 
 % Format images
 while ndims(gd.Images) < 5
@@ -93,7 +94,12 @@ plotmainaxes(gd)
 
 function plotmainaxes(gd)
 axes(gd.axes)
-imagesc(gd.Images(:,:, gd.Position(1), gd.Position(2), gd.Position(3)), gd.CLim);
+switch gd.class
+    case 'logical'
+        imshow(gd.Images(:,:, gd.Position(1), gd.Position(2), gd.Position(3)));
+    otherwise
+        imagesc(gd.Images(:,:, gd.Position(1), gd.Position(2), gd.Position(3)), gd.CLim);
+end
 colormap(gd.CMap)
 axis off
 % xlabel(sprintf('Frame %d', Index));

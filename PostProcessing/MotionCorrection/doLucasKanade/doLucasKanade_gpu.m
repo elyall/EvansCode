@@ -61,6 +61,7 @@ for ii = 1:niter
     
     c = mycorr(Id(:),Tnorm(:));
     
+    %fprintf('\n%f', c-c0);
     if c - c0 < deltacorr && ii ~= 1
         break;
     end
