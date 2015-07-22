@@ -2,7 +2,7 @@ function ROIdata = estimateSpikeTiming(ROIdata, NeuropilWeight, varargin)
 
 saveOut = false;
 saveFile = '';
-frameRate = 15.5;
+frameRate = 15.45;
 
 %% Check input arguments
 if ~exist('ROIdata','var') || isempty(ROIdata)
@@ -14,7 +14,7 @@ if ~exist('ROIdata','var') || isempty(ROIdata)
     ROIdata = fullfile(p,ROIdata);
 end
 
-if ~exist('NeuropilWeight', 'var')
+if ~exist('NeuropilWeight', 'var') || isempty(NeuropilWeight)
     NeuropilWeight = 0.65;
 end
 

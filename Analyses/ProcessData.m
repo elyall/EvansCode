@@ -1,11 +1,18 @@
 function ProcessData(ImageFiles, ExperimentFiles, varargin)
 warning('off','MATLAB:handle_graphics:exceptions:SceneNode'); %tex warning with waitbar
 
-MotionCorrect = false;
-ProcessFrames = false;
+% Experiment
 ProcessExperiment = false;
-compAvgResponse = false;
 
+% Motion Correction
+MotionCorrect = false;
+numFramesTemplate = 500;
+
+% Projections
+ProcessFrames = false;
+
+% Average Trial
+compAvgResponse = false;
 minrunspeed = 100;
 
 override = false;
@@ -104,6 +111,7 @@ variables = cell(numFiles,1);
 for index = 1:numFiles
     variables{index} = whos(matfile(ExperimentFiles{index}));
 end
+RunningData = false(numFiles, 1);
 
 %% Post-process images
 %Scanbox v1.0-1.2: Cycle through each file converting it to a .imgs file
@@ -118,7 +126,10 @@ if ProcessExperiment
     for index = 1:numFiles;
         if ~any(strcmp({variables{index}.name}, 'AnalysisInfo')) || override
             fprintf('\nFile %d of %d:\t', index, numFiles);
-            sbxPostProcess2(ExperimentFiles{index}, ImageFiles{index}, true);
+            [~,frames] = sbxPostProcess2(ExperimentFiles{index}, ImageFiles{index}, true);
+            if isfield(frames, 'RunningSpeed')
+                RunningData(index) = true;
+            end
         end
     end
 end
@@ -128,7 +139,12 @@ if MotionCorrect
     for index = 1:numFiles;
         if ~any(strcmp({variables{index}.name}, 'MCdata')) || override
             fprintf('\nFile %d of %d:\t', index, numFiles);
-            fullDoLucasKanade(ImageFiles{index}, [], 'SaveAlignmentTo', ExperimentFiles{index});
+            if RunningData(index)
+                load(ExperimentFiles{index}, 'frames');
+                [~,TemplateIndices] = sort(frames.RunningSpeed);
+                TemplateIndices(TemplateIndices==1) = []; % remove first frame (frame is incomplete in scanbox files)
+            end
+            fullDoLucasKanade(ImageFiles{index}, TemplateIndices(1:numFramesTemplate), 'SaveAlignmentTo', ExperimentFiles{index});
         end
     end
 end
@@ -148,7 +164,11 @@ if compAvgResponse
     for index = 1:numFiles;
         if ~any(strcmp({variables{index}.name}, 'AvgEvokedDFoF')) || override
             fprintf('\nFile %d of %d:\t', index, numFiles);
-            TrialIndex = determineRunning(ExperimentFiles{index}, [], minrunspeed);
+            if RunningData(index)
+                TrialIndex = determineRunning(ExperimentFiles{index}, [], minrunspeed);
+            else
+                TrialIndex = [1 inf];
+            end
             computeAverageStimResponse(ImageFiles{index}, ExperimentFiles{index}, TrialIndex, true, 'Save');
         end
     end

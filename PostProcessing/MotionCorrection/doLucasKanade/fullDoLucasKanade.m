@@ -169,7 +169,12 @@ if ~Template
     if LoadImgs
         Images = load2P(ImageFiles, 'Type', 'Direct', 'Frames', 2:min(totalFrames, numFramesInitialTemplate+1), 'Double');
     end
-    Template = mean(Images(:,:,:,Channel2AlignFrom,1:min(totalFrames, numFramesInitialTemplate)),5);
+    Template = mean(Images(:,:,:,Channel2AlignFrom,:,5);
+elseif ndims(Template) == 1
+    if LoadImgs
+        Images = load2P(ImageFiles, 'Type', 'Direct', 'Frames', Template, 'Double');
+    end
+    Template = mean(Images(:,:,:,Channel2AlignFrom,:),5);
 end
 
 %% Initialize second pass parameters

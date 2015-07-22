@@ -79,7 +79,7 @@ if ExtractSignals
     for index = 1:numFiles
         if (islogical(override) && override == true) || ismember(index,override) || ~any(strcmp({variables{index}.name}, 'ImageFile'))
             fprintf('\nFile %d of %d:\t', index, numFiles);
-            extractSignals(ImageFiles{index}, ROIFiles{index});
+            extractSignals(ImageFiles{index}, ROIFiles{index}, 'all', 'Save', 'GPU', 'MotionCorrect', ExperimentFiles{index});
         end
     end
 end
