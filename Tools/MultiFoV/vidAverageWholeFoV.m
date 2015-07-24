@@ -179,6 +179,7 @@ else
 end
 
 hF = figure('Units', 'Pixels', 'Position', [50, 50, 1400, 800]);
+hA = axes('Parent', hF);
 
 switch CMapType
     case 'HiLo'
@@ -227,7 +228,7 @@ for sindex = IndicesToSave
         end
         
         % Display Image
-        imagesc(Image, CLim);
+        imagesc(Image, 'Parent', hA, CLim);
         axis off;
         colormap(cmap);
         
@@ -250,7 +251,7 @@ for sindex = IndicesToSave
         end
         
         % Write to video
-        frame = getframe(gca);
+        frame = getframe(hA);
         writeVideo(vidObj, frame.cdata);
         
         fprintf('\t%d', findex);

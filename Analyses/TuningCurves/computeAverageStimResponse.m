@@ -50,6 +50,8 @@ end
 
 if ~exist('TrialIndex', 'var') || isempty(TrialIndex)
     TrialIndex = [1 inf];
+elseif islogical(TrialIndex)
+    TrialIndex = find(TrialIndex);
 end
 
 if ~exist('MotionCorrect', 'var') || isempty(MotionCorrect)
@@ -86,7 +88,7 @@ if TrialIndex(end) == inf
 end
 
 % Determine stimuli present in experiment
-StimIDs = unique(AnalysisInfo.StimID);
+StimIDs = unique(AnalysisInfo.StimID(TrialIndex));
 numStims = numel(StimIDs);
 
 
@@ -112,8 +114,8 @@ AvgTrialdFoF = cell(numStims,1);
 for sindex = 1:numStims
     
     % Determine trials to average
-    currentTrials = AnalysisInfo.StimID(TrialIndex) == StimIDs(sindex);
-    numTrials = sum(currentTrials);
+    currentTrials = TrialIndex(AnalysisInfo.StimID(TrialIndex) == StimIDs(sindex));
+    numTrials = numel(currentTrials);
     
     % Initialize outputs
     numFrames = mode(AnalysisInfo.nFrames(currentTrials));
@@ -122,7 +124,7 @@ for sindex = 1:numStims
     trialdFoF{sindex} = zeros([Config.size(1:end-2), numTrials]);
     
     % Cycle through trials adding each to the average
-    for tindex = find(currentTrials)'
+    for tindex = currentTrials'
         
         % Load trial
         [frames, loadObj] = load2P(ImageFile,...

@@ -108,10 +108,16 @@ numFiles = numel(ImageFiles);
 
 %% Determine what has already been accomplished in input Experiment Files
 variables = cell(numFiles,1);
+RunningData = false(numFiles, 1);
 for index = 1:numFiles
     variables{index} = whos(matfile(ExperimentFiles{index}));
+    if any(strcmp({variables{index}.name}, 'frames'))
+        load(ExperimentFiles{index}, 'frames', '-mat');
+        if isfield(frames, 'RunningSpeed')
+            RunningData(index) = true;
+        end
+    end
 end
-RunningData = false(numFiles, 1);
 
 %% Post-process images
 %Scanbox v1.0-1.2: Cycle through each file converting it to a .imgs file
@@ -140,9 +146,11 @@ if MotionCorrect
         if ~any(strcmp({variables{index}.name}, 'MCdata')) || override
             fprintf('\nFile %d of %d:\t', index, numFiles);
             if RunningData(index)
-                load(ExperimentFiles{index}, 'frames');
+                load(ExperimentFiles{index}, 'frames', '-mat');
                 [~,TemplateIndices] = sort(frames.RunningSpeed);
                 TemplateIndices(TemplateIndices==1) = []; % remove first frame (frame is incomplete in scanbox files)
+            else
+                TemplateIndices = 2:501;
             end
             fullDoLucasKanade(ImageFiles{index}, TemplateIndices(1:numFramesTemplate), 'SaveAlignmentTo', ExperimentFiles{index});
         end

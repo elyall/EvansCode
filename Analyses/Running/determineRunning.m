@@ -47,7 +47,7 @@ switch type
         numTrials = size(AnalysisInfo, 1);
         RunIndex = false(numTrials, 1);
         for tindex = 1:numTrials
-            if eval(sprintf('frames.RunningSpeed(AnalysisInfo.ExpStimFrames(tindex,1):AnalysisInfo.ExpStimFrames(tindex,2)) %s thresh', comparison))
+            if eval(sprintf('mean(frames.RunningSpeed(AnalysisInfo.ExpStimFrames(tindex,1):AnalysisInfo.ExpStimFrames(tindex,2))) %s thresh', comparison))
                 RunIndex(tindex) = true;
             end
         end
