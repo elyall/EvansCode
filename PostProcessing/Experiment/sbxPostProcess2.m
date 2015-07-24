@@ -1,61 +1,86 @@
-function [AnalysisInfo,frames,InputNames,Config] = sbxPostProcess2(StimFile, ImageFile, saveout)
+function [AnalysisInfo,frames,InputNames,Config] = sbxPostProcess2(StimFiles, ImageFiles, varargin)
 % Use to be 'FormatExperiment': Format data to be analyzed
 
-saveInputData = false;
+directory = cd;
+
+saveOut = false;
+saveFile = {};
+
 numBaselineFrames = 'all'; % # of frames to record prior to stimulus, or 'all' to record every earlier frame in trial
 
-%% Initialization
-narginchk(0, 3);
-if ~exist('StimFile', 'var') || isempty(StimFile)
-    directory = CanalSettings('ExperimentDirectory');
-    [StimFile,p] = uigetfile({'*.mat'}, 'Choose Stimulation file', directory);
-    if isnumeric(StimFile)
-        return
+%% Parse input arguments
+index = 1;
+while index<=length(varargin)
+    try
+        switch varargin{index}
+            case {'Save', 'save'}
+                saveOut = true;
+                index = index + 1;
+            case 'saveFile'
+                saveFile = varargin{index+1};
+                index = index + 2;
+            otherwise
+                warning('Argument ''%s'' not recognized',varargin{index});
+                index = index + 1;
+        end
+    catch
+        warning('Argument %d not recognized',index);
+        index = index + 1;
     end
-    directory = p;
-    StimFile = fullfile(p,StimFile);
 end
 
-if ~exist('ImageFile', 'var') || isempty(ImageFile)
-    directory = CanalSettings('DataDirectory');
-    [ImageFile,p] = uigetfile({'*.sbx'}, 'Choose sbx file', directory);
-    if isnumeric(ImageFile)
+if ~exist('StimFiles', 'var') || isempty(StimFiles)
+    [StimFiles,p] = uigetfile({'*.mat'}, 'Choose Stimulation file', directory);
+    if isnumeric(StimFiles)
         return
-    end
-    ImageFile = fullfile(p,ImageFile);
+    end 
+    StimFiles = fullfile(p,StimFiles);
+end
+if ischar(StimFiles)
+    StimFiles = {StimFiles};
 end
 
-if nargin<3
-    saveout = false;
-    SaveFile = StimFile;
-elseif ischar(saveout)
-    SaveFile = savout;
-    saveout = true;
-elseif islogical(saveout) && saveout == true
-    SaveFile = StimFile;
+if ~exist('ImageFiles', 'var') || isempty(ImageFiles)
+    [ImageFiles,p] = uigetfile({'*.sbx'}, 'Choose sbx file', directory);
+    if isnumeric(ImageFiles)
+        return
+    end
+    ImageFiles = fullfile(p,ImageFiles);
 end
+if ischar(ImageFiles)
+    ImageFiles = {ImageFiles};
+end
+
+if saveOut
+    if isempty(saveFile)
+        saveFile = StimFiles;
+    elseif ischar(saveFile)
+        saveFile = {saveFile};
+    end
+end
+
 
 %% Determine DataIn File
-[p,fn,~] = fileparts(StimFile);
+[p,fn,~] = fileparts(StimFiles);
 DataInFile = fullfile(p,strcat(fn,'.bin')); %[strtok(StimFile, '.'),'_datain.bin'];
 
 %% Determine image info
-[~,~,ext] = fileparts(ImageFile);
+[~,~,ext] = fileparts(ImageFiles);
 switch ext
     case {'.sbx','.imgs'}
-        InfoFile = sbxIdentifyFiles(ImageFile);
+        InfoFile = sbxIdentifyFiles(ImageFiles);
         InfoFile = InfoFile{1};
     case '.mat'
-        InfoFile = ImageFile;
-        ImageFile = sbxIdentifyFiles(InfoFile);
-        ImageFile = ImageFile{1};
+        InfoFile = ImageFiles;
+        ImageFiles = sbxIdentifyFiles(InfoFile);
+        ImageFiles = ImageFiles{1};
 end
-Config = parseSbxHeader(ImageFile);
+Config = parseSbxHeader(ImageFiles);
 
 %% Load Data
 
 % Load Data Files
-load(StimFile, 'DAQChannels', 'Experiment', 'TrialInfo', '-mat');
+load(StimFiles, 'DAQChannels', 'Experiment', 'TrialInfo', '-mat');
 info = fixTimeStamps(InfoFile); %for data collected w/ Scanbox v1.2
 % load(InfoFile, 'info');
 if ischar(DataInFile)
@@ -173,7 +198,7 @@ end
 % frames = struct2table(frames);
 
 if saveout
-    save(SaveFile, VariablesToSave{:}, '-mat', '-append');
-    fprintf('AnalysisInfo saved to: %s\n', SaveFile);
+    save(saveFile, VariablesToSave{:}, '-mat', '-append');
+    fprintf('AnalysisInfo saved to: %s\n', saveFile);
 end
 
