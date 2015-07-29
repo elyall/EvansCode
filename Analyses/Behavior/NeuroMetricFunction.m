@@ -52,7 +52,7 @@ numStims = numel(StimIDs);
 
 %% Determine frames to analyze
 if ~exist('FrameIndex', 'var') || isempty(FrameIndex)
-    FrameIndex = [ROIdata.DataInfo.numFramesBefore+1, ROIdata.DataInfo.numFramesBefore + mode(ROIdata.DataInfo.numStimFrames)];
+    FrameIndex = [ROIdata.DataInfo.numFramesBefore+1, ROIdata.DataInfo.numFramesBefore + 40];
 end
 
 

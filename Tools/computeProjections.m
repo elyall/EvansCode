@@ -70,7 +70,7 @@ while index<=length(varargin)
             case {'Save', 'save'}
                 saveOut = true;
                 index = index + 1;
-            case 'SaveFile'
+            case {'SaveFile', 'saveFile'}
                 saveFile = varargin{index+1};
                 index = index + 2;
             case 'loadType'
@@ -175,6 +175,9 @@ dim(framedim) = [];
 %% Determine frames to analyze
 if FrameIndex(end) == inf
     FrameIndex = cat(2, FrameIndex(1:end-1), FrameIndex(end-1)+1:numFrames);
+elseif any(FrameIndex > numFrames) % requested frames not in file
+    warning('Requested to compute projections on more frames than exist in file: ignoring nonexistent frames.');
+    FrameIndex(FrameIndex > numFrames) = [];
 end
 totalFrames = numel(FrameIndex);
 
@@ -260,7 +263,7 @@ if computeAverage || computeMax || computeMin
         end
         
         % Compute variance and kurtosis
-        if numFramesPerLoad >= FrameIndex(2)
+        if bindex == 1 && lastframe == totalFrames % all frames loaded in 1 batch
             if computeVar
                 meanSubtracted = bsxfun(@minus, Images, AverageFrame);
                 Variance = mean(meanSubtracted.^2, framedim); % should be equivalent to 'var(Images,0,5)'

@@ -19,71 +19,69 @@ directory = cd;
 override = false;
 
 %% Process input arguments
-index = 1;
-while index<=length(varargin)
+findex = 1;
+while findex<=length(varargin)
     try
-        switch varargin{index}
+        switch varargin{findex}
             case 'MotionCorrect'
                 MotionCorrect = true;
-                index = index + 1;
+                findex = findex + 1;
             case 'ProcessFrames'
                 ProcessFrames = true;
-                index = index + 1;
+                findex = findex + 1;
             case 'ProcessExperiment'
                 ProcessExperiment = true;
-                index = index + 1;
+                findex = findex + 1;
             case 'compAvgResponse'
                 compAvgResponse = true;
-                index = index + 1;
+                findex = findex + 1;
             case 'override'
                 override = true;
-                index = index + 1;
+                findex = findex + 1;
             otherwise
-                warning('Argument ''%s'' not recognized',varargin{index});
-                index = index + 1;
+                warning('Argument ''%s'' not recognized',varargin{findex});
+                findex = findex + 1;
         end
     catch
-        warning('Argument %d not recognized',index);
-        index = index + 1;
+        warning('Argument %d not recognized',findex);
+        findex = findex + 1;
     end
 end
 
 if ~exist('ImageFiles', 'var') || isempty(ImageFiles)
     [ImageFiles,p] = uigetfile({'*.sbx;*.tif;*.imgs'}, 'Choose files to process', directory, 'MultiSelect', 'on');
-    if isnumeric(ImageFiles)
+    if isnumeric(ImageFiles) % no file selected
         return
-    end
-    if isnumeric(ImageFiles)
-        return
-    elseif iscellstr(ImageFiles)
+    elseif iscellstr(ImageFiles) % multiple files selected
         ImageFiles = fullfile(p, ImageFiles);
-    elseif ischar(ImageFiles)
+    elseif ischar(ImageFiles) % single file selected
         ImageFiles = {fullfile(p, ImageFiles)};
     end
 elseif ischar(ImageFiles)
-    if isdir(ImageFiles)
+    if isdir(ImageFiles) % directory input
         p = ImageFiles;
         ImageFiles = dir(p);
         ImageFiles = fullfile(p, {ImageFiles(~cellfun(@isempty, regexpi({ImageFiles.name}, '.*(sbx|tif)'))).name});
-    else
+    else % single file input
         ImageFiles = {ImageFiles};
     end
 end
 
-if ~exist('ExperimentFiles', 'var') || isempty(ExperimentFiles)
-    [ExperimentFiles,p] = uigetfile({'*.ciexp;*.mat'},'Choose files to process', directory, 'MultiSelect', 'on');
-    if isnumeric(ExperimentFiles)
+if ~exist('ExperimentFiles', 'var') || isempty(ExperimentFiles) % nothing input
+    [ExperimentFiles,p] = uigetfile({'*.exp;*.mat'},'Choose files to process', directory, 'MultiSelect', 'on');
+    if isnumeric(ExperimentFiles) % no file selected
         return
-    elseif iscellstr(ExperimentFiles)
+    elseif iscellstr(ExperimentFiles) % multiple files selected
         ExperimentFiles = fullfile(p, ExperimentFiles);
-    elseif ischar(ExperimentFiles)
+    elseif ischar(ExperimentFiles) % single file selected
         ExperimentFiles = {fullfile(p, ExperimentFiles)};
     end
 elseif ischar(ExperimentFiles)
-    if isdir(ExperimentFiles)
-        ExperimentFiles = dir(fullfile(ExperimentFiles, '*.exp'));
-        ExperimentFiles = {ExperimentFiles.name};
-    else
+    if isdir(ExperimentFiles) % directory input
+        p = ExperimentFiles;
+        ExperimentFiles = dir(fullfile(p, '*.exp'));
+        ExperimentFiles = fullfile(p, {ExperimentFiles.name});
+    else % single file input
         ExperimentFiles = {ExperimentFiles};
     end
 end
@@ -113,67 +111,78 @@ end
 % end
 
 numFiles = numel(ImageFiles);
+for findex = 1:numFiles;
+    fprintf('Processing experiment %d of %d: %s\n', findex, numFiles, ImageFiles{findex});
+    RunningData = false;
 
-for index = 1:numFiles;
     
-    %% Determine what has already been accomplished in input Experiment Files
-    variables{index} = whos(matfile(ExperimentFiles{index}));
-    if any(strcmp({variables{index}.name}, 'frames'))
-        load(ExperimentFiles{index}, 'frames', '-mat');
-        if isfield(frames, 'RunningSpeed')
-            RunningData(index) = true;
-        end
-    end
+    %% Determine what has already been accomplished
+    variables = whos(matfile(ExperimentFiles{findex}));
 
+    %% Determine file to save to
+    if iscellstr(ExperimentFiles{findex})
+        saveFile = ExperimentFiles{findex}{1};
+    elseif ischar(ExperimentFiles{findex})
+        saveFile = ExperimentFiles{findex};
+    end
+    
     %% Determine Stimulus Frames
-    if ProcessExperiment
-        if ~any(strcmp({variables{index}.name}, 'AnalysisInfo')) || override
-            fprintf('\nFile %d of %d:\t', index, numFiles);
-            [~,frames] = sbxPostProcess2(ExperimentFiles{index}, ImageFiles{index}, true);
-            if isfield(frames, 'RunningSpeed')
-                RunningData(index) = true;
-            end
+    if ProcessExperiment && (~any(strcmp({variables.name}, 'AnalysisInfo')) || override)
+        
+        % Process experiment
+        [~,frames] = sbxPostProcess2(ExperimentFiles{findex}, ImageFiles{findex}, 'Save', 'SaveFile', saveFile);
+        
+        % Determine if mouse's running speed was recorded
+        if isfield(frames, 'RunningSpeed')
+            RunningData = true;
+        end
+    elseif any(strcmp({variables.name}, 'frames')) % load running data for subsequent analyses
+        load(ExperimentFiles{findex}, 'frames', '-mat');
+        if isfield(frames, 'RunningSpeed')
+            RunningData = true;
         end
     end
+    
     
     %% Perform motion correction
-    if MotionCorrect
-        if ~any(strcmp({variables{index}.name}, 'MCdata')) || override
-            fprintf('\nFile %d of %d:\t', index, numFiles);
-            if RunningData(index)
-                load(ExperimentFiles{index}, 'frames', '-mat');
-                [~,TemplateIndices] = sort(frames.RunningSpeed);
-                TemplateIndices(TemplateIndices==1) = []; % remove first frame (frame is incomplete in scanbox files)
-            else
-                TemplateIndices = 2:501;
-            end
-            fullDoLucasKanade(ImageFiles{index}, TemplateIndices(1:numFramesTemplate), 'SaveAlignmentTo', ExperimentFiles{index});
+    if MotionCorrect && (~any(strcmp({variables.name}, 'MCdata')) || override)
+        
+        % Make template
+        if RunningData
+            [~,TemplateIndices] = sort(frames.RunningSpeed);
+            TemplateIndices(TemplateIndices==1) = []; % remove first frame (frame is incomplete in scanbox files)
+            TemplateIndices = TemplateIndices(1:numFramesTemplate);
+        else
+            TemplateIndices = 2:2+numFramesTemplate-1;
         end
+        
+        % Perform motion correction
+        fullDoLucasKanade(ImageFiles{findex}, TemplateIndices, 'SaveAlignmentTo', saveFile);
+        
     end
+    
     
     %% Compute projections
-    if ProcessFrames
-        if ~any(strcmp({variables{index}.name}, 'ImageFiles')) || override
-            fprintf('\nFile %d of %d:\t', index, numFiles);
-            computeProjections(ImageFiles{index}, [2,inf], ExperimentFiles{index}, 'MotionCorrect', true, 'Avg', true, 'Min', true, 'Max', true, 'Var', true, 'Save'); %[2,500]
-        end
+    if ProcessFrames && (~any(strcmp({variables.name}, 'ImageFiles')) || override)
+        computeProjections(ImageFiles{findex}, [2,inf], saveFile, 'MotionCorrect', true, 'Avg', true, 'Min', true, 'Max', true, 'Var', true, 'Save', 'SaveFile', saveFile);
     end
     
+    
     %% Compute Average Response for Each Stimulus & Create Tuning Curves
-    if compAvgResponse
-        if ~any(strcmp({variables{index}.name}, 'AvgEvokedDFoF')) || override
-            fprintf('\nFile %d of %d:\t', index, numFiles);
-            if RunningData(index)
-                TrialIndex = determineRunning(ExperimentFiles{index}, [], minrunspeed);
-            else
-                TrialIndex = [1 inf];
-            end
-            computeAverageStimResponse(ImageFiles{index}, ExperimentFiles{index}, TrialIndex, true, 'Save');
+    if compAvgResponse && (~any(strcmp({variables.name}, 'AvgTrial')) || override)
+        
+        % Determine trials to analyze
+        if RunningData
+            TrialIndex = determineRunning(saveFile, [], minrunspeed);
+        else
+            TrialIndex = [1 inf];
         end
+        
+        % Compute average trial for each stimulus
+        computeAverageStimResponse(ImageFiles{findex}, saveFile, TrialIndex, true, 'Save');
+        
     end
     
 end
 
-%% Fit Tuning Curves for Vertical Bar Stimulus
-% fitWholeFoV(ExperimentFile)
 

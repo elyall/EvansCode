@@ -1,4 +1,4 @@
-function [AvgTrial, AvgTrialdFoF, StimResponse] = computeAverageStimResponse(ImageFile, ExperimentFile, TrialIndex, MotionCorrect, varargin)
+function [AvgTrial, AvgTrialdFoF, StimResponse] = computeAverageStimResponse(ImageFiles, ExperimentFile, TrialIndex, MotionCorrect, varargin)
 
 saveOut = false;
 saveFile = '';
@@ -11,7 +11,7 @@ while index<=length(varargin)
             case {'Save', 'save'}
                 saveOut = true;
                 index = index + 1;
-            case 'SaveFile'
+            case {'SaveFile', 'saveFile'}
                 saveFile = varargin{index+1};
                 index = index + 2;
             otherwise
@@ -24,13 +24,23 @@ while index<=length(varargin)
     end
 end
 
-if ~exist('ImageFile','var') || isempty(ImageFile) % Prompt for file selection
-    directory = CanalSettings('DataDirectory');
-    [ImageFile,p] = uigetfile({'*.imgs;*.sbx;*.tif'},'Select images:',directory);
-    if isnumeric(ImageFile)
+if ~exist('ImageFiles', 'var') || isempty(ImageFiles)
+    [ImageFiles,p] = uigetfile({'*.sbx;*.tif;*.imgs'}, 'Choose files to process', directory, 'MultiSelect', 'on');
+    if isnumeric(ImageFiles) % no file selected
         return
+    elseif iscellstr(ImageFiles) % multiple files selected
+        ImageFiles = fullfile(p, ImageFiles);
+    elseif ischar(ImageFiles) % single file selected
+        ImageFiles = {fullfile(p, ImageFiles)};
     end
-    ImageFile = fullfile(p, ImageFile);
+elseif ischar(ImageFiles)
+    if isdir(ImageFiles) % directory input
+        p = ImageFiles;
+        ImageFiles = dir(p);
+        ImageFiles = fullfile(p, {ImageFiles(~cellfun(@isempty, regexpi({ImageFiles.name}, '.*(sbx|tif)'))).name});
+    else % single file input
+        ImageFiles = {ImageFiles};
+    end
 end
 
 if ~exist('ExperimentFile','var') || isempty(ExperimentFile)
@@ -99,11 +109,12 @@ end
 
 
 %% Load in image config
-Config = load2PConfig(ImageFile);
+Config = load2PConfig(ImageFiles);
 
 
 %% Compute average trial
-fprintf('\nCalculating average trials for: %s\n', ImageFile);
+fprintf('Calculating average trials for:\n');
+fprintf('\t%s\n', ImageFiles{:});
 
 % Initialize outputs
 AvgTrial = cell(numStims,1);
@@ -127,7 +138,7 @@ for sindex = 1:numStims
     for tindex = currentTrials'
         
         % Load trial
-        [frames, loadObj] = load2P(ImageFile,...
+        [frames, loadObj] = load2P(AnalysisInfo.ImgFilename{tindex},...
             'Type',     'Direct',...
             'Frames',   AnalysisInfo.ExpFrames(tindex,1):AnalysisInfo.ExpFrames(tindex,1)+numFrames-1,...
             'Double');

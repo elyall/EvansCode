@@ -360,7 +360,8 @@ for rindex = 1:numROIs
     end
     
     % Plot stim lines
-    plot(repmat([StimFrames(:,1)-.5, StimFrames(:,2)+.5]+xshift,2,1), repmat((0.5:1:size(StimFrames,1))',2,2), 'k--','LineWidth',lineWidth);
+    plot(repmat(StimFrames(:,1)-.5+xshift,2,1), repmat((0.5:1:size(StimFrames,1))',2,1), 'k--','LineWidth',lineWidth);
+%     plot(repmat([StimFrames(:,1)-.5, StimFrames(:,2)+.5]+xshift,2,1), repmat((0.5:1:size(StimFrames,1))',2,2), 'k--','LineWidth',lineWidth);
     
     % Label y-axis
     if strcmp(sorttype, 'stim')

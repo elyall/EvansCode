@@ -292,7 +292,7 @@ if ischar(MCImgsFilename)
     fprintf('Registered images saved to: %s\n', MCImgsFilename);
 end
 if ischar(MCdataFilename)
-    fprintf('Registration map saved to: %s\n',MCdataFilename);
+    fprintf('Registration map saved to: %s\n', MCdataFilename);
 end
 
 
