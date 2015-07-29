@@ -130,12 +130,12 @@ for sindex = 1:numStims
     
     % Initialize outputs
     numFrames = mode(AnalysisInfo.nFrames(currentTrials));
-    AvgTrial{sindex} = zeros([Config.size(1:end-1), numFrames]);
-    AvgTrialdFoF{sindex} = zeros([Config.size(1:end-2), numFrames]);
-    trialdFoF{sindex} = zeros([Config.size(1:end-2), numTrials]);
+    AvgTrial{sindex} = zeros([Config(1).size(1:end-1), numFrames]);
+    AvgTrialdFoF{sindex} = zeros([Config(1).size(1:end-2), numFrames]);
+    trialdFoF{sindex} = zeros([Config(1).size(1:end-2), numTrials]);
     
     % Cycle through trials adding each to the average
-    for tindex = currentTrials'
+    for tindex = currentTrials
         
         % Load trial
         [frames, loadObj] = load2P(AnalysisInfo.ImgFilename{tindex},...

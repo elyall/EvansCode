@@ -112,19 +112,20 @@ end
 
 numFiles = numel(ImageFiles);
 for findex = 1:numFiles;
-    fprintf('Processing experiment %d of %d: %s\n', findex, numFiles, ImageFiles{findex});
+    fprintf('Processing experiment %d of %d\n', findex, numFiles);
     RunningData = false;
-
     
-    %% Determine what has already been accomplished
-    variables = whos(matfile(ExperimentFiles{findex}));
-
     %% Determine file to save to
     if iscellstr(ExperimentFiles{findex})
         saveFile = ExperimentFiles{findex}{1};
     elseif ischar(ExperimentFiles{findex})
         saveFile = ExperimentFiles{findex};
     end
+    
+    
+    %% Determine what has already been accomplished
+    variables = whos(matfile(saveFile));
+
     
     %% Determine Stimulus Frames
     if ProcessExperiment && (~any(strcmp({variables.name}, 'AnalysisInfo')) || override)

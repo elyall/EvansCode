@@ -33,6 +33,10 @@ elseif ischar(AnalysisInfo)
     clear AnalysisInfo
 end
 
+if ~exist('thresh', 'var') || isempty(thresh)
+    thresh = 100; % degrees per second
+end
+
 %% Load in variables
 if ~exist('AnalysisInfo', 'var') || isempty(AnalysisInfo)
     load(ExperimentFile, 'AnalysisInfo', '-mat');

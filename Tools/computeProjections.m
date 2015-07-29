@@ -263,7 +263,7 @@ if computeAverage || computeMax || computeMin
         end
         
         % Compute variance and kurtosis
-        if bindex == 1 && lastframe == totalFrames % all frames loaded in 1 batch
+        if numFramesPerLoad >= totalFrames % all frames loaded in 1 batch
             if computeVar
                 meanSubtracted = bsxfun(@minus, Images, AverageFrame);
                 Variance = mean(meanSubtracted.^2, framedim); % should be equivalent to 'var(Images,0,5)'
@@ -279,7 +279,7 @@ end
 
 % DIRECT ONLY: Can't load all images at once => compute variance
 % Variance calculation requires knowing the mean
-if numFramesPerLoad < FrameIndex(2) && computeVar
+if numFramesPerLoad < totalFrames && computeVar
     fprintf('Computing Variance...\n');
     
     if ~exist('Variance', 'var')
@@ -309,7 +309,7 @@ end
 
 % DIRECT ONLY: Can't load all images at once => compute kurtosis
 % Kurtosis calculation requires knowing the mean and variance
-if numFramesPerLoad < FrameIndex(2) && computeKur
+if numFramesPerLoad < totalFrames && computeKur
     fprintf('Computing Kurtosis...\n');
     
     if ~exist('Kurtosis', 'var')
