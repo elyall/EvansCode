@@ -8,8 +8,8 @@ saveToPDF = false;
 
 ControlIndex = 0;
 
-BaselineFrames = repmat([1, 22],9,1);
-StimFrames = repmat([23, 44],9,1);
+BaselineFrames = []; %repmat([1, 22],9,1);
+StimFrames = []; %repmat([23, 44],9,1);
 
 %% Check input arguments
 if ~exist('ROIdata','var') || isempty(ROIdata)
@@ -26,7 +26,7 @@ if ~exist('ROIid','var') || isempty(ROIid)
 end
 
 if ~exist('baseline','var') || isempty(baseline)
-    baseline=10; % baseline frames
+    baseline=[]; % baseline frames
 end
 if ~exist('stimulus','var') || isempty(stimulus)
     stimulus=[];
@@ -43,6 +43,8 @@ end
 if ~exist('outlierweight', 'var') || isempty(outlierweight)
     outlierweight = 3;
 end
+
+fprintf('Computing tuning curves...');
 
 %% Load data
 if ischar(ROIdata)
@@ -76,6 +78,7 @@ end
 % end
 
 %% Calculate average response for each stimulus
+warning('off', 'curvefit:checkbounds:tooManyLowerBounds');
 for rindex = 1:numROIs
     ROIdata.rois(rindex).curve = zeros(1, numStimuli);
     ROIdata.rois(rindex).StdError = zeros(1, numStimuli);
@@ -278,7 +281,9 @@ for rindex = 1:numROIs
     
 end %cycle ROIs
 
+fprintf('\tComplete\n');
 
+%% Save to file
 if saveToROIFile && ischar(ROIFile)
     for rindex = 1:numROIs
         if ~isempty(ROIdata.rois(rindex).label) && strcmp(ROIdata.rois(rindex).label{1}, 'none')
@@ -286,4 +291,5 @@ if saveToROIFile && ischar(ROIFile)
         end
     end
     save(ROIFile, 'ROIdata', '-append', '-mat');
+    fprintf('\tROIdata saved to: %s\n', ROIFile);
 end

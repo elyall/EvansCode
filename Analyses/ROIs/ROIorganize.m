@@ -45,10 +45,10 @@ while index<=length(varargin)
             case 'numFramesAfter'
                 numFramesAfter = varargin{index+1};
                 index = index + 2;
-            case 'Save'
+            case {'Save', 'save'}
                 saveOut = true;
                 index = index + 1;
-            case 'SaveFile'
+            case {'SaveFile', 'saveFile'}
                 saveFile = varargin{index+1};
                 index = index + 2;
             case 'SeriesVariables'
@@ -64,6 +64,7 @@ while index<=length(varargin)
     end
 end
 
+fprintf('Organizing signals to be trial-wise...');
 
 %% Load stimulus information and determine trials to pull-out
 if ischar(AnalysisInfo)
@@ -226,18 +227,19 @@ for rindex = ROIid
     end
 end
 
+fprintf('\tComplete\n');
 
 %% Save to file
 if saveOut
     % Save basic data
     if ~exist(saveFile, 'file')
-        save(saveFile, 'ROIdata', 'Data', 'Neuropil', 'AnalysisInfo');
+        save(saveFile, 'ROIdata', 'Data', 'Neuropil', 'AnalysisInfo', '-mat', '-v7.3');
     else
-        save(saveFile, 'ROIdata', 'Data', 'Neuropil', 'AnalysisInfo', '-append');
+        save(saveFile, 'ROIdata', 'Data', 'Neuropil', 'AnalysisInfo', '-mat', '-append');
     end
     % Save series data
     if ~isempty(series)
         save(saveFile, 'series', '-append');
     end
-    fprintf('ROIdata saved to: %s\n', saveFile);
+    fprintf('\tROIdata saved to: %s\n', saveFile);
 end

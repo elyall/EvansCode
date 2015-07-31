@@ -1,7 +1,8 @@
-function ROIdata = estimateSpikeTiming(ROIdata, NeuropilWeight, varargin)
+function [ROIdata, Spikes] = estimateSpikeTiming(ROIdata, NeuropilWeight, varargin)
 
 saveOut = false;
 saveFile = '';
+
 frameRate = 15.45;
 
 %% Check input arguments
@@ -25,7 +26,7 @@ while index<=length(varargin)
             case {'save', 'Save'}
                 saveOut = true;
                 index = index + 1;
-            case 'SaveFile'
+            case {'SaveFile', 'saveFile'}
                 saveFile = varargin{index+1};
                 index = index + 2;
             case 'frameRate'
@@ -88,6 +89,10 @@ fprintf('\n');
 
 %% Save to file
 if saveOut
-    save(saveFile, 'ROIdata', 'Spikes', '-append');
-    fprintf('ROIdata saved to: %s\n', saveFile);
+    if ~exist(saveFile, 'file')
+        save(saveFile, 'ROIdata', 'Spikes', '-mat', '-v7.3');
+    else
+        save(saveFile, 'ROIdata', 'Spikes', '-append', '-mat');
+    end
+    fprintf('\tROIdata saved to: %s\n', saveFile);
 end

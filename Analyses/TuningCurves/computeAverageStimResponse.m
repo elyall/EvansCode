@@ -165,10 +165,10 @@ end
    
 
 %% Compute average response
-StimResponse.avg = nan([Config.size(1:end-2), numStims]);
-StimResponse.se = nan([Config.size(1:end-2), numStims]);
-StimResponse.pvalue = ones([Config.size(1:end-2), numStims]);
-StimResponse.excited = nan([Config.size(1:end-2), numStims]);
+StimResponse.avg = nan([Config(1).size(1:end-2), numStims]);
+StimResponse.se = nan([Config(1).size(1:end-2), numStims]);
+StimResponse.pvalue = ones([Config(1).size(1:end-2), numStims]);
+StimResponse.excited = nan([Config(1).size(1:end-2), numStims]);
 for sindex = 1:numStims
     StimResponse.avg(:,:,:,sindex) = mean(trialdFoF{sindex}, 4);
     StimResponse.se(:,:,:,sindex) = std(trialdFoF{sindex},[],4)/sqrt(size(trialdFoF{sindex},4));

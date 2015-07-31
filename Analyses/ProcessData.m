@@ -19,32 +19,35 @@ directory = cd;
 override = false;
 
 %% Process input arguments
-findex = 1;
-while findex<=length(varargin)
+index = 1;
+while index<=length(varargin)
     try
-        switch varargin{findex}
+        switch varargin{index}
             case 'MotionCorrect'
                 MotionCorrect = true;
-                findex = findex + 1;
+                index = index + 1;
             case 'ProcessFrames'
                 ProcessFrames = true;
-                findex = findex + 1;
+                index = index + 1;
             case 'ProcessExperiment'
                 ProcessExperiment = true;
-                findex = findex + 1;
+                index = index + 1;
             case 'compAvgResponse'
                 compAvgResponse = true;
-                findex = findex + 1;
+                index = index + 1;
+            case 'minrunspeed'
+                minrunspeed = varargin{index+1};
+                index = index + 1;
             case 'override'
                 override = true;
-                findex = findex + 1;
+                index = index + 1;
             otherwise
-                warning('Argument ''%s'' not recognized',varargin{findex});
-                findex = findex + 1;
+                warning('Argument ''%s'' not recognized',varargin{index});
+                index = index + 1;
         end
     catch
-        warning('Argument %d not recognized',findex);
-        findex = findex + 1;
+        warning('Argument %d not recognized',index);
+        index = index + 1;
     end
 end
 
@@ -184,6 +187,6 @@ for findex = 1:numFiles;
         
     end
     
-end
+end %files
 
 

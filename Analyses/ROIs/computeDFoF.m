@@ -25,10 +25,10 @@ while index<=length(varargin)
             case 'numFramesBaseline'
                 numFramesBaseline = varargin{index+1};
                 index = index + 2;
-            case 'Save'
+            case {'Save', 'save'}
                 saveOut = true;
                 index = index + 1;
-            case 'SaveFile'
+            case {'SaveFile', 'saveFile'}
                 saveFile = varargin{index+1};
                 index = index + 2;
             otherwise
@@ -40,6 +40,8 @@ while index<=length(varargin)
         index = index + 1;
     end
 end
+
+fprintf('Calculating trial-wise dF/F...');
 
 %% Load ROI data
 if ischar(ROIdata)
@@ -83,12 +85,14 @@ for rindex = 1:numROIs
     ROIdata.rois(rindex).dFoF = bsxfun(@rdivide, bsxfun(@minus, data, baseline), baseline);
 end
 
+fprintf('\tComplete\n');
+
 %% Save to file
 if saveOut
     if ~exist(saveFile, 'file')
-        save(saveFile, 'ROIdata');
+        save(saveFile, 'ROIdata', '-mat', '-v7.3');
     else
-        save(saveFile, 'ROIdata', '-append');
+        save(saveFile, 'ROIdata', '-append', '-mat');
     end
-    fprintf('ROIdata saved to: %s\n', saveFile);
+    fprintf('\tROIdata saved to: %s\n', saveFile);
 end
