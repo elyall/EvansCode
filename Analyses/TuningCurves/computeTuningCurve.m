@@ -1,4 +1,4 @@
-function ROIdata = computeTuningCurve(ROIdata, ROIindex, TrialIndex, varargin)
+function [ROIdata, badTrials] = computeTuningCurve(ROIdata, ROIindex, TrialIndex, varargin)
 
 
 FitTuningCurves = false; % gaussian fit
@@ -32,7 +32,7 @@ while index<=length(varargin)
                 saveOut = true;
                 index = index + 1;
             case {'SaveFile', 'saveFile'}
-                SaveFile = varargin{index+1};
+                saveFile = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -135,13 +135,23 @@ if ~isempty(ControlID)
 end
 
 % Calculate tuning
+badTrials = cell(numel(ROIdata.DataInfo.StimID), 1);
 for rindex = ROIindex
     for sindex = indexorder'
         
-        % Select trials for current stimulus
-        currentTrials = find(ROIdata.DataInfo.StimID==StimIDs(sindex));
-        CaTraces = ROIdata.rois(rindex).dFoF(currentTrials(ismember(currentTrials,TrialIndex)),:); % pull out all trials for current stimulus
-        %CaTraces(isnan(CaTraces)) = 0;
+        % Select data for current stimulus
+        currentTrials = find(ROIdata.DataInfo.StimID==StimIDs(sindex));     % determine all trials for current stimulus
+        currentTrials = currentTrials(ismember(currentTrials,TrialIndex));  % remove non-specified trials
+        CaTraces = ROIdata.rois(rindex).dFoF(currentTrials,:);              % pull out data for these trials
+        
+        % Remove bad trials
+        badCurrent = any(isnan(CaTraces), 2);
+        if any(badCurrent)
+            for bindex = currentTrials(badCurrent)
+                badTrials{bindex} = [badTrials{bindex}, rindex];
+            end
+            CaTraces(badCurrent, :) = [];
+        end
         
         % Compute response for each trial during the stimulus period
         StimulusDFoF = mean(CaTraces(:, StimFrames(sindex,1):StimFrames(sindex,2)), 2);
@@ -223,7 +233,7 @@ end
 
 %% Save to file
 if saveOut
-    if ~exist('saveFile', 'file')
+    if ~exist(saveFile, 'file')
         save(saveFile, 'ROIdata', '-mat', '-v7.3');
     else
         save(saveFile, 'ROIdata', '-mat', '-append');

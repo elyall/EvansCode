@@ -15,12 +15,15 @@ mergetype = 'quick'; % 'quick' or 'pretty'
 showColorBar = false;
 colorbarLabel = 'Metric';
 Crop = false;
+Title = '';
 
 % Default variables
 Origin = [];
 hA = [];
 Image = [];
 Map = [];
+
+directory = cd;
 
 %% Parse input arguments
 if ~exist('ROIs','var') || isempty(ROIs)
@@ -41,7 +44,6 @@ elseif ischar(ROIs)
 end
 
 if ~exist('Data','var') || isempty(Data)
-    directory = CanalSettings('DataDirectory');
     [Data, p] = uigetfile({'*.mat;*.ciexp'},'Choose Experiment file(s)', directory, 'MultiSelect', 'on');
     if isnumeric(Data)
         return
@@ -97,23 +99,41 @@ while index<=length(varargin)
         case 'showColorBar'
             showColorBar = true;
             index = index + 1;
+        case 'Title'
+            Title = varargin{index+1};
+            index = index + 2;
         otherwise
             warning('Argument ''%s'' not recognized',varargin{index});
             index = index + 1;
     end
 end
 
-%% Load data
+
+%% Load ROI data
 numFiles = numel(ROIs);
 if iscellstr(ROIs)
     ROIFiles = ROIs;
     ROIs = cell(numFiles, 1);
     for findex = 1:numFiles
-        load(ROIFiles, 'ROIdata');
+        load(ROIFiles{findex}, 'ROIdata', '-mat');
         ROIs{findex} = ROIdata;
     end
 end
-totalROIs = numel(ROIindex);
+
+
+%% Determine ROIs to overlay
+if ischar(ROIindex) && strcmp(ROIindex, 'all')
+    ROIindex = [1, inf];
+end
+if ROIindex(end) == inf
+    totalROIs = 0;
+    for findex = 1:numFiles
+        totalROIs = totalROIs + numel(ROIs{findex}.rois);
+    end
+    ROIindex = cat(2, ROIindex(1:end-1), ROIindex(1:end-1)+1:totalROIs);
+end
+numROIs = numel(ROIindex);
+
 
 %% Build colormap
 if ~exist('Colors', 'var') || isempty(Colors)
@@ -121,10 +141,11 @@ if ~exist('Colors', 'var') || isempty(Colors)
     Colors = jet(numel(Vals));
 end
 if ~exist('Brightness', 'var') || isempty(Brightness)
-    Brightness = ones(totalROIs, 3);
+    Brightness = ones(numROIs, 3);
 else
-    Brightness = bsxfun(@times, ones(totalROIs, 3), Brightness);
+    Brightness = bsxfun(@times, ones(numROIs, 3), Brightness);
 end
+
 
 %% Determine colormap labels
 switch DataType
@@ -139,7 +160,8 @@ switch DataType
         Labels = cellstr(num2str((Labels(1):(Labels(2)-Labels(1))/10:Labels(2))'));
 end
 
-%% Build image
+
+%% Load Image data
 if iscellstr(Data)
     ExperimentFiles = Data;
     clear Data;
@@ -161,6 +183,9 @@ if iscellstr(Data)
         Data(findex).cropped = false;
     end
 end
+
+
+%% Build Image
 if isempty(Image)
     [Image, newOrigin, ~, Data] = createMultiFoVImage(Data, ImgToDisplay, mergetype, Crop, Map);
     if newOrigin ~= false
@@ -168,22 +193,32 @@ if isempty(Image)
     end
 end
 
+
 %% Determine Offsets & Shift ROIs
 Shift = zeros(numFiles, 2);
-for findex = 1:numFiles
-    Shift(findex,:) = [Data(findex).Map.XWorldLimits(1)-Origin(1), Data(findex).Map.YWorldLimits(1)-Origin(2)];
-end
-for rindex = 1:totalROIs
-    ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).vertices =...
-        ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).vertices +...
-        repmat(Shift(FileIndex(rindex),:), size(ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).vertices,1), 1);
+if numFiles > 1
+    for findex = 1:numFiles
+        Shift(findex,:) = [Data(findex).Map.XWorldLimits(1)-Origin(1), Data(findex).Map.YWorldLimits(1)-Origin(2)];
+    end
+    for rindex = 1:numROIs
+        ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).vertices =...
+            ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).vertices +...
+            repmat(Shift(FileIndex(rindex),:), size(ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).vertices,1), 1);
+    end
 end
 
+
 %% Display Image
+
+% Select axes
 if isempty(hA)
-    hf = figure();
-    hA(rindex) = axes();
+    figure();
+    hA = axes();
+else
+    axes(hA);
 end
+
+% Display image
 switch ImgToDisplay
     case 'none'
         imshow(Image);
@@ -193,7 +228,7 @@ end
 
 % Plot overlay
 hold on
-for rindex = 1:totalROIs
+for rindex = 1:numROIs
     vertices = ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).vertices;
     patch(vertices(:,1),...
         vertices(:,2),...
@@ -222,6 +257,11 @@ if showColorBar
     end
     % set(cbH, 'Ticks', YLim(1):(YLim(2)-YLim(1))/(numel(Labels)-1):YLim(2), 'YTickLabel', Labels);
     ylabel(cbH, colorbarLabel);
+end
+
+% Display title
+if ~isempty(Title)
+    title(Title);
 end
 
 

@@ -92,7 +92,7 @@ if saveOut
     if ~exist(saveFile, 'file')
         save(saveFile, 'ROIdata', '-mat', '-v7.3');
     else
-        save(saveFile, 'ROIdata', '-append', '-mat');
+        save(saveFile, 'ROIdata', '-mat', '-append');
     end
     fprintf('\tROIdata saved to: %s\n', saveFile);
 end

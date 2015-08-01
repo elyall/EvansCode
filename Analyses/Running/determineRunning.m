@@ -1,7 +1,7 @@
 function RunIndex = determineRunning(AnalysisInfo, frames, thresh, varargin)
 
 directory = cd;
-type = 'StimPeriods'; % 'StimPeriods' or 'frames'
+type = 'TrialStimMean'; % 'TrialStimMean' or 'ExpStimVar'
 comparison = '>=';
 
 %% Parse input arguments
@@ -45,16 +45,45 @@ if ~exist('frames', 'var') || isempty(frames)
     load(ExperimentFile, 'frames', '-mat');
 end
 
+
+%% Format running speed
+numTrials = size(AnalysisInfo, 1);
+numFrames = max(AnalysisInfo.nFrames);
+RunningSpeed = nan(numTrials, numFrames);
+for tindex = 1:numTrials
+    RunningSpeed(tindex, :) = frames.RunningSpeed(AnalysisInfo.ExpFrames(tindex, 1):AnalysisInfo.ExpFrames(tindex, 1) + numFrames -1);
+end
+
+
 %% Determine in which trials the mouse is running
+
+% initialize output
+RunIndex = false(numTrials, 1);
+
 switch type
-    case 'StimPeriods'
-        numTrials = size(AnalysisInfo, 1);
-        RunIndex = false(numTrials, 1);
+    
+    case 'TrialStimMean'
         for tindex = 1:numTrials
-            if eval(sprintf('mean(frames.RunningSpeed(AnalysisInfo.ExpStimFrames(tindex,1):AnalysisInfo.ExpStimFrames(tindex,2))) %s thresh', comparison))
+            if eval(sprintf('mean(RunningSpeed(tindex, AnalysisInfo.TrialStimFrames(tindex,1):AnalysisInfo.TrialStimFrames(tindex,2))) %s thresh', comparison))
                 RunIndex(tindex) = true;
             end
         end
-    case 'frames'
-        eval(sprintf('RunIndex = frames.RunningSpeed %s thresh;', comparison));
+        
+    case 'ExpStimThresh'
+        StimIDs = unique(AnalysisInfo.StimID);
+        figure;
+        for sindex = 1:numel(StimIDs)
+            currentTrials = find(AnalysisInfo.StimID==StimIDs(sindex));
+            stimRunning = RunningSpeed(currentTrials, AnalysisInfo.TrialStimFrames(currentTrials(1), 1):AnalysisInfo.TrialStimFrames(currentTrials(1), 2));
+            RunIndex(currentTrials) = mean(stimRunning, 2) >= thresh;
+            
+            goodTrials = all(stimRunning >= thresh, 2); % all trials for current stimulus in which mouse was always running faster than thresh
+            
+            subplot(1, 9, sindex); plot(stimRunning(~goodTrials, :)', 'k'); hold on; plot(stimRunning(goodTrials, :)', 'r'); ylim([-200, 700]);
+        end
+        disp('');
+        
+    case 'ExpVar'
+        
+        
 end

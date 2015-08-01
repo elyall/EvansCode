@@ -118,6 +118,7 @@ for findex = 1:numFiles;
     fprintf('Processing experiment %d of %d\n', findex, numFiles);
     RunningData = false;
     
+    
     %% Determine file to save to
     if iscellstr(ExperimentFiles{findex})
         saveFile = ExperimentFiles{findex}{1};

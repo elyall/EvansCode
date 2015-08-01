@@ -119,7 +119,7 @@ fprintf('\t%s\n', ImageFiles{:});
 % Initialize outputs
 AvgTrial = cell(numStims,1);
 AvgTrialdFoF = cell(numStims,1);
-% trialdFoF = cell(numStims,1);
+trialdFoF = cell(numStims,1);
 
 % Cycle through stimuli computing averages
 for sindex = 1:numStims
@@ -135,7 +135,7 @@ for sindex = 1:numStims
     trialdFoF{sindex} = zeros([Config(1).size(1:end-2), numTrials]);
     
     % Cycle through trials adding each to the average
-    for tindex = currentTrials
+    for tindex = currentTrials'
         
         % Load trial
         [frames, loadObj] = load2P(AnalysisInfo.ImgFilename{tindex},...

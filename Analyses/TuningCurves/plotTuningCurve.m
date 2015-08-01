@@ -24,6 +24,7 @@ hA = [];
 SubplotDim = [];
 Title = [];
 Legend = {'Pre Control', 'Pre', 'Post Control', 'Post'};
+LegendLocation = 'NorthEastOutside';
 
 %% Parse input arguments
 if ~exist('rois', 'var') || isempty(rois)
@@ -130,7 +131,7 @@ end
 if ischar(ROIindex) && strcmp(ROIindex, 'all')
     ROIindex = 1:numel(rois);
 elseif ROIindex(end) == inf;
-    ROIindex = cat(2, ROIindex(1:end-1), ROIindex(1:end-1):numel(rois));
+    ROIindex = cat(2, ROIindex(1:end-1), ROIindex(1:end-1)+1:numel(rois));
 end
 numROIs = numel(ROIindex);
 
@@ -288,7 +289,7 @@ for index = 1:numel(ROIindex)
         
         % Place legend
         if ~isempty(Legend) && ismember(index, lastROI)
-            legend(Legend);
+            legend(Legend, 'Location', LegendLocation);
         end
         
         hold off

@@ -54,7 +54,7 @@ end
 for findex = 1:numFiles
     unlabeledIndex = cellfun(@isempty,{ROIs{findex}.rois(:).label});
     if any(unlabeledIndex)
-        [ROIs{findex}.rois(unlabeledIndex).label] = deal('none');
+        [ROIs{findex}.rois(unlabeledIndex).label] = deal({'none'});
     end
 end
 

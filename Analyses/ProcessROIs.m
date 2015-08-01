@@ -118,10 +118,9 @@ end
 
 %% Post-process ROIs
 
-numFiles = numel(ImageFiles);
+numFiles = numel(ROIFiles);
 for findex = 1:numFiles;
     fprintf('Processing ROI files %d of %d: %s\n', findex, numFiles, ROIFiles{findex});
-    
     
     %% Determine file to save to
     saveFile = ROIFiles{findex};
@@ -150,9 +149,9 @@ for findex = 1:numFiles;
     %% Sort ROI signals to be trial-wise
     if OrganizeSignals && (~any(strcmp({variables.name}, 'AnalysisInfo')) || override)
         if ~exist('ROIdata', 'var')
-            ROIdata = ROIorganize(ROIFiles{findex}, ExperimentFiles{findex}, [], 'all', 'Save', 'SaveFile', saveFile);
+            ROIdata = ROIorganize(ROIFiles{findex}, ExperimentFiles{findex}, [], 'all', 'SeriesVariables', 'RunningSpeed', 'Save', 'SaveFile', saveFile);
         else
-            ROIdata = ROIorganize(ROIFiles{findex}, ExperimentFiles{findex}, [], 'all', 'Save', 'SaveFile', saveFile);
+            ROIdata = ROIorganize(ROIFiles{findex}, ExperimentFiles{findex}, [], 'all', 'SeriesVariables', 'RunningSpeed', 'Save', 'SaveFile', saveFile);
         end
     end
     
@@ -174,7 +173,7 @@ for findex = 1:numFiles;
         
         % Determine trials to analyze
         load(ExperimentFiles{findex}, 'AnalysisInfo', 'frames', '-mat');
-        if exist('frames', 'var')
+        if exist('frames', 'var') && isfield(frames, 'RunningSpeed')
             TrialIndex = determineRunning(AnalysisInfo, frames, minrunspeed);
         else
             TrialIndex = [1 inf];

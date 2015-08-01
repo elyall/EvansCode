@@ -104,9 +104,12 @@ FrameIndex = [AnalysisInfo.ExpStimFrames(TrialIndex, 1) - numFramesBefore, Analy
 
 %% Determine series data to reshape
 seriesNames = fieldnames(frames);
+if ischar(SeriesVariables)
+    SeriesVariables = {SeriesVariables};
+end
 for sindex = numel(SeriesVariables):-1:1
     if ~strcmp(SeriesVariables{sindex}, seriesNames)
-        warning('Series variable %s not found', SeriesVariables{sindex});
+        warning('Series variable ''%s'' not found, continuing without formatting it', SeriesVariables{sindex});
         SeriesVariables(sindex) = [];
     end
 end
@@ -239,7 +242,7 @@ if saveOut
     end
     % Save series data
     if ~isempty(series)
-        save(saveFile, 'series', '-append');
+        save(saveFile, 'series', '-mat', '-append');
     end
     fprintf('\tROIdata saved to: %s\n', saveFile);
 end

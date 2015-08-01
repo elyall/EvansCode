@@ -2,10 +2,10 @@ function cmap = HiLoColormap(cmin, cmax, color_input)
 % assumes cmin is less than 0
 
 if ~exist('color_input', 'var')
-    green_top     = [0 1 0];
-    black_middle= [0 0 0];
-    red_bottom = [1 0 0];
-    color_input = [red_bottom;  black_middle;  green_top];
+    top = [1 0 0]; % red
+    middle= [1 1 1]; % black
+    bottom = [0 0 1]; % blue
+    color_input = [bottom;  middle;  top];
 end
 
 colornum = 250;
