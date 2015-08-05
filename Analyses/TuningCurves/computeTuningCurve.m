@@ -164,7 +164,7 @@ for rindex = ROIindex
         end
         
         % Save tuning curves
-        ROIdata.rois(rindex).curve(sindex) = mean(StimulusDFoF); % average dF/F over all trials for current stimulus
+        ROIdata.rois(rindex).curve(sindex) = mean(StimulusDFoF); % evoked dF/F over all trials for current stimulus
         ROIdata.rois(rindex).StdError(sindex) = std(StimulusDFoF)/sqrt(length(StimulusDFoF)); % standard error for stimulus
         ROIdata.rois(rindex).Raw{sindex} = StimulusDFoF;
         ROIdata.rois(rindex).nTrials(sindex) = numel(StimulusDFoF);
@@ -181,7 +181,9 @@ for rindex = ROIindex
         
     end %stimuli
 end %ROIs
-
+if any(~cellfun(@isempty, badTrials))
+    warning('Some trials couldn''t be included as they contained at least one NaN');
+end
 fprintf('\tComplete\n');
 
 

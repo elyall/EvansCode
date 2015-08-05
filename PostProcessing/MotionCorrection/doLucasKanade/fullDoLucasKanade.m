@@ -139,7 +139,7 @@ else
     nFramesPerLoad = totalFrames;
     numBatches = 1;
 end
-fprintf('Performing fullDoLucasKanade on %d file(s) with %d frames...\n', numFiles, totalFrames);
+fprintf('Performing fullDoLucasKanade on %d frame(s) in %d file(s)...\n', totalFrames, numFiles);
 fprintf('\t%s\n', ImageFiles{:}); % display each filename
 fprintf('Calculation requires %d batches with %d frames per batch...\n', numBatches, nFramesPerLoad);
 
@@ -164,6 +164,7 @@ else
     end
 end
 
+
 %% Compute template
 if ~Template
     if LoadImgs
@@ -177,6 +178,7 @@ elseif isvector(Template)
     Template = median(Images(:,:,:,Channel2AlignFrom,:),5);
 end
 
+
 %% Initialize second pass parameters
 if numFramesSecondPass
     MovingAvgFilt = 1/numFramesSecondPass*ones(1,numFramesSecondPass);
@@ -186,6 +188,7 @@ if numFramesSecondPass
     Parameters2.deltacorr = Parameters2.deltacorr/2;
     Parameters2.niter = floor(Parameters2.niter/2);
 end
+
 
 %% Register images
 

@@ -1,4 +1,4 @@
-function [hA, CLim, CMap] = plotIndividualRaster(rois, ROIindex, DataInfo, RunningSpeed, varargin)
+function [hA, CLim, CMap] = plotIndividualRaster(rois, ROIindex, DataInfo, varargin)
 
 saveToPDF = false;
 saveFile = 'test.pdf'; %filename to save plots to
@@ -28,7 +28,7 @@ showColorBar = false;
 CLim = [];
 CMap = {};
 
-% Spiek parameters
+% Spike parameters
 showSpikes = false;
 spikeThresh = .18;
 
@@ -36,10 +36,11 @@ spikeThresh = .18;
 controlindex = nan; %index of control stimulus ID relative to other StimIDs (ID is minimum value => 1)
 hA = []; %axes handle
 
+directory = cd;
+
 %% Parse input arguments
 if ~exist('rois','var') || isempty(rois)
-    directory = CanalSettings('DataDirectory');
-    [rois, p] = uigetfile({'*.mat'},'Choose ROI file',directory);
+    [rois, p] = uigetfile({'*.rois;*.mat'},'Choose ROI file',directory);
     if isnumeric(rois)
         return
     end
@@ -54,7 +55,7 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
-            case {'Trials','trials'}
+            case {'Trials','trials','TrialIndex'}
                 TrialIndex = varargin{index+1};
                 index = index + 2;
             case 'StimIndex'
@@ -136,11 +137,15 @@ if ~exist('RunningSpeed', 'var') && minrunspeed ~= 0
     warning('RunningSpeed info does not exist in ROIFile. Will not remove any non-running trials.');
 end
 
+
 %% Determine trials to plot
 if TrialIndex(end)==inf
     TrialIndex = cat(2, TrialIndex(end-1), TrialIndex(end-1)+1:size(rois(1).data, 1));
+elseif islogical(TrialIndex)
+    TrialIndex = find(TrialIndex);
 end
 numTrials = numel(TrialIndex);
+
 
 %% Determine stimulus of each trial
 if isempty(StimIndex)
@@ -154,15 +159,8 @@ else
 end
 numStimuli = numel(StimIDs);
 StimulusFrames = [repmat(DataInfo.numFramesBefore, numTrials, 1), DataInfo.numFramesBefore + DataInfo.numStimFrames(TrialIndex)];
-
-% Removing non-running trials
-if minrunspeed
-    StimPeriodAvgSpeed = mean(RunningSpeed(:, StimulusFrames(:,1):StimulusFrames(:,2)),2);
-    NotRunning = StimPeriodAvgSpeed <= minrunspeed;
-    StimulusFrames(NotRunning, :) = [];
-    TrialID(NotRunning, :) = [];
-end
 StimulusFrames(TrialID==controlindex,:) = nan; % do not show stim bars for control trials
+
 
 %% Determine ROIs to plot
 if ischar(ROIindex) && strcmp(ROIindex, 'all')
@@ -171,6 +169,7 @@ elseif ROIindex(end) == inf
     ROIindex = [ROIindex(1:end-1), ROIindex(1:end-1)+1:numel(rois)];
 end
 numROIs = numel(ROIindex);
+
 
 %% Determine color properties
 if isempty(CLim)
@@ -186,6 +185,7 @@ elseif numel(CMap)==1
     CMap = repmat(CMap, numROIs, 1);
 end
 
+
 %% Create axes
 if isempty(hA)
     for rindex = 1:numROIs
@@ -193,6 +193,7 @@ if isempty(hA)
         hA(rindex) = axes();
     end
 end
+
 
 %% Plot rasters
 for rindex = 1:numROIs

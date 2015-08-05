@@ -59,10 +59,6 @@ elseif ischar(Data)
     Data = {Data};
 end
 
-if ~exist('ROIindex', 'var') || isempty(ROIindex)
-    ROIindex = 'all';
-end
-
 index = 1;
 while index<=length(varargin)
     switch varargin{index}
@@ -122,7 +118,7 @@ end
 
 
 %% Determine ROIs to overlay
-if ischar(ROIindex) && strcmp(ROIindex, 'all')
+if ~exist('ROIindex', 'var') || isempty(ROIindex) || (ischar(ROIindex) && strcmp(ROIindex, 'all'))
     ROIindex = [1, inf];
 end
 if ROIindex(end) == inf
@@ -133,6 +129,10 @@ if ROIindex(end) == inf
     ROIindex = cat(2, ROIindex(1:end-1), ROIindex(1:end-1)+1:totalROIs);
 end
 numROIs = numel(ROIindex);
+
+if ~exist('FileIndex', 'var') || isempty(FileIndex)
+    FileIndex = ones(numROIs, 1);
+end
 
 
 %% Build colormap

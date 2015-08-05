@@ -23,13 +23,16 @@ AxesIndex = [];
 hA = [];
 SubplotDim = [];
 Title = [];
+YLim = [];
 Legend = {'Pre Control', 'Pre', 'Post Control', 'Post'};
 LegendLocation = 'NorthEastOutside';
+
+directory = cd;
 
 %% Parse input arguments
 if ~exist('rois', 'var') || isempty(rois)
     directory = cd;
-    [rois, p] = uigetfile({'*.mat'},'Choose ROI file(s)', directory);
+    [rois, p] = uigetfile({'*.rois;*.mat'},'Choose ROI file(s)', directory);
     if isnumeric(rois)
         return
     end
@@ -42,61 +45,69 @@ end
 
 index = 1;
 while index<=length(varargin)
-    switch varargin{index}
-        case 'showFit'
-            showFit = true;
-            index = index + 1;
-        case 'showDataPoints'
-            showDataPoints = true;
-            index = index + 1;
-        case 'showStimStars'
-            showStimStars = true;
-            index = index + 1;
-        case 'showN'
-            showN = true;
-            index = index + 1;
-        case 'showPValues'
-            showPValues = true;
-            index = index + 1;
-        case 'curveColor'
-            curveColor = varargin{index+1};
-            index = index + 2;
-        case 'fitColor'
-            fitColor = varargin{index+1};
-            index = index + 2;
-        case 'legendLocation'
-            fitLegendLocation = varargin{index+1};
-            index = index + 2;
-        case 'fontSize'
-            fontSize = varargin{index+1};
-            index = index + 2;
-        case 'FigureIndex'
-            FigureIndex = varargin{index+1};
-            index = index + 2;
-        case 'figures'
-            hF = varargin{index+1};
-            index = index + 2;
-        case 'AxesIndex'
-            AxesIndex = varargin{index+1};
-            index = index + 2;
-        case 'axes'
-            hA = varargin{index+1};
-            index = index + 2;
-        case 'SubplotDim'
-            SubplotDim = varargin{index+1};
-            index = index + 2;
-        case 'Title'
-            Title = varargin{index+1};
-            index = index + 2;
-        case {'Save', 'save'}
-            saveOut = true;
-            index = index + 1;
-        case {'SaveFile', 'saveFile'}
-            saveFile = varargin{index+1};
-            index = index + 2;
-        otherwise
-            warning('Argument ''%s'' not recognized',varargin{index});
-            index = index + 1;
+    try
+        switch varargin{index}
+            case 'showFit'
+                showFit = true;
+                index = index + 1;
+            case 'showDataPoints'
+                showDataPoints = true;
+                index = index + 1;
+            case 'showStimStars'
+                showStimStars = true;
+                index = index + 1;
+            case 'showN'
+                showN = true;
+                index = index + 1;
+            case 'showPValues'
+                showPValues = true;
+                index = index + 1;
+            case 'curveColor'
+                curveColor = varargin{index+1};
+                index = index + 2;
+            case 'fitColor'
+                fitColor = varargin{index+1};
+                index = index + 2;
+            case 'legendLocation'
+                fitLegendLocation = varargin{index+1};
+                index = index + 2;
+            case 'fontSize'
+                fontSize = varargin{index+1};
+                index = index + 2;
+            case 'FigureIndex'
+                FigureIndex = varargin{index+1};
+                index = index + 2;
+            case 'figures'
+                hF = varargin{index+1};
+                index = index + 2;
+            case 'AxesIndex'
+                AxesIndex = varargin{index+1};
+                index = index + 2;
+            case 'axes'
+                hA = varargin{index+1};
+                index = index + 2;
+            case 'SubplotDim'
+                SubplotDim = varargin{index+1};
+                index = index + 2;
+            case 'Title'
+                Title = varargin{index+1};
+                index = index + 2;
+            case 'YLim'
+                YLim = varargin{index+1};
+                index = index + 2;
+            case {'Save', 'save'}
+                saveOut = true;
+                index = index + 1;
+            case {'SaveFile', 'saveFile'}
+                saveFile = varargin{index+1};
+                index = index + 2;
+            otherwise
+                warning('Argument ''%s'' not recognized',varargin{index});
+                index = index + 1;
+        end
+    catch
+        warning('Argument %d not recognized',index);
+        index = index + 1;
     end
 end
 
@@ -255,6 +266,9 @@ for index = 1:numel(ROIindex)
         xlabel('Position');
         ylabel('Average Stimulus-Evoked dF/F');
         xlim([0,numStimuli+1]);
+        if ~isempty(YLim)
+            ylim(YLim);
+        end
         
         % Set Title
         if isempty(Title{FigureIndex(index)}{AxesIndex(index)})
