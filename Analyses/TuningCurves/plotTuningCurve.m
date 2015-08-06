@@ -17,8 +17,6 @@ fitLegendLocation = 'NorthWest'; % 'NorthWest' or 'NorthEast'
 fontSize = 12;
 
 % Constant variables
-FigureIndex = [];
-hF = [];
 AxesIndex = [];
 hA = [];
 SubplotDim = [];
@@ -31,8 +29,7 @@ directory = cd;
 
 %% Parse input arguments
 if ~exist('rois', 'var') || isempty(rois)
-    directory = cd;
-    [rois, p] = uigetfile({'*.rois;*.mat'},'Choose ROI file(s)', directory);
+    [rois, p] = uigetfile({'*.rois;*.mat'},'Choose ROI file(s)', directory, 'MultiSelect', 'on');
     if isnumeric(rois)
         return
     end
@@ -74,26 +71,23 @@ while index<=length(varargin)
             case 'fontSize'
                 fontSize = varargin{index+1};
                 index = index + 2;
-            case 'FigureIndex'
-                FigureIndex = varargin{index+1};
-                index = index + 2;
-            case 'figures'
-                hF = varargin{index+1};
-                index = index + 2;
             case 'AxesIndex'
                 AxesIndex = varargin{index+1};
                 index = index + 2;
             case 'axes'
                 hA = varargin{index+1};
                 index = index + 2;
-            case 'SubplotDim'
-                SubplotDim = varargin{index+1};
-                index = index + 2;
             case 'Title'
                 Title = varargin{index+1};
                 index = index + 2;
             case 'YLim'
                 YLim = varargin{index+1};
+                index = index + 2;
+            case 'Legend'
+                Legend = varargin{index+1};
+                index = index + 2;
+            case 'LegendLocation'
+                LegendLocation = varargin{index+1};
                 index = index + 2;
             case {'Save', 'save'}
                 saveOut = true;
@@ -147,60 +141,29 @@ end
 numROIs = numel(ROIindex);
 
 
-%% Determine number of figures
-if isempty(FigureIndex)
-    FigureIndex = 1:numROIs;
-    hF = nan(numROIs, 1);
-elseif isempty(hF)
-    hF = nan(max(FigureIndex), 1);
-end
-numFigs = numel(hF);
-
-
 %% Determine number of axes
 if isempty(AxesIndex)
     AxesIndex = ones(numROIs, 1);
-    hA = cell(numFigs, 1);
-    [hA{:}] = deal(nan);
+    hA = nan(numROIs, 1);
+elseif isempty(hA)
+    [~,~,AxesIndex] = unique(AxesIndex); % in case AxesIndex is not contiguous
+    hA = nan(max(AxesIndex), 1);
 end
+numAxes = numel(hA);
 
-% Determine subplot configuration for each figure
-numAxesPerFig = zeros(numFigs, 1);
-if isempty(SubplotDim)
-    SubplotDim = ones(numFigs, 2);
-    popSubplot = true;
-else
-    popSubplot = false;
-end
-for findex = 1:numFigs
-    numAxesPerFig(findex) = max(AxesIndex(FigureIndex==findex));
-    if popSubplot
-       SubplotDim(findex, 2) = numAxesPerFig(findex);
-    end
-end
-
-% Initialize handles container
-if isempty(hA)
-    hA = cell(numFigs, 1);
-    for findex = 1:numFigs
-        hA{findex} = nan(numAxesPerFig(findex));
-    end
-end
+% Determine which ROI is last for each figure
+[~, lastROI] = unique(AxesIndex, 'last');
 
 % Initialize titles container
 if isempty(Title)
-    Title = cell(numFigs, 1);
-    for findex = 1:numFigs
-        Title{findex} = cell(1,numAxesPerFig(findex));
-    end
+    Title = cell(numAxes, 1);
 end
-
-% Determine which ROI is first & last for each figure
-[~, lastROI] = unique(FigureIndex, 'last');
 
 
 %% Determine plotting colors
 if ischar(curveColor)
+    curveColor = repmat({curveColor}, numROIs, 1);
+elseif isnumeric(curveColor)
     curveColor = repmat({curveColor}, numROIs, 1);
 elseif iscellstr(curveColor) && numel(curveColor) == 1
     curveColor = repmat(curveColor, numROIs, 1);
@@ -216,105 +179,104 @@ end
 %% Plot each specified ROI's tuning
 
 for index = 1:numel(ROIindex)
-        rindex = ROIindex(index);
-        
-        % Fix Label
-        if isempty(rois(rindex).label)
-            rois(rindex).label = {'none'};
+    rindex = ROIindex(index);
+    
+    % Fix Label
+    if isempty(rois(rindex).label)
+        rois(rindex).label = {'none'};
+    end
+    
+    % Select axes
+    if isnumeric(hA(AxesIndex(index))) && isnan(hA(AxesIndex(index)))
+        hF = figure();
+        hA(AxesIndex(index)) = axes();
+    else
+        axes(hA(AxesIndex(index)));
+        hF = get(hA(AxesIndex(index)), 'Parent');
+    end
+    hold on
+    
+    % Plot each trial's average dF/F for each stimulus
+    if showDataPoints
+        plot(ones(rois(rindex).nTrials(1),1), rois(rindex).Raw{1}, 'k.') %plot raw data points for control position
+        for s = 2:rois(rindex).nstim
+            plot((s)*ones(rois(rindex).nTrials(s),1), rois(rindex).Raw{s}, 'k.') %plot raw data points for all stimuli
         end
-        
-        % Create figure
-        if isnan(hF(FigureIndex(index)))
-            hF(FigureIndex(index)) = figure();
-        else
-            figure(hF(FigureIndex(index)));
+    end
+    
+    % Plot tuning curves
+    numStimuli = numel(rois(rindex).curve);
+    errorbar(1,rois(rindex).curve(1),rois(rindex).StdError(1),'Color',curveColor{index},'LineStyle','-','LineWidth',2,'Marker','.','MarkerSize',20);  %plot control position
+    errorbar(2:numStimuli,rois(rindex).curve(2:end),rois(rindex).StdError(2:end),'Color',curveColor{index},'LineStyle','-','LineWidth',2,'Marker','.','MarkerSize',20); %plot curve
+    
+    % Plot fit
+    if showFit && numStimuli > 1
+        yfit = feval(rois(rindex).Fit,1:0.001:numStimuli-1);
+        plot(2:0.001:numStimuli, yfit + rois(rindex).offset, 'Color', fitColor{index}, 'LineStyle', '-','LineWidth',1.25);
+        Ydim = get(gca,'YLim');
+        Xdim = get(gca,'XLim');
+        switch fitLegendLocation
+            case 'NorthEast'
+                text(Xdim(2),Ydim(2),sprintf('r^2=%.2f\nFWHM=%.2f', rois(rindex).rsquare, rois(rindex).Coeff(3)),'Color',fitColor{index},'FontSize',fontSize,'HorizontalAlignment','right','VerticalAlignment','top');
+            case 'NorthWest'
+                text(Xdim(1),Ydim(2),sprintf('r^2=%.2f\nFWHM=%.2f', rois(rindex).rsquare, rois(rindex).Coeff(3)),'Color',fitColor{index},'FontSize',fontSize,'HorizontalAlignment','left','VerticalAlignment','top');
         end
-        
-        % Select axes
-        hA{FigureIndex(index)}(AxesIndex(index)) = subplot(SubplotDim(FigureIndex(index), 1), SubplotDim(FigureIndex(index), 2), AxesIndex(index)); %set axes as current axes
-        hold on
-        
-        % Plot each trial's average dF/F for each stimulus
-        if showDataPoints
-            plot(ones(rois(rindex).nTrials(1),1), rois(rindex).Raw{1}, 'k.') %plot raw data points for control position
-            for s = 2:rois(rindex).nstim
-                plot((s)*ones(rois(rindex).nTrials(s),1), rois(rindex).Raw{s}, 'k.') %plot raw data points for all stimuli
-            end
+    end
+    
+    % Set axes labels
+    set(gca,'XTick',1:numStimuli,'XTickLabel',[{'control'}; cellstr(num2str((1:numStimuli-1)'))]);
+    xlabel('Position');
+    ylabel('Average Stimulus-Evoked dF/F');
+    xlim([0,numStimuli+1]);
+    if ~isempty(YLim)
+        ylim(YLim);
+    end
+    
+    % Set Title
+    if isempty(Title{AxesIndex(index)})
+        Title{AxesIndex(index)} = sprintf('ROI: %d, Label: %s',rindex,rois(rindex).label{1});
+    end
+    title(Title{AxesIndex(index)});
+    
+    % Plot stars for stimuli that evoked a significant response
+    if showStimStars
+        Ydim = get(gca,'YLim');
+        sigindices = find(rois(rindex).SigPos); %locate any responses that are significant
+        if ~isempty(sigindices)
+            text(sigindices,(Ydim(2)-(Ydim(2)-Ydim(1))/10)*ones(length(sigindices),1),'*','Color',[0,1,1],'FontSize',15,'HorizontalAlignment','center'); %display significance star
         end
-        
-        % Plot tuning curves
-        numStimuli = numel(rois(rindex).curve);
-        errorbar(1,rois(rindex).curve(1),rois(rindex).StdError(1),curveColor{index},'LineStyle','-','LineWidth',2,'Marker','.','MarkerSize',20);  %plot control position
-        errorbar(2:numStimuli,rois(rindex).curve(2:end),rois(rindex).StdError(2:end),curveColor{index},'LineStyle','-','LineWidth',2,'Marker','.','MarkerSize',20); %plot curve
-        
-        % Plot fit
-        if showFit && numStimuli > 1
-            yfit = feval(rois(rindex).Fit,1:0.001:numStimuli-1);
-            plot(2:0.001:numStimuli, yfit + rois(rindex).offset, 'Color', fitColor{index}, 'LineStyle', '-','LineWidth',1.25);
-            Ydim = get(gca,'YLim');
-            Xdim = get(gca,'XLim');
-            switch fitLegendLocation
-                case 'NorthEast'
-                    text(Xdim(2),Ydim(2),sprintf('r^2=%.2f\nFWHM=%.2f', rois(rindex).rsquare, rois(rindex).Coeff(3)),'Color',fitColor{index},'FontSize',fontSize,'HorizontalAlignment','right','VerticalAlignment','top');
-                case 'NorthWest'
-                    text(Xdim(1),Ydim(2),sprintf('r^2=%.2f\nFWHM=%.2f', rois(rindex).rsquare, rois(rindex).Coeff(3)),'Color',fitColor{index},'FontSize',fontSize,'HorizontalAlignment','left','VerticalAlignment','top');
-            end
+    end
+    
+    % Display number of trials per average
+    if showN
+        Ydim = get(gca,'YLim');
+        for s = 1:numStimuli
+            text(s,Ydim(1)+(Ydim(2)-Ydim(1))/10,sprintf('n=%d',rois(rindex).nTrials(s)),'HorizontalAlignment','center');
         end
-        
-        % Set axes labels
-        set(gca,'XTick',1:numStimuli,'XTickLabel',[{'control'}; cellstr(num2str((1:numStimuli-1)'))]);
-        xlabel('Position');
-        ylabel('Average Stimulus-Evoked dF/F');
-        xlim([0,numStimuli+1]);
-        if ~isempty(YLim)
-            ylim(YLim);
+    end
+    
+    % Display p-values
+    if showPValues
+        Ydim = get(gca,'YLim');
+        for s = 1:numStimuli
+            text(s,Ydim(1)+(Ydim(2)-Ydim(1))/20,sprintf('p=%.3f',rois(rindex).PValue(s)),'HorizontalAlignment','center');
         end
-        
-        % Set Title
-        if isempty(Title{FigureIndex(index)}{AxesIndex(index)})
-            Title{FigureIndex(index)}{AxesIndex(index)} = sprintf('ROI: %d, Label: %s',rindex,rois(rindex).label{1});
-        end
-        title(Title{FigureIndex(index)}{AxesIndex(index)});
-        
-        % Plot stars for stimuli that evoked a significant response
-        if showStimStars
-            Ydim = get(gca,'YLim');
-            sigindices = find(rois(rindex).SigPos); %locate any responses that are significant
-            if ~isempty(sigindices)
-                text(sigindices,(Ydim(2)-(Ydim(2)-Ydim(1))/10)*ones(length(sigindices),1),'*','Color',[0,1,1],'FontSize',15,'HorizontalAlignment','center'); %display significance star
-            end
-        end
-        
-        % Display number of trials per average
-        if showN
-            Ydim = get(gca,'YLim');
-            for s = 1:numStimuli
-                text(s,Ydim(1)+(Ydim(2)-Ydim(1))/10,sprintf('n=%d',rois(rindex).nTrials(s)),'HorizontalAlignment','center');
-            end
-        end
-        
-        % Display p-values
-        if showPValues
-            Ydim = get(gca,'YLim');
-            for s = 1:numStimuli
-                text(s,Ydim(1)+(Ydim(2)-Ydim(1))/20,sprintf('p=%.3f',rois(rindex).PValue(s)),'HorizontalAlignment','center');
-            end
-        end
-        
-        % Place legend
-        if ~isempty(Legend) && ismember(index, lastROI)
-            legend(Legend, 'Location', LegendLocation);
-        end
-        
-        hold off
-        
-        % Save plot to PDF
-        if saveOut && ismember(index, lastROI)
-            drawnow;
-            export_fig(hF(FigureIndex(index)), saveFile, '-append');
-            close(hF(FigureIndex(index)));
-        end
-
+    end
+    
+    % Place legend
+    if ~isempty(Legend) && ismember(index, lastROI)
+        legend(Legend, 'Location', LegendLocation);
+    end
+    
+    hold off
+    
+    % Save plot to PDF
+    if saveOut && ismember(index, lastROI)
+        drawnow;
+        export_fig(hF, saveFile, '-append');
+        close(hF);
+    end
+    
 end %cycle ROIs
 
 

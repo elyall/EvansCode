@@ -1,4 +1,4 @@
-function [Image, Origin] = spatialOverlay(ROIs, Data, ROIindex, FileIndex, ColorIndex, Labels, Colors, Brightness, varargin)
+function [Image, Origin, hA] = spatialOverlay(ROIs, Data, ROIindex, FileIndex, ColorIndex, Labels, Colors, Brightness, varargin)
 % labels - for discrete data, labels is a cell array of N strings
 % corresponding to the <= N unique values in ColorIndex, and the N unique
 % colors.

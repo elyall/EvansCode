@@ -12,8 +12,8 @@ TrialIndex = [1 inf];
 StimIndex = [];
 
 % Computation parameters
-minrunspeed = 0; % (will only run if 'RunningSpeed' found in ROIFile)
-numSTDsOutlier = inf; % Inf means no trials are thrown out
+numSTDsOutlier = inf; % 'inf' means no trials are thrown out
+ControlID = 0; % StimID of control stimulus ('nan' means no control trial)
 
 % Display parameters
 zscoreby = 'none'; %'all' or 'trial' or 'none'
@@ -33,7 +33,6 @@ showSpikes = false;
 spikeThresh = .18;
 
 % Constant parameters
-controlindex = nan; %index of control stimulus ID relative to other StimIDs (ID is minimum value => 1)
 hA = []; %axes handle
 
 directory = cd;
@@ -73,9 +72,6 @@ while index<=length(varargin)
             case 'showavgs'
                 showavgs = varargin{index+1};
                 index = index + 2;
-            case 'minrunspeed'
-                minrunspeed = varargin{index+1};
-                index = index + 2;
             case 'numSTDsOutlier'
                 numSTDsOutlier = varargin{index+1};
                 index = index + 2;
@@ -103,6 +99,9 @@ while index<=length(varargin)
                 index = index + 1;
             case 'CLim'
                 CLim = varargin{index+1};
+                index = index + 2;
+            case 'ControlID'
+                ControlID = varargin{index+1};
                 index = index + 2;
             case 'saveToPDF'
                 saveToPDF = true;
@@ -132,12 +131,6 @@ if ischar(rois)
 end
 
 
-if ~exist('RunningSpeed', 'var') && minrunspeed ~= 0
-    minrunspeed = 0;
-    warning('RunningSpeed info does not exist in ROIFile. Will not remove any non-running trials.');
-end
-
-
 %% Determine trials to plot
 if TrialIndex(end)==inf
     TrialIndex = cat(2, TrialIndex(end-1), TrialIndex(end-1)+1:size(rois(1).data, 1));
@@ -159,7 +152,7 @@ else
 end
 numStimuli = numel(StimIDs);
 StimulusFrames = [repmat(DataInfo.numFramesBefore, numTrials, 1), DataInfo.numFramesBefore + DataInfo.numStimFrames(TrialIndex)];
-StimulusFrames(TrialID==controlindex,:) = nan; % do not show stim bars for control trials
+StimulusFrames(DataInfo.StimID(TrialIndex)==ControlID,:) = nan; % do not show stim bars for control trials
 
 
 %% Determine ROIs to plot
@@ -209,20 +202,12 @@ for rindex = 1:numROIs
         spikes = rois(ROIindex(rindex)).spikes(TrialIndex,:);
     end
     
-    % Remove non-running trials
-    if minrunspeed
-        data(NotRunning, :) = [];
-        if showSpikes
-            spikes(NotRunning, :) = [];
-        end
-    end
-    
     % Sort stimuli
     switch sorttype
         case 'stim'
-            TrialID(TrialID == controlindex) = -Inf; %this doesn't matter if controlindex is the smallest value (but does if controlindex is higher)
+            TrialID(TrialID == ControlID) = -Inf; %this doesn't matter if controlindex is the smallest value (but does if controlindex is higher)
             [TrialID, displayIndex] = sort(TrialID);
-            TrialID(TrialID == -Inf) = controlindex;
+            TrialID(TrialID == -Inf) = ControlID;
             labels = cellstr(num2str(StimIDs));
 %             labels = [{'control'}; cellstr(num2str((1:numStimuli-1)'))];
             blockLength = [];
@@ -362,7 +347,7 @@ for rindex = 1:numROIs
     
     % Plot stim lines
     plot(repmat(StimFrames(:,1)-.5+xshift,2,1), repmat((0.5:1:size(StimFrames,1))',2,1), 'k--','LineWidth',lineWidth);
-%     plot(repmat([StimFrames(:,1)-.5, StimFrames(:,2)+.5]+xshift,2,1), repmat((0.5:1:size(StimFrames,1))',2,2), 'k--','LineWidth',lineWidth);
+    plot(repmat([StimFrames(:,1)-.5, StimFrames(:,2)+.5]+xshift,2,1), repmat((0.5:1:size(StimFrames,1))',2,2), 'k--','LineWidth',lineWidth);
     
     % Label y-axis
     if strcmp(sorttype, 'stim')

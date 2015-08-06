@@ -72,14 +72,17 @@ end
 
 numFiles = numel(ExperimentFiles);
 
+
 %% Determine number of frames in experiment
 Config = load2PConfig(ImageFiles);
 totalFrames = sum([Config(:).Frames]);
+
 
 %% Determine input data available
 load(ExperimentFiles{1}, 'DAQChannels', '-mat');
 InputNames = DAQChannels(~cellfun(@isempty,strfind(DAQChannels, 'I_')));
 nInputChannels = numel(InputNames);
+
 
 %% Initialize trial table and series variable
 if saveOut
@@ -132,6 +135,7 @@ for findex = 1:numFiles
     info.frame(info.event_id~=1) = []; %remove info from second input channel
     info.line(info.event_id~=1) = [];
     info.event_id(info.event_id~=1) = [];
+    info.frame = info.frame + 1; % change 0 indexing to 1 indexing
     
     % Determine trial parameters
     numTrials = numel(TrialInfo.StimID);
