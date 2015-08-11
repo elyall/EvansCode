@@ -22,7 +22,7 @@ hA = [];
 SubplotDim = [];
 Title = [];
 YLim = [];
-Legend = {'Pre Control', 'Pre', 'Post Control', 'Post'};
+Legend = {};
 LegendLocation = 'NorthEastOutside';
 
 directory = cd;
@@ -143,7 +143,7 @@ numROIs = numel(ROIindex);
 
 %% Determine number of axes
 if isempty(AxesIndex)
-    AxesIndex = ones(numROIs, 1);
+    AxesIndex = 1:numROIs;
     hA = nan(numROIs, 1);
 elseif isempty(hA)
     [~,~,AxesIndex] = unique(AxesIndex); % in case AxesIndex is not contiguous

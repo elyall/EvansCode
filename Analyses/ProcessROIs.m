@@ -130,35 +130,27 @@ for findex = 1:numFiles;
     variables = whos(matfile(saveFile));
     
     
+    %% Load ROIdata
+    if ~exist('ROIdata', 'var')
+        load(ROIFiles{findex}, 'ROIdata', '-mat');
+    end
+    
+    
     %% Extract ROI signals
     if ExtractSignals && (~any(strcmp({variables.name}, 'ImageFiles')) || override)
-        ROIdata = extractSignals(ImageFiles{findex}, ROIFiles{findex}, 'all', 'Save', 'SaveFile', saveFile, 'GPU', 'MotionCorrect', ExperimentFiles{findex});
+        ROIdata = extractSignals(ImageFiles{findex}, ROIdata, 'all', 'Save', 'SaveFile', saveFile, 'GPU', 'MotionCorrect', ExperimentFiles{findex});
     end
     
     
     %% Estimate Spike Timing
     if EstimateSpikes && (~any(strcmp({variables.name}, 'Spikes')) || override)
-        if ~exist('ROIdata', 'var')
-            ROIdata = estimateSpikeTiming(ROIFiles{findex}, 0.65, 'Save', 'SaveFile', saveFile);
-        else
-            ROIdata = estimateSpikeTiming(ROIFiles{findex}, 0.65, 'Save', 'SaveFile', saveFile);
-        end
+        ROIdata = estimateSpikeTiming(ROIFiles{findex}, 0.65, 'Save', 'SaveFile', saveFile);
     end
     
     
     %% Sort ROI signals to be trial-wise
     if OrganizeSignals && (~any(strcmp({variables.name}, 'AnalysisInfo')) || override)
-        if ~exist('ROIdata', 'var')
-            ROIdata = ROIorganize(ROIFiles{findex}, ExperimentFiles{findex}, [], 'all', 'SeriesVariables', 'RunningSpeed', 'Save', 'SaveFile', saveFile);
-        else
-            ROIdata = ROIorganize(ROIFiles{findex}, ExperimentFiles{findex}, [], 'all', 'SeriesVariables', 'RunningSpeed', 'Save', 'SaveFile', saveFile);
-        end
-    end
-    
-    
-    %% Load ROIdata
-    if ~exist('ROIdata', 'var')
-        load(ROIFiles{findex}, 'ROIdata', '-mat');
+        ROIdata = ROIorganize(ROIdata, ExperimentFiles{findex}, [], 'all', 'SeriesVariables', 'RunningSpeed', 'Save', 'SaveFile', saveFile);
     end
     
     
@@ -180,14 +172,12 @@ for findex = 1:numFiles;
         end
         
         % Compute tuning curves
-        computeTuningCurve(ROIdata, [1 inf], TrialIndex,...
+        ROIdata = computeTuningCurve(ROIdata, [1 inf], TrialIndex,...
             'Fit',...
             'ControlID', 0,...
             'outlierweight', outlierweight,...
             'Save',...
             'SaveFile', saveFile);
     end
-    
-    clear ROIdata
-    
+        
 end %files

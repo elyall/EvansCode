@@ -1,8 +1,10 @@
 function Images = applyMotionCorrection(Images, MCdata, MCindex, frameIndex, depthIndex)
 
-%% Check input arguments
+
+directory = cd;
+
+%% Parse input arguments
 if ~exist('Images','var') || isempty(Images) % Prompt for file selection
-    directory = CanalSettings('DataDirectory');
     [ImageFile,p] = uigetfile({'*.imgs;*.sbx;*.tif'},'Select images:',directory);
     if isnumeric(ImageFile)
         return
@@ -15,7 +17,6 @@ end
 [~,~, numDepth, numChannels, numFrames] = size(Images);
 
 if ~exist('MCdata','var') || isempty(MCdata)
-    directory = CanalSettings('ExperimentDirectory');
     [ExperimentFile, p] = uigetfile({'*.mat'},'Choose Experiment file',directory);
     if isnumeric(ExperimentFile)
         return
@@ -97,5 +98,22 @@ switch MCdata(1).type
                 end
             end
         end
-
+        
+    case 'Translation'
+        for iF = 1:numFrames
+            for iC = 1:numChannels
+                for iD = 1:numDepth
+                    
+                    % to specify depth of image passed in
+                    if ~exist('depthIndex', 'var')
+                        Di = iD;
+                    else
+                        Di = depthIndex;
+                    end
+                    
+                    Images(:,:,iD,iC,iF) = circshift(Images(:,:,iD,iC,iF), MCdata(MCindex(iF,1)).T(MCindex(iF,2),:));
+                    
+                end
+            end
+        end
 end
