@@ -21,7 +21,7 @@ while index<=length(varargin)
                 saveOut = true;
                 index = index + 1;
             case {'SaveFile', 'saveFile'}
-                saveFile = varargin{index+1};
+                ROIFile = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -32,6 +32,16 @@ while index<=length(varargin)
         index = index + 1;
     end
 end
+
+%% Create MCdata variable
+load([fname, '.align'], 'T', '-mat');
+MCdata.T = T;
+MCdata.type = 'Translation';
+MCdata.date = datestr(now);
+MCdata.FullFilename = [fname, '.sbx'];
+MCdata.Channel2AlignFrom = 1;
+MCdata.Parameters = [];
+save([fname, '_sbx.exp'], 'MCdata', '-mat', '-v7.3');
 
 
 %% Initialize ROIdata structure
@@ -53,9 +63,9 @@ ROIdata.files = {[fname, '.sbx']};
 
 %% Distribute ROI segmentation
 load([fname, '.segment'], 'mask', '-mat');
-numROIs = max(mask(:));
+numROIs = size(mask,3);
 for rindex = 1:numROIs
-    ROIdata.rois(rindex).mask = mask==rindex;
+    ROIdata.rois(rindex).mask = mask(:,:,rindex);
 end
 
 

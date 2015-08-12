@@ -138,7 +138,7 @@ for findex = 1:numFiles;
     
     %% Extract ROI signals
     if ExtractSignals && (~any(strcmp({variables.name}, 'ImageFiles')) || override)
-        ROIdata = extractSignals(ImageFiles{findex}, ROIdata, 'all', 'Save', 'SaveFile', saveFile, 'GPU', 'MotionCorrect', ExperimentFiles{findex});
+        ROIdata = extractSignals(ImageFiles{findex}, ROIdata, 'all', 'Save', 'SaveFile', saveFile, 'MotionCorrect', ExperimentFiles{findex});
     end
     
     

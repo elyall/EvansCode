@@ -4,7 +4,7 @@ function sig = sbxpullsignalspacked(fname)
 
 load([fname '.segment'],'-mat'); % load segmentation
 
-
+mask = squeeze(max(bsxfun(@times, permute(mask,[1,3,2]), 1:size(mask,3)),[],2)); % /Evan/
 
 %sbxgetinfo(fname);
 

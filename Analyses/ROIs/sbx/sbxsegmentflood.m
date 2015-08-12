@@ -226,7 +226,7 @@ function drawfgim(handles)
     if get(handles.hiderois,'Value') || isempty(handles.mask)
         themask = zeros(size(handles.m));
     else
-        themask = sum(handles.mask,3) > 0;
+        themask = any(handles.mask, 3);
     end
     set(handles.im_mask,'AlphaData',.5*(themask));
     
@@ -533,10 +533,6 @@ function B = computefloodim(handles)
         theim = pastexrayintoim(theim,handles);
         thecen = round(handles.floodcenter(2:-1:1));
     end
-    
-%     if ~isempty(handles.mask)
-%         theim = theim.*(sum(handles.mask,3)==0);
-%     end
     
     [~,B] = regiongrowing(theim,thecen(1),thecen(2),nnz(theim(:)));
 
