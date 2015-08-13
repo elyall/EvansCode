@@ -1,15 +1,24 @@
-function [Maps, ExperimentFiles] = matchFoVs(ExperimentFiles)
+function [Maps, Images] = matchFoVs(Images, Maps)
+% Images is a cell array of N images or a matrix of HxWxN
+% Maps is a structure of imref2d registration files
 
-%% Check arguments
+
+gd.Internal.directory = cd;
+
+%% Parse input arguments
 dataAvailable = false;
-if exist('ExperimentFiles', 'var') && ~isempty(ExperimentFiles)
+if exist('Images', 'var') && ~isempty(Images)
     dataAvailable = true;
+    
+    if isnumeric(Images)
+        temp = Images;
+        Images = cell(size(temp,3));
+        for iindex = 1:size(temp,3)
+            Images{iindex} = temp(:,:,iindex);
+        end
+    end
 end
 
-%% Configure default settings
-gd.Internal.directory = 'D:\Evan\Data';
-gd.Internal.Settings.ROITextSize = 20;
-gd.Internal.Settings.ROILineWidth = 2;
 
 %% Create & Populate Figure
 
@@ -97,7 +106,7 @@ gd.Control.selection = uitable(...
     'Position',             [0,0,1,.85],...
     'RowName',              [],...
     'ColumnName',           {'File','View','Move','Y','X','Path','Remove'},...
-    'ColumnEditable',       [false,true,true,false,false,false,true],...
+    'ColumnEditable',       [true,true,true,false,false,true,true],...
     'ColumnFormat',         {'char','logical','logical','char','char','char','logical'},...
     'ColumnWidth',          {100,40,40,40,40,200,40},...
     'Enable',               'off',...
@@ -107,7 +116,7 @@ guidata(gd.fig, gd);
 
 % Load files
 if dataAvailable
-    LoadExperiment(gd.Control.load,ExperimentFiles,gd)
+    LoadExperiment(gd.Control.load,{Images, Maps},gd)
 end
 
 % Return requested outputs
@@ -116,10 +125,10 @@ if nargout
     gd = guidata(gd.fig);
     if isfield(gd, 'Experiment')
         Maps = {gd.Experiment(:).Map};
-        ExperimentFiles = {gd.Experiment(:).filename};
+        Images = {gd.Experiment(:).filename};
     else
         Maps = {};
-        ExperimentFiles = {};
+        Images = {};
     end
     delete(gd.fig)
 end
@@ -145,23 +154,23 @@ indices = viewSelection([contents{viewSelection, 3}]);
 switch eventData.Key
     case {'uparrow','w'} %translate ROI up
         for index = indices
-            gd.Experiment(index).Map.YWorldLimits = gd.Experiment(index).Map.YWorldLimits - step;
-            contents{index, 4} = gd.Experiment(index).Map.YWorldLimits(1) - 0.5;
+            gd.DataSets(index).Map.YWorldLimits = gd.DataSets(index).Map.YWorldLimits - step;
+            contents{index, 4} = gd.DataSets(index).Map.YWorldLimits(1) - 0.5;
         end
     case {'downarrow','s'} %translate ROI down
         for index = indices
-            gd.Experiment(index).Map.YWorldLimits = gd.Experiment(index).Map.YWorldLimits + step;
-            contents{index, 4} = gd.Experiment(index).Map.YWorldLimits(1) - 0.5;
+            gd.DataSets(index).Map.YWorldLimits = gd.DataSets(index).Map.YWorldLimits + step;
+            contents{index, 4} = gd.DataSets(index).Map.YWorldLimits(1) - 0.5;
         end
     case {'rightarrow','d'} %translate ROI right
         for index = indices
-            gd.Experiment(index).Map.XWorldLimits = gd.Experiment(index).Map.XWorldLimits + step;
-            contents{index, 5} = gd.Experiment(index).Map.XWorldLimits(1) - 0.5;
+            gd.DataSets(index).Map.XWorldLimits = gd.DataSets(index).Map.XWorldLimits + step;
+            contents{index, 5} = gd.DataSets(index).Map.XWorldLimits(1) - 0.5;
         end
     case {'leftarrow','a'} %translate ROI left
         for index = indices
-            gd.Experiment(index).Map.XWorldLimits = gd.Experiment(index).Map.XWorldLimits - step;
-            contents{index, 5} = gd.Experiment(index).Map.XWorldLimits(1) - 0.5;
+            gd.DataSets(index).Map.XWorldLimits = gd.DataSets(index).Map.XWorldLimits - step;
+            contents{index, 5} = gd.DataSets(index).Map.XWorldLimits(1) - 0.5;
         end
 end
 guidata(hObject, gd);
@@ -175,77 +184,89 @@ function LoadExperiment(hObject,eventdata,gd)
 if ~iscell(eventdata)
     if isdir(gd.Internal.directory)
         directory = gd.Internal.directory;
-    elseif exist('CanalSettings.m', 'file');
-        directory = CanalSettings('ExperimentDirectory');
     else
         directory = cd;
     end
-    ExperimentFiles = uipickfiles('Prompt', 'Choose experiment files', 'FilterSpec', [directory, '*.ciexp']);
-    if isnumeric(ExperimentFiles)
+    [Images, p] = uigetfile({'*.exp;*.align'}, 'Select files to register:', directory, 'MultiSelect', 'on');
+    if isnumeric(Images)
         return
     end
+    gd.Internal.directory = p;
+    guidata(hObject, gd);
+    if iscellstr(Images)
+        Images = fullfile(p, Images);
+    elseif ischar(Images)
+        Images = {fullfile(p, Images)};
+    end
+    Maps = cell(numel(Images), 1);
 else
-    ExperimentFiles = eventdata;
+    Images = eventdata{1};
+    Maps = eventdata{2};
 end
-[gd.Internal.directory,~,~] = fileparts(ExperimentFiles{1});
-numFiles = numel(ExperimentFiles);
 
-% Load Experiment Data
-if isfield(gd, 'Experiment') % previous files loaded
-    offset = numel(gd.Experiment); % add files to end
+% Load Images
+if iscellstr(Images)
+    ImageFiles = Images;
+    Images = cell(numel(ImageFiles),1);
+    for findex = 1:numel(ImageFiles)
+        [~,~,ext] = fileparts(ImageFiles{findex});
+        switch ext
+            case '.align'
+                temp = load(ImageFiles{findex}, 'm', 'Map', '-mat');
+                Images{findex} = temp.m;
+            case '.ext'
+                temp = load(ImageFiles{findex}, 'ImageFiles', 'Map', '-mat');
+                Images{findex} = squeeze(temp.ImageFiles.Average(:,:,1,1));
+        end
+        if isfield(temp, 'Map')
+            Maps{findex} = temp.Map;
+        else
+            Maps{findex} = imref2d([size(Images{findex},1), size(Images{findex},2)]);
+        end
+    end
 else
+    ImageFiles = cellfun(@num2str, num2cell(1:numel(Images)), 'UniformOutput', false);
+    ImageFiles = fullfile(gd.Internal.directory, strcat('file', ImageFiles, '.exp'));
+end
+numFiles = numel(Images);
+
+% Initialize struct
+if ~isfield(gd, 'DataSets') % previous files loaded
+    gd.DataSets = [];
     offset = 0;
-end
-for findex = 1:numFiles
-    gd.Experiment(offset + findex).filename = ExperimentFiles{findex};
-    load(ExperimentFiles{findex}, 'Map', 'ImageFiles', '-mat');
-    if exist('ImageFiles', 'var')
-        gd.Experiment(offset + findex).ImageFiles = ImageFiles;
-    else
-        error('Compute average of data first using ''ComputeProjections''');
-    end
-    if exist('Map', 'var')
-        gd.Experiment(offset + findex).Map = Map;
-    else
-        gd.Experiment(offset + findex).Map = [];
-    end
-    
+else
+    offset = numel(gd.DataSets);
 end
 
-% Build Individual Images
-for findex = offset+1:offset+numFiles
-    gd.Experiment(findex).Image = permute(gd.Experiment(findex).ImageFiles.Average, [1,2,4,3]);
-    [H, W, C, ~] = size(gd.Experiment(findex).Image);
-    if C == 1
-        gd.Experiment(findex).Image = cat(3, zeros(H, W), gd.Experiment(findex).Image, zeros(H, W)); % green only
-    elseif C == 2
-        gd.Experiment(findex).Image = cat(3, gd.Experiment(findex).Image(:,:,[2,1]), zeros(H, W)); % green & red data
-    end
-    if isempty(gd.Experiment(findex).Map)
-        gd.Experiment(findex).Map = imref2d([H,W]);
-    end
-    % Determine colormaps
-    for cindex = 2
-        temp = gd.Experiment(findex).Image(:,:,cindex);
-        gd.Experiment(findex).clim(cindex).limits = [min(temp(:)), max(temp(:))];
-        gd.Experiment(findex).clim(cindex).current = [gd.Experiment(findex).clim(cindex).limits(1), prctile(temp(:),99.98)];
-        set(gd.Display.axes,'CLim',gd.Experiment(findex).clim(cindex).current);
-        gd.Experiment(findex).colormap(cindex).current = colormap;
-    end
+% Add data to struct
+for findex = 1:numFiles
+    
+    gd.DataSets(offset+findex).filename = ImageFiles{findex};
+    gd.DataSets(offset+findex).Image = Images{findex};
+    gd.DataSets(offset+findex).Map = Maps{findex};
+
+    % Determine colormap
+    gd.DataSets(offset+findex).clim.limits = [min(gd.DataSets(offset+findex).Image(:)), max(gd.DataSets(offset+findex).Image(:))];
+    gd.DataSets(offset+findex).clim.current = [gd.DataSets(offset+findex).clim.limits(1), prctile(gd.DataSets(offset+findex).Image(:),99.98)];
+    set(gd.Display.axes, 'CLim', gd.DataSets(offset+findex).clim.current);
+    gd.DataSets(offset+findex).colormap.current = colormap;
+    
+    % Create image
+    gd.DataSets(offset+findex).display = gd.DataSets(offset+findex).Image;
 end
 
 % Set current colormaps
-gd = AdjustColorMaps(gd, offset+1:offset+numFiles);
+% gd = AdjustColorMaps(gd, offset+1:offset+numFiles);
 
 % Add Files to Table
 contents = get(gd.Control.selection, 'Data');
-for findex = offset+1:offset+numFiles %{'File','View','Move','Group','X','Y','Path'}
-    [p,f,~] = fileparts(gd.Experiment(findex).filename);
-    contents{findex, 1} = f;
+for findex = offset+1:offset+numFiles    %{'File','View','Move','Group','X','Y','Path'}
+    [p,f,e] = fileparts(gd.DataSets(findex).filename);
+    contents{findex, 1} = [f,e];
     contents{findex, 2} = false;
     contents{findex, 3} = false;
-    contents{findex, 4} = gd.Experiment(findex).Map.YWorldLimits(1) - 0.5;
-    contents{findex, 5} = gd.Experiment(findex).Map.XWorldLimits(1) - 0.5;
+    contents{findex, 4} = gd.DataSets(findex).Map.YWorldLimits(1) - 0.5;
+    contents{findex, 5} = gd.DataSets(findex).Map.XWorldLimits(1) - 0.5;
     contents{findex, 6} = p;
 end
 contents{1, 2} = true; % view first file
@@ -255,18 +276,18 @@ set(gd.Control.save, 'Enable', 'on');
 guidata(hObject, gd);
 plotDataAxes(gd);
 
-function gd = AdjustColorMaps(gd, indices)
-for findex = indices
-    gd.Experiment(findex).current = gd.Experiment(findex).Image;
-    % Adjust colormap
-    for cindex = 2
-        temp = gd.Experiment(findex).current(:,:,cindex);
-        temp = temp./gd.Experiment(findex).clim(cindex).current(2);
-        temp(temp>1) = 1;
-        temp(temp<gd.Experiment(findex).clim(cindex).current(1)/gd.Experiment(findex).clim(cindex).current(2)) = gd.Experiment(findex).clim(cindex).current(1)/gd.Experiment(findex).clim(cindex).current(2);
-        gd.Experiment(findex).current(:,:,cindex) = temp;
-    end
-end
+% function gd = AdjustColorMaps(gd, indices)
+% for findex = indices
+%     gd.Experiment(findex).current = gd.Experiment(findex).Image;
+%     % Adjust colormap
+%     for cindex = 2
+%         temp = gd.Experiment(findex).current(:,:,cindex);
+%         temp = temp./gd.Experiment(findex).clim(cindex).current(2);
+%         temp(temp>1) = 1;
+%         temp(temp<gd.Experiment(findex).clim(cindex).current(1)/gd.Experiment(findex).clim(cindex).current(2)) = gd.Experiment(findex).clim(cindex).current(1)/gd.Experiment(findex).clim(cindex).current(2);
+%         gd.Experiment(findex).current(:,:,cindex) = temp;
+%     end
+% end
 
 function gd = plotDataAxes(gd)
 
@@ -286,22 +307,22 @@ end
 % Create two distinct images
 if ~isempty(fixed)
     if ~invert
-        ImageA = gd.Experiment(viewSelection(fixed(1))).current(:,:,2);
+        ImageA = gd.DataSets(viewSelection(fixed(1))).display;
     else
-        ImageA = 1 - gd.Experiment(viewSelection(fixed(1))).current(:,:,2);
+        ImageA = 1 - gd.DataSets(viewSelection(fixed(1))).display;
     end
-    MapA = gd.Experiment(viewSelection(fixed(1))).Map;
+    MapA = gd.DataSets(viewSelection(fixed(1))).Map;
     for index = 2:numel(fixed)
         if ~invert
-            ImageA2 = gd.Experiment(viewSelection(fixed(index))).current(:,:,2);
+            ImageA2 = gd.DataSets(viewSelection(fixed(index))).display;
         else
-            ImageA2 = 1 - gd.Experiment(viewSelection(fixed(index))).current(:,:,2);
+            ImageA2 = 1 - gd.DataSets(viewSelection(fixed(index))).display;
         end
         [ImageA, MapA] = imfuse(...
             ImageA,...
             MapA,...
             ImageA2,...
-            gd.Experiment(viewSelection(fixed(index))).Map,...
+            gd.DataSets(viewSelection(fixed(index))).Map,...
             'blend',...
             'Scaling', 'Independent');
     end
@@ -310,22 +331,22 @@ else
 end
 if ~isempty(moving)
     if ~invert
-        ImageB = gd.Experiment(viewSelection(moving(1))).current(:,:,2);
+        ImageB = gd.DataSets(viewSelection(moving(1))).display;
     else
-        ImageB = 1 - gd.Experiment(viewSelection(moving(1))).current(:,:,2);
+        ImageB = 1 - gd.DataSets(viewSelection(moving(1))).display;
     end
-    MapB = gd.Experiment(viewSelection(moving(1))).Map;
+    MapB = gd.DataSets(viewSelection(moving(1))).Map;
     for index = 2:numel(moving)
         if ~invert
-            ImageB2 = gd.Experiment(viewSelection(moving(index))).current(:,:,2);
+            ImageB2 = gd.DataSets(viewSelection(moving(index))).display;
         else
-            ImageB2 = 1 - gd.Experiment(viewSelection(moving(index))).current(:,:,2);
+            ImageB2 = 1 - gd.gd.DataSets(viewSelection(moving(index))).display;
         end
         [ImageB, MapB] = imfuse(...
             ImageB,...
             MapB,...
             ImageB2,...
-            gd.Experiment(viewSelection(moving(index))).Map,...
+            gd.DataSets(viewSelection(moving(index))).Map,...
             'blend',...
             'Scaling', 'Independent');
     end
@@ -374,20 +395,26 @@ set(gca,'xtick',[],'ytick',[])
 
 guidata(gd.fig,gd); % update guidata
 
+
 function DataSelection(hObject,eventdata,gd)
 
-if eventdata.Indices(2) == 2 || eventdata.Indices(2) == 3 % display selected images
+if eventdata.Indices(2) == 2 || eventdata.Indices(2) == 3       % display selected images
     plotDataAxes(gd);
     
-elseif eventdata.Indices(2) == 7 % remove selected file
-    gd.Experiment(eventdata.Indices(1)) = [];
-    contents = get(hObject, 'Data');
-    contents(eventdata.Indices(1),:) = [];
-    set(hObject, 'Data', contents);
+elseif eventdata.Indices(2) == 1 || eventdata.Indices(2) == 6   % adjust filename
+    contents = get(hObject, 'Data'); 
+    gd.DataSets(eventdata.Indices(1)).filename = fullfile(contents{eventdata.Indices(1), 6}, contents{eventdata.Indices(1), 1});
+    guidata(hObject, gd);
+
+elseif eventdata.Indices(2) == 7                                % remove selected file
+    gd.DataSets(eventdata.Indices(1)) = [];         % remove from struct
+    contents = get(hObject, 'Data');                % get table contents
+    contents(eventdata.Indices(1),:) = [];          % remove from table
+    set(hObject, 'Data', contents);                 % save table contents
     guidata(hObject, gd);
     plotDataAxes(gd);
 end
-% error handling for input data
+
 
 function SaveData(hObject,eventdata,gd)
 answer = questdlg('Are you sure? Any past Maps will be overwritten');
@@ -396,10 +423,14 @@ if ~strcmp(answer, 'Yes')
 end
 set(gcf, 'pointer', 'watch')
 drawnow
-for findex = 1:numel(gd.Experiment);
-    Map = gd.Experiment(findex).Map;
-    save(gd.Experiment(findex).filename, 'Map', '-append');
-    fprintf('Map saved to: %s\n', gd.Experiment(findex).filename)
+for findex = 1:numel(gd.DataSets);
+    if exist(gd.DataSets(findex).filename, 'file')
+        Map = gd.DataSets(findex).Map;
+        save(gd.DataSets(findex).filename, 'Map', '-append', '-mat');
+        fprintf('Map saved to: %s\n', gd.DataSets(findex).filename)
+    else 
+        
+    end
 end
 set(gcf, 'pointer', 'arrow')
 
