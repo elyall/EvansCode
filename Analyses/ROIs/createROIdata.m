@@ -1,4 +1,4 @@
-function ROIdata = createROIdata(ROIMasks)
+function ROIdata = createROIdata(ROIMasks, varargin)
 
 
 saveOut = false;
@@ -51,11 +51,11 @@ if ischar(ROIMasks)
 else
     ROIFile = '';
 end
-numROIs = size(ROImasks, 3);
+numROIs = size(ROIMasks, 3);
 
 
 %% Create ROIdata structure
-if ~isempty(ROIdata)
+if isempty(ROIdata)
     ROIdata.filename = ROIFile;
     ROIdata.offset = zeros(1,3);
     ROIdata.imagefiles = ImageFile;

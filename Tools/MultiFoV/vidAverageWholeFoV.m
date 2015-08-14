@@ -188,6 +188,12 @@ switch CMapType
         cmap = b2r(CLim(1),CLim(2));
     case 'gray'
         cmap = gray(128);
+    case 'red'
+        cmap = [linspace(0,1,128)', zeros(128,1), zeros(128,1)];
+    case 'green'
+        cmap = [zeros(128,1), linspace(0,1,128)', zeros(128,1)];
+    case 'blue'
+        cmap = [zeros(128,1), zeros(128,1), linspace(0,1,128)'];
 end
 
 for sindex = IndicesToSave

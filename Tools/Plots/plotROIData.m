@@ -142,6 +142,9 @@ end
 % Determine display order
 if isempty(FigureOrder)
     FigureOrder = 1:numFigs;
+else
+    [~,~,FigureOrder] = unique(FigureOrder);
+    FigureOrder = FigureOrder';
 end
 
 

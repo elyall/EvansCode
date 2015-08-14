@@ -71,9 +71,6 @@ if ~exist('MotionCorrect', 'var') || isempty(MotionCorrect)
     else
         MotionCorrect = false;
     end
-elseif isstruct(MotionCorrect)
-    MCdata = MotionCorrect;
-    MotionCorrect = true;
 end
 
 
@@ -103,7 +100,13 @@ numStims = numel(StimIDs);
 
 
 %% Motion correction
-if MotionCorrect == true && ~exist('MCdata', 'var')
+if ischar(MotionCorrect)
+    load(MotionCorrect, 'MCdata', '-mat');
+    MotionCorrect = true;
+elseif isstruct(MotionCorrect)
+    MCdata = MotionCorrect;
+    MotionCorrect = true;
+elseif MotionCorrect == true && ~exist('MCdata', 'var')
     load(ExperimentFile, 'MCdata', '-mat');
 end
 

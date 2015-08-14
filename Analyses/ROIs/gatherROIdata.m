@@ -1,6 +1,6 @@
 function [Data, FileIndex, ROIindex, Labels, Tag, ROIs] = gatherROIdata(ROIs, FieldName, Index, Label, ROIindex, FileIndex)
 % ROIs is a cell array of strings specifying the filenames of the ROI
-% files, or it is a cell of ROIdatas
+% files, or it is a cell array of ROIdata objects
 % FieldName is a field name of 'ROIdata.rois'
 % Index is a number indexing in that field (e.g. '1' or use '':'' for all elements)
 % Label is a cell array of strings of ROIs to gather data from, or false if

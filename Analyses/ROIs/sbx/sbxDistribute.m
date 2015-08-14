@@ -1,7 +1,7 @@
 function ROIdata = sbxDistribute(fname, varargin)
 
 saveOut = false;
-ROIFile = '';
+saveFile = '';
 
 %% Parse input arguments
 if ~exist('fname', 'var') || isempty(fname)
@@ -21,7 +21,7 @@ while index<=length(varargin)
                 saveOut = true;
                 index = index + 1;
             case {'SaveFile', 'saveFile'}
-                ROIFile = varargin{index+1};
+                saveFile = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -35,14 +35,17 @@ end
 
 
 %% Create MCdata variable
-load([fname, '.align'], 'T', '-mat');
-MCdata.T = T;
-MCdata.type = 'Translation';
-MCdata.date = datestr(now);
-MCdata.FullFilename = [fname, '.sbx'];
-MCdata.Channel2AlignFrom = 1;
-MCdata.Parameters = [];
-save([fname, '.align'], 'MCdata', '-mat', '-v7.3');
+% vars = whos(matfile([fname,'.align']));
+% if ~any(strcmp({vars(:).name}, 'MCdata'))
+    load([fname, '.align'], 'T', '-mat');
+    MCdata.T = T;
+    MCdata.type = 'Translation';
+    MCdata.date = datestr(now);
+    MCdata.FullFilename = [fname, '.sbx'];
+    MCdata.Channel2AlignFrom = 1;
+    MCdata.Parameters = [];
+    save([fname, '.align'], 'MCdata', '-append', '-mat');
+% end
 
 
 %% Create ROIdata
@@ -50,16 +53,20 @@ ROIdata = createROIdata([fname,'.segment'], 'ImageFile', {[fname,'.sbx']});
 
 
 %% Distribute ROI signals
-if exist([fname, '.signals'], 'file')
-    load([fname, '.signals'], 'sig', 'pil', '-mat');
-    for rindex = 1:numROIs
-        ROIdata.rois(rindex).rawdata = sig(:,rindex)';
-        ROIdata.rois(rindex).rawneuropil = pil(:,rindex)';
-    end
-end
+% if exist([fname, '.signals'], 'file')
+%     load([fname, '.signals'], 'sig', 'pil', '-mat');
+%     for rindex = 1:numel(ROIdata.rois)
+%         ROIdata.rois(rindex).rawdata = sig(:,rindex)';
+%         ROIdata.rois(rindex).rawneuropil = pil(:,rindex)';
+%     end
+% end
 
 
 %% Save ROIdata to file
 if saveOut
-    save(ROIFile, 'ROIdata', '-mat', '-v7.3');
+    if ~exist(saveFile, 'file')
+        save(saveFile, 'ROIdata', '-mat', '-v7.3');
+    else
+        save(saveFile, 'ROIdata', '-mat', '-append');
+    end
 end

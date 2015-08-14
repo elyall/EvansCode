@@ -13,7 +13,7 @@ transparency = .8; % value from 0 to 1
 ImgToDisplay = 'average'; % 'average' or 'none' or 'var' or 'max' or 'min'
 mergetype = 'quick'; % 'quick' or 'pretty'
 showColorBar = false;
-colorbarLabel = 'Metric';
+colorbarLabel = '';
 Crop = false;
 Title = '';
 
@@ -256,7 +256,9 @@ if showColorBar
             set(cbH, 'Limits', NewYLim, 'Ticks', NewYLim(1):(NewYLim(2)-NewYLim(1))/(numel(Labels)-1):NewYLim(2), 'YTickLabel', Labels);
     end
     % set(cbH, 'Ticks', YLim(1):(YLim(2)-YLim(1))/(numel(Labels)-1):YLim(2), 'YTickLabel', Labels);
-    ylabel(cbH, colorbarLabel);
+    if ~isempty(colorbarLabel)
+        ylabel(cbH, colorbarLabel);
+    end
 end
 
 % Display title

@@ -353,7 +353,7 @@ for ii = 1:size(mask,3)
     end
 end
 
-save([strtok(handles.fn,'.') '.segment'],'mask','vert');
+save([strtok(handles.fn,'.') '.segment'],'mask','vert','-v7.3');
 fprintf('Saved segments\n');
 
 
