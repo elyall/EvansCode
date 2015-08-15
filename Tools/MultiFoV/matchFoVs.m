@@ -116,6 +116,9 @@ guidata(gd.fig, gd);
 
 % Load files
 if dataAvailable
+    if ~exist('Maps', 'var') || isemtpy(Maps)
+        Maps = [];
+    end
     LoadExperiment(gd.Control.load,{Images, Maps},gd)
 end
 
@@ -214,7 +217,7 @@ if iscellstr(Images)
             case '.align'
                 temp = load(ImageFiles{findex}, 'm', 'Map', '-mat');
                 Images{findex} = temp.m;
-            case '.ext'
+            case '.exp'
                 temp = load(ImageFiles{findex}, 'ImageFiles', 'Map', '-mat');
                 Images{findex} = squeeze(temp.ImageFiles.Average(:,:,1,1));
         end
@@ -426,7 +429,7 @@ drawnow
 for findex = 1:numel(gd.DataSets);
     if exist(gd.DataSets(findex).filename, 'file')
         Map = gd.DataSets(findex).Map;
-        save(gd.DataSets(findex).filename, 'Map', '-append', '-mat');
+        save(gd.DataSets(findex).filename, 'Map', '-mat', '-append');
         fprintf('Map saved to: %s\n', gd.DataSets(findex).filename)
     else 
         

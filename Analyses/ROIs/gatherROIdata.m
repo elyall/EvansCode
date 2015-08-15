@@ -45,7 +45,7 @@ if iscellstr(ROIs)
     ROIFiles = ROIs;
     ROIs = cell(numFiles, 1);
     for findex = 1:numFiles
-        load(ROIFiles{findex}, 'ROIdata');
+        load(ROIFiles{findex}, 'ROIdata', '-mat');
         ROIs{findex} = ROIdata;
     end
 end

@@ -8,7 +8,7 @@ saveFile = {''};
 
 distanceThreshold = 10; % pixels
 overlapThreshold = .9; % percentage
-addNewROIs = true; % add ROIs that don't match across files
+addNewROIs = false; % add ROIs that don't match across files
 
 directory = cd;
 
@@ -17,6 +17,9 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
+            case 'AddROIs'
+                addNewROIs = varargin{index+1};
+                index = index + 2;
             case 'ROIindex'
                 ROIindex = varargin{index+1};
                 index = index + 2;
@@ -48,7 +51,7 @@ if ~exist('ROIMasks', 'var') || isempty(ROIMasks)
 end
 numFiles = numel(ROIMasks);
 
-if ~exist('Maps', 'var') || isempty(Maps)
+if ~exist('Maps', 'var')
     [Maps,p] = uigetfile({'*.exp;*.align'}, 'Select files containing maps:', directory, 'MultiSelect', 'on');
     if isnumeric(Maps)
         return
@@ -103,10 +106,19 @@ end
 %% Load in Maps
 if iscellstr(Maps)
     MapFiles = Maps;
-    Maps = cell(numel(MapFiles), 1);
-    for findex = 1:numel(MapFiles)
-        load(MapFiles{findex}, 'Map', '-mat');
-        Maps{findex} = Map;
+    Maps = cell(numFiles, 1);
+    for findex = 1:numFiles
+        temp = load(MapFiles{findex}, 'Map', '-mat');
+        if isfield(temp, 'Map')
+            Maps{findex} = temp.Map;
+        else
+            Maps{findex} = imref2d([Height(findex), Width(findex)]);
+        end
+    end
+elseif isempty(Maps)
+    Maps = cell(numFiles, 1);
+    for findex = 1:numFiles
+        Maps{findex} = imref2d([Height(findex), Width(findex)]);
     end
 end
 
@@ -131,13 +143,11 @@ for findex = 1:numFiles
 end
 
 % Build Map
-if addNewROIs
-    Map = zeros(H, W, numFiles);
-    for findex = 1:numFiles
-        ylim = [ceil(Maps{findex}.YWorldLimits(1)),floor(Maps{findex}.YWorldLimits(2))] - floor(YLim(1));
-        xlim = [ceil(Maps{findex}.XWorldLimits(1)),floor(Maps{findex}.XWorldLimits(2))] - floor(XLim(1));
-        Map(ylim(1):ylim(2),xlim(1):xlim(2),findex) = 1;
-    end
+Map = zeros(H, W, numFiles);
+for findex = 1:numFiles
+    ylim = [ceil(Maps{findex}.YWorldLimits(1)),floor(Maps{findex}.YWorldLimits(2))] - floor(YLim(1));
+    xlim = [ceil(Maps{findex}.XWorldLimits(1)),floor(Maps{findex}.XWorldLimits(2))] - floor(XLim(1));
+    Map(ylim(1):ylim(2),xlim(1):xlim(2),findex) = 1;
 end
 Map = reshape(Map, H*W, numFiles);
 
@@ -246,7 +256,7 @@ if addNewROIs
         end
         
     end
-    fprintf('\tComplete');
+    fprintf('\tComplete\n');
 end
 
 
@@ -270,5 +280,6 @@ if saveOut && ~isempty(saveFile)
                     save(saveFile{findex}, 'ROIdata', '-mat', '-append');
                 end
         end
+        fprintf('Saved rois to file: %s', saveFile{findex});
     end
 end
