@@ -1,5 +1,8 @@
 function [Image, Origin, hA] = spatialOverlay(ROIs, Data, ROIindex, FileIndex, ColorIndex, Labels, Colors, Brightness, varargin)
-% labels - for discrete data, labels is a cell array of N strings
+%spatialOverlay    Overlay ROI data onto an image
+% [Image, Origin, hA] = spatialOverlay(ROIs, Data, ROIindex, FileIndex, ColorIndex, Labels, Colors, Brightness)
+%
+% Labels - for discrete data, labels is a cell array of N strings
 % corresponding to the <= N unique values in ColorIndex, and the N unique
 % colors.
 % Labels - for continuous data, labels is a 2x1 vector specifying the lower
@@ -16,6 +19,7 @@ showColorBar = false;
 colorbarLabel = '';
 Crop = false;
 Title = '';
+AdjustEdgeBrightness = true;
 
 % Default variables
 Origin = [];
@@ -230,12 +234,16 @@ end
 hold on
 for rindex = 1:numROIs
     vertices = ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).vertices;
-    patch(vertices(:,1),...
+    hP = patch(vertices(:,1),...
         vertices(:,2),...
         Colors(ColorIndex(rindex),:).*Brightness(rindex,:),...
-        'EdgeColor',Colors(ColorIndex(rindex),:),...
         'FaceAlpha',transparency,...
         'EdgeAlpha',transparency);
+    if AdjustEdgeBrightness
+        hP.EdgeColor = Colors(ColorIndex(rindex),:).*Brightness(rindex,:);
+    else
+        hP.EdgeColor = Colors(ColorIndex(rindex),:);
+    end
 end
 axis off
 

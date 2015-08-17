@@ -226,6 +226,7 @@ if FitTuningCurves
         end
         ROIdata.rois(rindex).Coeff = coeffvalues(ROIdata.rois(rindex).Fit);
         ROIdata.rois(rindex).ConfIntervals = confint(ROIdata.rois(rindex).Fit);
+        ROIdata.rois(rindex).FWHM = ROIdata.rois(rindex).Coeff(3)*2*sqrt(2*log(2)); % FWHM = 2*sqrt(2*ln(2))*c (c is std dev of curve)
         ROIdata.rois(rindex).rsquare = ROIdata.rois(rindex).GoFit.rsquare;
         
     end %ROIs

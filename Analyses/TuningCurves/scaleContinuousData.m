@@ -1,23 +1,72 @@
-function [Data, numSamples, CLim] = scaleContinuousData(Data, numSamples, lowerBound, upperBound)
+function [Data, Bounds, numSamples] = scaleContinuousData(Data, Bounds, varargin)
 
-if ~exist('lowerBound', 'var') || isempty(lowerBound)
-    lowerBound = min(Data);
+numSamples = 100;
+normalized = false;
+FlipMap = false;
+exponent = 1;
+
+%% Parse input arguments
+index = 1;
+while index<=length(varargin)
+    try
+        switch varargin{index}
+            case 'numSamples'
+                numSamples = varargin{index+1};
+                index = index + 2;
+            case 'exponent'
+                exponent = varargin{index+1};
+                index = index + 2;
+            case 'normalized'
+                normalized = true;
+                index = index + 1;
+            case 'flip'
+                FlipMap = true;
+                index = index + 1;
+            otherwise
+                warning('Argument ''%s'' not recognized',varargin{index});
+                index = index + 1;
+        end
+    catch
+        warning('Argument %d not recognized',index);
+        index = index + 1;
+    end
 end
 
-if ~exist('upperBound', 'var') || isempty(upperBound)
-    upperBound = max(Data);
+if ~exist('Bounds', 'var') || isempty(Bounds)
+    Bounds = nan(1,2);
 end
+
+%% Determine Bounds
+if isnan(Bounds(1))
+    Bounds(1) = min(Data);
+end
+if isnan(Bounds(2))
+    Bounds(2) = max(Data);
+end
+
+if Bounds(2) < Bounds(1)
+    FlipMap = true;
+    Bounds = flip(Bounds);
+end
+
+%% Scale data
 
 % Cut off ends out of range
-Data(Data > upperBound) = upperBound;
-Data(Data < lowerBound) = lowerBound;
+Data(Data < Bounds(1)) = Bounds(1);
+Data(Data > Bounds(2)) = Bounds(2);
 
 % Shift and scale range to between 0 to 1
-Data = (Data - lowerBound)/(upperBound-lowerBound);
-Data = round(Data*numSamples);
+Data = (Data - Bounds(1))/diff(Bounds);
+if FlipMap
+    Data = abs(Data-1);
+end
 
-% Fix issue with very bottom of range
-Data(Data == 0) = 1;
+% Scale data exponentially
+Data = Data.^exponent;
+Data = (Data - min(Data))/range(Data);
 
-% Define CLim
-CLim = [lowerBound, upperBound];
+% Scale range so 1 now becomes the number of samples available
+if ~normalized
+    Data = round(Data*(numSamples-1)) + 1;
+end
+
