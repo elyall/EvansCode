@@ -1,29 +1,34 @@
-function ROIdata = computeDFoF(ROIdata, NeuropilWeight, varargin)
+function ROIdata = computeDFoF(ROIdata, varargin)
 
 saveOut = false;
 saveFile = '';
-numFramesBaseline = 20;
+
+NeuropilWeight = [];
+ROIindex = [1 inf];
+numFramesBaseline = [];
+directory = cd;
 
 %% Check input arguments
 if ~exist('ROIdata','var') || isempty(ROIdata)
-    directory = CanalSettings('DataDirectory');
-    [ROIdata, p] = uigetfile({'*.mat'},'Choose ROI file',directory);
+    [ROIdata, p] = uigetfile({'*.rois;*.mat'},'Choose ROI file',directory);
     if isnumeric(ROIdata)
         return
     end
     ROIdata = fullfile(p,ROIdata);
 end
 
-if ~exist('NeuropilWeight', 'var')
-    NeuropilWeight = 0.65;
-end
-
 index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
+            case 'NeuropilWeight'
+                NeuropilWeight = varargin{index+1};
+                index = index + 2;
             case 'numFramesBaseline'
                 numFramesBaseline = varargin{index+1};
+                index = index + 2;
+            case 'ROIindex'
+                ROIindex = varargin{index+1};
                 index = index + 2;
             case {'Save', 'save'}
                 saveOut = true;
@@ -43,6 +48,7 @@ end
 
 fprintf('Calculating trial-wise dF/F...');
 
+
 %% Load ROI data
 if ischar(ROIdata)
     ROIFile = ROIdata;
@@ -56,36 +62,72 @@ if saveOut && isempty(saveFile)
     saveOut = false;
 end
 numROIs = numel(ROIdata.rois);
+[H, W] = size(ROIdata.rois(1).data);
+
+
+%% Determine ROIs to analyze
+if ischar(ROIindex)
+    switch ROIindex
+        case {'all', 'All'}
+            ROIindex = 1:numel(ROIdata.rois);
+        case {'new', 'New'}
+            ROIindex = find(arrayfun(@(x) (isempty(x.rawdata)), ROIdata.rois));
+    end
+elseif isnumeric(ROIindex) && ROIindex(end) == inf
+    ROIindex = [ROIindex(1:end-1), ROIindex(end-1)+1:numel(ROIdata.rois)];
+end
+if iscolumn(ROIindex)
+    ROIindex = ROIindex';
+end
+
+
+%% Determine Neuropil Weight (fluorescence can never be negative)
+if isempty(NeuropilWeight)
+    NeuropilWeight = determineNeuropilWeight(ROIdata, ROIindex);
+elseif numel(NeuropilWeight)==1
+    NeuropilWeight = repmat(NeuropilWeight, numROIs, 1);
+end
+
+% Record to struct
+if ~isfield(ROIdata.DataInfo, 'NeuropilWeight')
+    ROIdata.DataInfo.NeuropilWeight = NeuropilWeight;
+else
+    ROIdata.DataInfo.NeuropilWeight(ROIindex) = NeuropilWeight(ROIindex);
+end
+
 
 %% Determine number of frames to average for baseline
-% if numFramesBaseline > ROIdata.DataInfo.numFramesBefore
-%     numFramesBaseline = ROIdata.DataInfo.numFramesBefore;
-% end
+if isempty(numFramesBaseline)
+    numFramesBaseline = ROIdata.DataInfo.numFramesBefore;
+elseif numFramesBaseline > ROIdata.DataInfo.numFramesBefore
+    numFramesBaseline = ROIdata.DataInfo.numFramesBefore;
+end
+
 
 %% Calculate dF/F
 
 % Initialize output
-for rindex = 1:numROIs
-    ROIdata.rois(rindex).dFoF = zeros(size(ROIdata.rois(rindex).data));
-end
+[ROIdata.rois(ROIindex).dFoF] = deal(zeros(H,W));
 
 % Compute dF/F for each trial for each ROI
-for rindex = 1:numROIs
+for rindex = ROIindex
     
     % Extract all trials for current stimulus
     data = ROIdata.rois(rindex).data;
-    if NeuropilWeight % remove weighted Neuropil signal
-        data = data - NeuropilWeight*ROIdata.rois(rindex).neuropil;
+    if NeuropilWeight(rindex) % remove weighted Neuropil signal
+        data = data - NeuropilWeight(rindex)*ROIdata.rois(rindex).neuropil;
     end
     
     % Compute Fluorescence baseline for each trial
-    baseline = median(data(:, ROIdata.DataInfo.numFramesBefore - numFramesBaseline + 1:ROIdata.DataInfo.numFramesBefore), 2);
+    baseline = nanmedian(data(:, ROIdata.DataInfo.numFramesBefore - numFramesBaseline + 1:ROIdata.DataInfo.numFramesBefore), 2);
     
     % Compute dF/F signal for each trial
     ROIdata.rois(rindex).dFoF = bsxfun(@rdivide, bsxfun(@minus, data, baseline), baseline);
+    
 end
 
 fprintf('\tComplete\n');
+
 
 %% Save to file
 if saveOut

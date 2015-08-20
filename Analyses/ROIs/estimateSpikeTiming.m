@@ -1,13 +1,15 @@
-function [ROIdata, Spikes] = estimateSpikeTiming(ROIdata, NeuropilWeight, varargin)
+function [ROIdata, Spikes, ROIindex] = estimateSpikeTiming(ROIdata, NeuropilWeight, varargin)
 
 saveOut = false;
 saveFile = '';
 
+ROIindex = [1 inf];
 frameRate = 15.45;
+directory = cd;
+
 
 %% Check input arguments
 if ~exist('ROIdata','var') || isempty(ROIdata)
-    directory = CanalSettings('DataDirectory');
     [ROIdata, p] = uigetfile({'*.mat'},'Choose ROI file',directory);
     if isnumeric(ROIdata)
         return
@@ -23,14 +25,17 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
+            case 'frameRate'
+                frameRate = varargin{index+1};
+                index = index + 2;
+            case 'ROIindex'
+                ROIindex = varargin{index+1};
+                index = index + 2;
             case {'save', 'Save'}
                 saveOut = true;
                 index = index + 1;
             case {'SaveFile', 'saveFile'}
                 saveFile = varargin{index+1};
-                index = index + 2;
-            case 'frameRate'
-                frameRate = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -54,10 +59,30 @@ end
 if isempty(saveFile)
     saveOut = false;
 end
-numROIs = numel(ROIdata.rois);
 
 if ~isfield(ROIdata.rois, 'rawneuropil')
     NeuropilWeight = false;
+end
+
+%% Determine ROIs to compute
+if ischar(ROIindex)
+    switch ROIindex
+        case {'all', 'All'}
+            ROIindex = 1:numel(ROIdata.rois);
+        case {'new', 'New'}
+            ROIindex = find(arrayfun(@(x) (isempty(x.rawspikes)), ROIdata.rois));
+    end
+elseif isnumeric(ROIindex) && ROIindex(end) == inf
+    ROIindex = [ROIindex(1:end-1), ROIindex(end-1)+1:numel(ROIdata.rois)];
+end
+numROIs = numel(ROIindex);
+
+
+%% Determine Neuropil Weight
+if isempty(NeuropilWeight)
+    NeuropilWeight = determineNeuropilWeight(ROIdata, ROIindex);
+elseif numel(NeuropilWeight)==1
+    NeuropilWeight = repmat(NeuropilWeight, numROIs, 1);
 end
 
 
@@ -71,10 +96,10 @@ V.NCells = 1; % number of cells in each ROI
 fprintf('Estimating spikes for %d neurons...\n\tFinished ROI:', numROIs);
 Spikes = zeros(numROIs, numel(ROIdata.rois(1).rawdata));
 for rindex = 1:numROIs
-    if NeuropilWeight
-        Spikes(rindex,:) = fast_oopsi(ROIdata.rois(rindex).rawdata - NeuropilWeight*ROIdata.rois(rindex).rawneuropil, V);
+    if NeuropilWeight(rindex)
+        Spikes(rindex,:) = fast_oopsi(ROIdata.rois(ROIindex(rindex)).rawdata - NeuropilWeight(rindex)*ROIdata.rois(ROIindex(rindex)).rawneuropil, V);
     else
-        Spikes(rindex,:) = fast_oopsi(ROIdata.rois(rindex).rawdata, V);
+        Spikes(rindex,:) = fast_oopsi(ROIdata.rois(ROIindex(rindex)).rawdata, V);
     end
     ROIdata.rois(rindex).rawspikes = Spikes(rindex,:);
     
@@ -90,9 +115,12 @@ fprintf('\n');
 %% Save to file
 if saveOut
     if ~exist(saveFile, 'file')
-        save(saveFile, 'ROIdata', 'Spikes', '-mat', '-v7.3');
+        save(saveFile, 'ROIdata', '-mat', '-v7.3');
     else
-        save(saveFile, 'ROIdata', 'Spikes', '-append', '-mat');
+        save(saveFile, 'ROIdata', '-mat', '-append');
+    end
+    if isequal(ROIindex, 1:numel(ROIdata.rois))
+        save(saveFile, 'Spikes', '-mat', '-append');
     end
     fprintf('\tROIdata saved to: %s\n', saveFile);
 end

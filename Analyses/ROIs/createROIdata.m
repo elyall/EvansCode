@@ -1,6 +1,5 @@
 function ROIdata = createROIdata(ROIMasks, varargin)
 
-
 saveOut = false;
 saveFile = '';
 
@@ -54,7 +53,13 @@ end
 numROIs = size(ROIMasks, 3);
 
 
-%% Create ROIdata structure
+%% Initialize ROIdata structure
+if ischar(ROIdata)
+    load(ROIdata, 'ROIdata', '-mat');
+    if ~exist('ROIdata', 'var')
+        ROIdata = [];
+    end
+end
 if isempty(ROIdata)
     ROIdata.filename = ROIFile;
     ROIdata.offset = zeros(1,3);
@@ -65,7 +70,8 @@ else
     offset = numel(ROIdata.rois);
 end
 
-% Distribute ROIs
+
+%% Distribute ROIs
 for rindex = 1:numROIs
     
     % Identifier & display information
@@ -82,7 +88,7 @@ for rindex = 1:numROIs
     temp = bwboundaries(ROIMasks(:,:,rindex));
     ROIdata.rois(offset+rindex).vertices = flip(temp{1},2);
     ROIdata.rois(offset+rindex).position = [];
-    ROIdata.rois(offset+rindex).mask = ROIMasks(:,:,rindex);
+    ROIdata.rois(offset+rindex).mask = [];
     ROIdata.rois(offset+rindex).neuropilmask = [];
     ROIdata.rois(offset+rindex).pixels = ROIMasks(:,:,rindex);
     temp = regionprops(ROIMasks(:,:,rindex), 'Centroid');

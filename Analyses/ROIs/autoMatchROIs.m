@@ -1,10 +1,20 @@
-function [Index, ROIMasks] = autoMatchROIs(ROIMasks, Maps, Centroids, varargin)
+function [Index, ROIMasks, newBoolean] = autoMatchROIs(ROIMasks, Maps, Centroids, varargin)
 % ROIMasks - cell array of HxWxN ROI masks or cell array of ROI files
 % Maps - cell array of imref2d objects or cell array of filenames
 % Centroids - cell array of centroids of ROIs or empty
 
+% Index - matrix of size numUniqueROIs x numFiles where each index is the
+% index of that unique ROI in that file's ROIMasks matrix, 0 if that ROI is
+% not found in that file, or NaN if that ROI shouldn't exist in that FoV.
+
+% ROIMasks - cell array of HxWxR ROI masks or cell array of ROI files
+
+% newROIs - logical array equal in size to index specifying whether the ROI
+% of that index is a new ROI (added via this function)
+
 saveOut = false;
 saveFile = {''};
+saveType = 'new'; % 'new' or 'all' (determines which files to save to)
 
 distanceThreshold = 10; % pixels
 overlapThreshold = .9; % percentage
@@ -18,8 +28,8 @@ while index<=length(varargin)
     try
         switch varargin{index}
             case 'AddROIs'
-                addNewROIs = varargin{index+1};
-                index = index + 2;
+                addNewROIs = true;
+                index = index + 1;
             case 'ROIindex'
                 ROIindex = varargin{index+1};
                 index = index + 2;
@@ -28,6 +38,9 @@ while index<=length(varargin)
                 index = index + 1;
             case {'SaveFile', 'saveFile'}
                 saveFile = varargin{index+1};
+                index = index + 2;
+            case {'SaveType', 'saveType'}
+                saveType = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -87,6 +100,8 @@ if iscellstr(ROIMasks)
                 Centroids{findex} = reshape([ROIdata.rois(:).centroid], 2, numel(ROIdata.rois))';
         end
     end
+else
+    ROIFiles = strcat('file', {' '}, num2str((1:numFiles)'));
 end
 [Height,Width,numROIs] = cellfun(@size, ROIMasks);
 
@@ -102,6 +117,9 @@ if ~exist('Centroids', 'var') || isempty(Centroids)
     end
 end
 
+fprintf('Matching ROIs between %d files\n', numFiles);
+temp = strcat(num2str(numROIs), {' rois from '}, ROIFiles');
+fprintf('\t%s\n', temp{:});
 
 %% Load in Maps
 if iscellstr(Maps)
@@ -112,10 +130,12 @@ if iscellstr(Maps)
         if isfield(temp, 'Map')
             Maps{findex} = temp.Map;
         else
+            warning('No map found in file %s, assuming file starts at origin', MapFiles{findex});
             Maps{findex} = imref2d([Height(findex), Width(findex)]);
         end
     end
 elseif isempty(Maps)
+    warning('No maps input, assuming all files start at origin');
     Maps = cell(numFiles, 1);
     for findex = 1:numFiles
         Maps{findex} = imref2d([Height(findex), Width(findex)]);
@@ -166,14 +186,16 @@ end
 ActualMasks = cellfun(@(x) reshape(x, size(x,1)*size(x,2), size(x,3)), ActualMasks, 'UniformOutput', false);
 
 
-%% Determine distances between ROI centroids in the different datasets
+%% Determine distances between ROI centroids in the different datasets and the amount of overlap between the datasets
 combinations = combnk(1:numFiles, 2);
 [~,I] = sort(combinations, 1);
 combinations = combinations(I(:,1), :); % sort order
 numCombinations = size(combinations, 1);
 distances = cell(numCombinations, 1);
+overlapMasks = zeros(H*W, numCombinations);
 for cindex = 1:numCombinations
-    distances{cindex} = pdist2(Centroids{combinations(cindex, 1)}, Centroids{combinations(cindex, 2)});
+    distances{cindex} = pdist2(Centroids{combinations(cindex, 1)}, Centroids{combinations(cindex, 2)}); % distance between all ROIs in current 2 files
+    overlapMasks(:, cindex) = all(Map(:,[combinations(cindex, 1), combinations(cindex, 2)]),2);             % region of overlap between the current 2 files
 end
 
 
@@ -189,7 +211,10 @@ for findex = 1:numFiles
     for rindex = ROIindex{findex}
         
         % Determine what files current ROI should be found in
-        FileIndices = find(all(Map(ActualMasks{findex}(:,rindex),:), 1));
+        X = min(max(round(Centroids{findex}(rindex,1)), 1), W);
+        Y = min(max(round(Centroids{findex}(rindex,2)), 1), H);
+        FileIndices = find(Map(sub2ind([H,W], Y, X), :)); % centroid in FoV
+        % FileIndices = find(all(Map(ActualMasks{findex}(:,rindex),:), 1)); % ROI mask completely in FoV
         FileIndices(FileIndices==findex) = [];
         
         % Match ROIs in each of the matched Files
@@ -211,19 +236,19 @@ for findex = 1:numFiles
                 % overlap more than the overlap threshold
                 for mrindex = ROIindex{mfindex}(distIndices)
                     distThresh = currentDistances(mrindex) <= distanceThreshold;
-                    overlapThresh = nnz(ActualMasks{findex}(:,rindex) & ActualMasks{mfindex}(:,mrindex))/nnz(ActualMasks{findex}(:,rindex)) >= overlapThreshold;
+                    overlapThresh = nnz(all([ActualMasks{findex}(:,rindex),ActualMasks{mfindex}(:,mrindex),overlapMasks(:,cindex)],2))/nnz(all([ActualMasks{findex}(:,rindex),overlapMasks(:,cindex)],2)) >= overlapThreshold;
                     if ~distThresh                                          % moved onto ROIs too far away
-                        Index(numUniqueROIs+1, mfindex) = 0;           % therefore ROI doesn't exist in matched file
+                        Index(numUniqueROIs+1, mfindex) = 0;                % therefore ROI doesn't exist in matched file
                         break
-                    elseif overlapThresh
-                        Index(numUniqueROIs+1, mfindex) = mrindex;     % ROI matches
-                        ROIindex{mfindex}(ROIindex{mfindex}==mrindex) = []; % remove matching ROI
+                    elseif overlapThresh                                    % ROI matches
+                        Index(numUniqueROIs+1, mfindex) = mrindex;          % record matching ROI
+                        ROIindex{mfindex}(ROIindex{mfindex}==mrindex) = []; % remove matching ROI from list
                         break
                     end
                 end %mrindex
                 
             else
-                Index(numUniqueROIs+1, mfindex) = 0;                   % no more available ROIs in current file -> ROI doesn't exist
+                Index(numUniqueROIs+1, mfindex) = 0;                        % no more available ROIs in current file -> ROI doesn't exist
             end
             
         end %mfindex
@@ -237,49 +262,86 @@ end % findex
 
 
 %% Add unmatched ROIs
+newBoolean = false(size(Index));
 if addNewROIs
-    fprintf('Adding new ROIs across files...');
+    fprintf('Adding new ROIs across files...\n');
+    
+    % Determine what ROIs are missing
+    needsROI = Index == 0;
+    numNew = sum(needsROI);
     
     % Cycle through files adding new ROIs to each file
-    for findex = 1:numFiles
+    for findex = find(numNew)
         
-        % Determine what ROIs are missing and initialize output
-        uindex = find(Index(:,findex) == 0);
-        numNew = numel(uindex);
-        ROIMasks{findex} = cat(3, ROIMasks{findex}, zeros(Height(findex), Width(findex), numNew));
+        % Determine indices of missing ROIs
+        uindex = find(needsROI(:,findex));
+        fprintf('\tadding %d ROI(s) to %s', numNew(findex), ROIFiles{findex});
         
         % Cycle through new ROIs adding each to the output
-        for rindex = 1:numNew
+        ROIMasks{findex} = cat(3, ROIMasks{findex}, zeros(Height(findex), Width(findex), numNew(findex)));
+        for rindex = 1:numNew(findex)
             [~, mfindex, mrindex] = find(Index(uindex(rindex),:), 1);                                           % find matched ROI in another file
-            ROIMasks{findex}(:,:,numROIs(findex)+rindex) = imwarp(ROIMasks{mfindex}(:,:,mrindex), Maps{findex}, affine2d(), 'OutputView', Maps{mfindex});   % translate and add ROI                            % add new ROI
+            ROIMasks{findex}(:,:,numROIs(findex)+rindex) = transferROIs(ROIMasks{mfindex}(:,:,mrindex), Maps{mfindex}, Maps{findex});   % translate and add ROI                            % add new ROI
             Index(uindex(rindex), findex) = numROIs(findex)+rindex;                                             % record index of new ROI
+            newBoolean(uindex(rindex), findex) = true;
         end
         
     end
-    fprintf('\tComplete\n');
+    fprintf('\nComplete\n');
 end
 
 
 %% Save output
 if saveOut && ~isempty(saveFile)
-    for findex = 1:numel(saveFile)
+    
+    % Determine what files to save to
+    switch saveType
+        case 'all'
+            findices = 1:numFiles;
+        case 'new'
+            findices = find(numNew);
+    end
+    
+    % Save to each file
+    for findex = findices
         [~,~,ext] = fileparts(saveFile{findex});
         switch ext
+            
             case '.segment'
+                
+                % Save variable to file
                 mask = ROIMasks{findex};
                 if ~exist(saveFile{findex}, 'file')
                     save(saveFile{findex}, 'mask', '-mat', '-v7.3');
                 else
                     save(saveFile{findex}, 'mask', '-mat', '-append');
                 end
+                
             case '.rois'
-                ROIdata = createROIdata(ROIMasks{findex}(:,:,numROIs(findex)+1:end), 'ROIdata', InitialROIdata{findex});
+                
+                % Determine if previous variable exists
+                if isempty(InitialROIdata{findex}) && exist(saveFile{findex}, 'file')
+                    load(saveFile{findex}, 'ROIdata', '-mat');
+                    if exist('ROIdata', 'var')
+                        InitialROIdata{findex} = ROIdata;
+                    end
+                end
+                
+                % Create/update struct
+                if isempty(InitialROIdata{findex})
+                    ROIdata = createROIdata(ROIMasks{findex}); % update whole struct
+                else
+                    ROIdata = createROIdata(ROIMasks{findex}(:,:,numROIs(findex)+1:end), 'ROIdata', InitialROIdata{findex}); % only update new ROIs
+                end
+                
+                % Save to file
                 if ~exist(saveFile{findex}, 'file')
                     save(saveFile{findex}, 'ROIdata', '-mat', '-v7.3');
                 else
                     save(saveFile{findex}, 'ROIdata', '-mat', '-append');
                 end
-        end
-        fprintf('Saved rois to file: %s', saveFile{findex});
-    end
+                
+        end %switch ext
+        fprintf('(%d of %d) Saved rois to file: %s\n', findex, numel(findices), saveFile{findex});
+    end %findex
 end

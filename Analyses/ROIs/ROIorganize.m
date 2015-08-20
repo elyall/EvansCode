@@ -1,4 +1,4 @@
-function [ROIdata, series, ROIid] = ROIorganize(ROIdata, AnalysisInfo, frames, ROIid, varargin)
+function [ROIdata, series, ROIindex] = ROIorganize(ROIdata, AnalysisInfo, frames, ROIindex, varargin)
 
 saveOut = false;
 
@@ -28,8 +28,8 @@ if (~exist('AnalysisInfo','var') || isempty(AnalysisInfo)) && (~exist('frames', 
     ExperimentFile = fullfile(p,ExperimentFile);
 end
 
-if ~exist('ROIid', 'var') || isempty(ROIid)
-    ROIid = 'all'; % 'all' or vector of indices
+if ~exist('ROIindex', 'var') || isempty(ROIindex)
+    ROIindex = [1 inf];
 end
 
 index = 1;
@@ -65,6 +65,7 @@ while index<=length(varargin)
 end
 
 fprintf('Organizing signals to be trial-wise...');
+
 
 %% Load stimulus information and determine trials to pull-out
 if ischar(AnalysisInfo)
@@ -127,13 +128,19 @@ if saveOut && isempty(saveFile)
     warning('Cannot save output as no file specified');
     saveOut = false;
 end
-numROIs = numel(ROIdata.rois);
 
-% Determine ROIs to extract signals for
-if ischar(ROIid) && strcmp(ROIid, 'all')
-    numROIs = numel(ROIdata.rois);
-    ROIid = 1:numROIs;
+% Determine ROIs to reshape
+if ischar(ROIindex)
+    switch ROIindex
+        case {'all', 'All'}
+            ROIindex = 1:numel(ROIdata.rois);
+        case {'new', 'New'}
+            ROIindex = find(arrayfun(@(x) (isempty(x.data)), ROIdata.rois));
+    end
+elseif isnumeric(ROIindex) && ROIindex(end) == inf
+    ROIindex = [ROIindex(1:end-1), ROIindex(end-1)+1:numel(ROIdata.rois)];
 end
+numROIs = numel(ROIindex);
 
 % Organize neuropil data?
 neuropil = false;
@@ -141,40 +148,10 @@ if isfield(ROIdata.rois, 'rawneuropil')
     neuropil = true;
 end
 
-% Organize spiking data
+% Organize spiking data?
 spikes = false;
-if isfield(ROIdata.rois, 'rawspikes') % not sure if this is correct, check upstream function that estimates spikes to see output
+if isfield(ROIdata.rois, 'rawspikes')
     spikes = true;
-end
-
-% Fix fields (for older versions)
-if ~isfield(ROIdata.rois, 'rawdata')
-    for rindex = 1:numROIs
-        ROIdata.rois(rindex).rawdata = ROIdata.rois(rindex).data;
-        if neuropil
-            ROIdata.rois(rindex).rawneuropil = ROIdata.rois(rindex).neuropil;
-        end
-    end
-end
-
-
-%% Extract ROI data to one matrix
-numFrames = numel(ROIdata.rois(1).rawdata);
-Data = zeros(numROIs, numFrames);
-if neuropil
-    Neuropil = zeros(numROIs, numFrames);
-end
-% if spikes
-%     Spikes = zeros(numROIs, numFrames);
-% end
-for rindex = 1:numROIs
-    Data(rindex,:) = ROIdata.rois(rindex).rawdata;
-    if neuropil
-        Neuropil(rindex,:) = ROIdata.rois(rindex).rawneuropil;
-    end
-%     if spikes
-%         Spikes(rindex,:) = ROIdata.rois(rindex).rawspikes;
-%     end
 end
 
 
@@ -198,7 +175,7 @@ else
 end
 
 % Format ROIs
-for rindex = ROIid
+for rindex = ROIindex
     ROIdata.rois(rindex).data = nan(numTrials, totalFrames);
     if neuropil
         ROIdata.rois(rindex).neuropil = nan(numTrials, totalFrames);
@@ -232,13 +209,14 @@ end
 
 fprintf('\tComplete\n');
 
+
 %% Save to file
 if saveOut
     % Save basic data
     if ~exist(saveFile, 'file')
-        save(saveFile, 'ROIdata', 'Data', 'Neuropil', 'AnalysisInfo', '-mat', '-v7.3');
+        save(saveFile, 'ROIdata', 'AnalysisInfo', '-mat', '-v7.3');
     else
-        save(saveFile, 'ROIdata', 'Data', 'Neuropil', 'AnalysisInfo', '-mat', '-append');
+        save(saveFile, 'ROIdata', 'AnalysisInfo', '-mat', '-append');
     end
     % Save series data
     if ~isempty(series)

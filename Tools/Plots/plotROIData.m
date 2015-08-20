@@ -131,7 +131,6 @@ end
 if isempty(FigureIndex)
     FigureIndex = repmat(1:numROIs/2,1,2); % assumes rois = [rois(pre), rois(post)], where the rois are indexed the same
 end
-[~, ~, FigureIndex] = unique(FigureIndex); % any case FigureIndex is not contiguous
 numFigs = max(FigureIndex);
 
 % Initialize titles container
@@ -142,8 +141,7 @@ end
 % Determine display order
 if isempty(FigureOrder)
     FigureOrder = 1:numFigs;
-else
-    [~,~,FigureOrder] = unique(FigureOrder);
+elseif iscolumn(FigureOrder)
     FigureOrder = FigureOrder';
 end
 

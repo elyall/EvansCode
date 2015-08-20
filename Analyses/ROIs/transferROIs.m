@@ -115,7 +115,7 @@ if saveOut && ~isempty(saveFile)
                 save(saveFile, 'mask', '-mat', '-append');
             end
         case '.rois'
-            ROIdata = createROIdata(ROIMasks);     
+            ROIdata = createROIdata(ROIMasks, 'ROIdata', saveFile);     
             if ~exist(saveFile, 'file')
                 save(saveFile, 'ROIdata', '-mat', '-v7.3');
             else

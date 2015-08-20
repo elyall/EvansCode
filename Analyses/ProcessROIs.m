@@ -1,7 +1,8 @@
-function ProcessROIs(ImageFiles, ROIFiles, ExperimentFiles, varargin)
+function saveFiles = ProcessROIs(ImageFiles, ROIFiles, ExperimentFiles, varargin)
 
 % Average over ROIs
 ExtractSignals = false;
+FrameIndex = {[1 inf]};
 
 % Event detection
 EstimateSpikes = false;
@@ -11,14 +12,17 @@ OrganizeSignals = false;
 
 % Trial-wise dF/F
 ComputeDFoF = false;
+NeuropilWeight = {[]};
 
 % Tuning Curves
 ComputeAvgStim = false;
 minrunspeed = 100;
 outlierweight = 4;
 
+saveOut = true;
+saveFiles = {[]};
+ROIindex = [1 inf];
 directory = cd;
-override = false; 
 
 %% Parse input arguments
 index = 1;
@@ -28,6 +32,9 @@ while index<=length(varargin)
             case 'ExtractSignals'
                 ExtractSignals = true;
                 index = index + 1;
+            case {'Frames', 'frames', 'FrameIndex'}
+                FrameIndex = varargin{index+1};
+                index = index + 2;
             case 'EstimateSpikes'
                 EstimateSpikes = true;
                 index = index + 1;
@@ -37,6 +44,9 @@ while index<=length(varargin)
             case 'ComputeDFoF'
                 ComputeDFoF = true;
                 index = index + 1;
+            case 'NeuropilWeight'
+                NeuropilWeight = varargin{index+1};
+                index = index + 2;
             case 'ComputeAvgStim'
                 ComputeAvgStim = true;
                 index = index + 1;
@@ -46,9 +56,15 @@ while index<=length(varargin)
             case 'outlierweight'
                 outlierweight = varargin{index+1};
                 index = index + 2;
-            case 'override'
-                override = true;
+            case 'ROIindex'
+                ROIindex = varargin{index+1};
+                index = index + 2;
+            case {'Save', 'save'}
+                saveOut = true;
                 index = index + 1;
+            case {'SaveFiles', 'saveFiles'}
+                saveFiles = varargin{index+1};
+                index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
                 index = index + 1;
@@ -116,52 +132,95 @@ elseif ischar(ExperimentFiles)
     end
 end
 
-%% Post-process ROIs
 
+%% Prepare indices & other independent variables
 numFiles = numel(ROIFiles);
+
+if ~iscell(ROIindex)
+    ROIindex = {ROIindex};
+end
+if numel(ROIindex) == 1
+    ROIindex = repmat(ROIindex, numFiles, 1);
+end
+
+if ~iscell(FrameIndex)
+    FrameIndex = {FrameIndex};
+end
+if numel(FrameIndex) == 1
+    FrameIndex = repmat(FrameIndex, numFiles, 1);
+end
+
+if ~iscell(NeuropilWeight)
+    NeuropilWeight = {NeuropilWeight};
+end
+if numel(NeuropilWeight) == 1
+    NeuropilWeight = repmat(NeuropilWeight, numFiles, 1);
+end
+
+if ~iscell(saveFiles)
+    saveFiles = {saveFiles};
+end
+if numel(saveFiles) == 1
+    saveFiles = repmat(saveFiles, numFiles, 1);
+end
+
+
+%% Cycle through files
 for findex = 1:numFiles;
     fprintf('Processing ROI files %d of %d: %s\n', findex, numFiles, ROIFiles{findex});
     
     %% Determine file to save to
-    saveFile = ROIFiles{findex};
+    if isempty(saveFiles{findex})
+        saveFiles{findex} = ROIFiles{findex};
+    end
     
     
     %% Determine what has already been accomplished
-    variables = whos(matfile(saveFile));
+    variables = whos(matfile(saveFiles{findex}));
     
     
     %% Load ROIdata
-    if ~exist('ROIdata', 'var')
-        load(ROIFiles{findex}, 'ROIdata', '-mat');
-    end
+    load(ROIFiles{findex}, 'ROIdata', '-mat');
     
     
     %% Extract ROI signals
-    if ExtractSignals && (~any(strcmp({variables.name}, 'ImageFiles')) || override)
-        ROIdata = extractSignals(ImageFiles{findex}, ROIdata, 'all', 'Save', 'SaveFile', saveFile, 'MotionCorrect', ExperimentFiles{findex});
+    if ExtractSignals
+        [ROIdata, Data, Neuropil, ROIindex{findex}] = extractSignals(ImageFiles{findex}, ROIdata, ROIindex{findex}, 'FrameIndex', FrameIndex{findex}, 'MotionCorrect', ExperimentFiles{findex});
+        if saveOut && isequal(ROIindex{findex}, 1:numel(ROIdata.rois))
+            save(saveFiles{findex}, 'Data', 'Neuropil', '-mat', '-append');
+        end
     end
     
+    if iscolumn(ROIindex{findex})
+        ROIindex{findex} = ROIindex{findex}';
+    end
     
     %% Estimate Spike Timing
-    if EstimateSpikes && (~any(strcmp({variables.name}, 'Spikes')) || override)
-        ROIdata = estimateSpikeTiming(ROIFiles{findex}, 0.65, 'Save', 'SaveFile', saveFile);
+    if EstimateSpikes
+        [ROIdata, Spikes] = estimateSpikeTiming(ROIFiles{findex}, NeuropilWeight{findex}, 'ROIindex', ROIindex{findex});
+        if saveOut && isequal(ROIindex{findex}, 1:numel(ROIdata.rois))
+            save(saveFiles{findex}, 'Spikes', '-mat', '-append');
+        end
     end
     
     
     %% Sort ROI signals to be trial-wise
-    if OrganizeSignals && (~any(strcmp({variables.name}, 'AnalysisInfo')) || override)
-        ROIdata = ROIorganize(ROIdata, ExperimentFiles{findex}, [], 'all', 'SeriesVariables', 'RunningSpeed', 'Save', 'SaveFile', saveFile);
+    if OrganizeSignals
+        [ROIdata, series] = ROIorganize(ROIdata, ExperimentFiles{findex}, [], ROIindex{findex}, 'SeriesVariables', 'RunningSpeed');
+        if saveOut
+            save(saveFiles{findex}, 'series', '-mat', '-append');
+        end
     end
     
     
     %% Compute dF/F of trials
-    if ComputeDFoF && (~isfield(ROIdata.rois, 'dFoF') || override)
-        ROIdata = computeDFoF(ROIdata, 0.65, 'Save', 'SaveFile', saveFile);
+    if ComputeDFoF
+        ROIdata = computeDFoF(ROIdata, 'ROIindex', ROIindex{findex}, 'NeuropilWeight', NeuropilWeight{findex});
     end
     
     
     %% Compute tuning curves
-    if ComputeAvgStim && (~isfield(ROIdata.rois, 'curve') || override)
+    if ComputeAvgStim
         
         % Determine trials to analyze
         load(ExperimentFiles{findex}, 'AnalysisInfo', 'frames', '-mat');
@@ -172,12 +231,22 @@ for findex = 1:numFiles;
         end
         
         % Compute tuning curves
-        ROIdata = computeTuningCurve(ROIdata, [1 inf], TrialIndex,...
+        ROIdata = computeTuningCurve(ROIdata, ROIindex{findex}, TrialIndex,...
             'Fit',...
             'ControlID', 0,...
-            'outlierweight', outlierweight,...
-            'Save',...
-            'SaveFile', saveFile);
+            'outlierweight', outlierweight);
     end
-        
+    
+    
+    %% Save data to file
+    if saveOut
+        if ~exist(saveFiles{findex}, 'file')
+            save(saveFiles{findex}, 'ROIdata', '-mat', '-v7.3');
+        else
+            save(saveFiles{findex}, 'ROIdata', '-mat', '-append');
+        end
+        fprintf('\tROIdata saved to: %s\n', saveFiles{findex});
+    end
+    
+    
 end %files
