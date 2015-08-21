@@ -171,7 +171,7 @@ end
 StimResponse.avg = nan([Config(1).size(1:end-2), numStims]);
 StimResponse.se = nan([Config(1).size(1:end-2), numStims]);
 StimResponse.pvalue = ones([Config(1).size(1:end-2), numStims]);
-StimResponse.excited = nan([Config(1).size(1:end-2), numStims]);
+StimResponse.excited = false([Config(1).size(1:end-2), numStims]);
 for sindex = 1:numStims
     StimResponse.avg(:,:,:,sindex) = mean(trialdFoF{sindex}, 4);
     StimResponse.se(:,:,:,sindex) = std(trialdFoF{sindex},[],4)/sqrt(size(trialdFoF{sindex},4));
@@ -180,7 +180,7 @@ for sindex = 1:numStims
             trialdFoF{1},....
             trialdFoF{sindex},...
             'dim', 4);
-        StimResponse.excited(:,:,:,sindex) = StimResponse.avg(:,:,:,sindex) >= StimResponse.avg(:,:,:,1);
+        StimResponse.excited(:,:,:,sindex) = StimResponse.avg(:,:,:,sindex) > StimResponse.avg(:,:,:,1);
     end
 end
 

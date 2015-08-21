@@ -96,7 +96,7 @@ if iscellstr(ROIMasks)
             case '.rois'
                 load(ROIFiles{findex}, 'ROIdata', '-mat');
                 InitialROIdata{findex} = ROIdata;
-                ROIMasks{findex} = reshape([ROIdata.rois(:).pixels], size(ROIdata.rois(1).pixels,1), size(ROIdata.rois(1).pixels,2), numel(ROIdata.rois));
+                ROIMasks{findex} = reshape(full([ROIdata.rois(:).pixels]), size(ROIdata.rois(1).pixels,1), size(ROIdata.rois(1).pixels,2), numel(ROIdata.rois));
                 Centroids{findex} = reshape([ROIdata.rois(:).centroid], 2, numel(ROIdata.rois))';
         end
     end
@@ -120,6 +120,7 @@ end
 fprintf('Matching ROIs between %d files\n', numFiles);
 temp = strcat(num2str(numROIs), {' rois from '}, ROIFiles');
 fprintf('\t%s\n', temp{:});
+
 
 %% Load in Maps
 if iscellstr(Maps)
@@ -169,7 +170,6 @@ for findex = 1:numFiles
     xlim = [ceil(Maps{findex}.XWorldLimits(1)),floor(Maps{findex}.XWorldLimits(2))] - floor(XLim(1));
     Map(ylim(1):ylim(2),xlim(1):xlim(2),findex) = 1;
 end
-Map = reshape(Map, H*W, numFiles);
 
 
 %% Translate ROIs
@@ -183,6 +183,9 @@ for findex = 1:numFiles
         ActualMasks{findex}(:,:,rindex) = imwarp(ROIMasks{findex}(:,:,rindex), Maps{findex}, affine2d(), 'OutputView', MainMap);
     end
 end
+
+% Reshape variables
+Map = reshape(Map, H*W, numFiles);
 ActualMasks = cellfun(@(x) reshape(x, size(x,1)*size(x,2), size(x,3)), ActualMasks, 'UniformOutput', false);
 
 

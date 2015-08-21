@@ -90,7 +90,7 @@ for rindex = 1:numROIs
     ROIdata.rois(offset+rindex).position = [];
     ROIdata.rois(offset+rindex).mask = [];
     ROIdata.rois(offset+rindex).neuropilmask = [];
-    ROIdata.rois(offset+rindex).pixels = ROIMasks(:,:,rindex);
+    ROIdata.rois(offset+rindex).pixels = sparse(ROIMasks(:,:,rindex));
     temp = regionprops(ROIMasks(:,:,rindex), 'Centroid');
     ROIdata.rois(offset+rindex).centroid = temp.Centroid;
     

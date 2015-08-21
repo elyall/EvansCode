@@ -66,7 +66,7 @@ if ischar(ROIMasks)
     switch ext
         case '.rois'
             load(ROIFile, 'ROIdata', '-mat');
-            ROIMasks = reshape([ROIdata.rois(:).pixels], size(ROIdata.rois(1).pixels,1), size(ROIdata.rois(1).pixels,2), numel(ROIdata.rois));
+            ROIMasks = reshape(full([ROIdata.rois(:).pixels]), size(ROIdata.rois(1).pixels,1), size(ROIdata.rois(1).pixels,2), numel(ROIdata.rois));
         case '.segment'
             load(ROIFile, 'mask', '-mat');
             ROIMasks = mask;
