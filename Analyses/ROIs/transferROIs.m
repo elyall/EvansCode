@@ -71,9 +71,11 @@ if ischar(ROIMasks)
             load(ROIFile, 'mask', '-mat');
             ROIMasks = mask;
     end
+elseif issparse(ROIMasks)
+    ROIMasks = full(ROIMasks);
 end
 
-if ROIindex(end)==inf
+if numel(ROIindex)>1 && ROIindex(end)==inf
     ROIindex = cat(2, ROIindex(1:end-1), ROIindex(end-1)+1:size(ROIMasks,3));
 end
 ROIMasks = ROIMasks(:,:,ROIindex);
