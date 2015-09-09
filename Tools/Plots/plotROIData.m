@@ -13,7 +13,7 @@ frameRate = 15.45;
 CurveColors = [0,0,1;1,0,0];
 Legend = cell(2,1);
 Legend{1} = [];
-Legend{2} = {'Pre Control', 'Pre', 'Post Control', 'Post'};
+Legend{2} = {'', 'Pre', '', '', 'Post', ''};
 % showFit = false;
 % FitColors = [0,1,0;1,0,1];
 
@@ -155,7 +155,8 @@ end
 %% Generate figures
 
 % Determine y-limits for tuning curve plots
-YLim = [min([rois(ROIindex).curve]), max([rois(ROIindex).curve])];
+YLim = [];
+% YLim = [min([rois(ROIindex).curve]), max([rois(ROIindex).curve])];
 
 % Cycle through figures requested generating one at a time
 for findex = FigureOrder
@@ -212,7 +213,6 @@ for findex = FigureOrder
         
     % Fix raster colormaps
     CLim = [min(CLim(:,1)), max(CLim(:,2))];
-    % CLim = YLim;
     set(hA(1), 'CLim', CLim);
     set(hA(2), 'CLim', CLim);
     CMap = b2r(CLim(1), CLim(2));
@@ -221,7 +221,7 @@ for findex = FigureOrder
     
     % Plot location in FoV
     axes(hA(3));
-    imshow(rois(rindices(1)).mask);
+    imshow(full(rois(rindices(1)).mask));
     %         spatialOverlay(...
     %             rois(rindex),...
     %             [],...

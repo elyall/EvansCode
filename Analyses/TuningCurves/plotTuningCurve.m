@@ -238,6 +238,9 @@ for index = 1:numel(ROIindex)
     end
     title(Title{AxesIndex(index)});
     
+    % Plot 0 line
+    plot([0,numStimuli+1], [0 0], 'k--');
+    
     % Plot stars for stimuli that evoked a significant response
     if showStimStars
         Ydim = get(gca,'YLim');
