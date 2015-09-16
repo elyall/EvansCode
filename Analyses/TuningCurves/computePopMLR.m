@@ -1,4 +1,4 @@
-function [Weights, confusionMatrix, stats] = computeMLR(ROIdata, varargin)
+function [Weights, confusionMatrix, stats] = computePopMLR(ROIdata, varargin)
 
 numKFolds = 10;
 numRepeats = 100;
@@ -82,8 +82,14 @@ ROIdata.DataInfo.StimID(ROIdata.DataInfo.StimID==ControlID) = max(ROIdata.DataIn
 % Initialize outputs
 [StimIDs,~,StimIndex] = unique(ROIdata.DataInfo.StimID(TrialIndex));
 numStims = numel(StimIDs);
-Weights = zeros(2, numStims-1, numROIs);
-confusionMatrix = zeros(numStims, numStims, numROIs);
+Weights = zeros(numROIs+1, numStims-1);
+confusionMatrix = zeros(numStims, numStims);
+
+
+%% Format data
+Data = ROIs2AvgMat(ROIdata, 'Frames', FrameIndex, 'ROIs', ROIindex);
+% [~,order] = sort(Data(:,1), 'descend');
+% Data = Data(order,:);
 
 
 %% Perform analysis
@@ -91,6 +97,7 @@ tic
 parfor_progress(numRepeats);
 parfor bindex = 1:numRepeats
     warning('off', 'stats:mnrfit:IterOrEvalLimit');
+    warning('off', 'MATLAB:nearlySingularMatrix');
     
     %% Determine indices for k-means cross validation
     KFoldIndices = nan(numel(TrialIndex), 2);
@@ -116,30 +123,24 @@ parfor bindex = 1:numRepeats
         
     end
     
-    %% Compute for each unit
-    currentWeights = zeros(2, numStims-1, numROIs, numKFolds);
-    currentMatrix = nan(numStims, numStims, numROIs, numKFolds);
-    for rindex = 1:numROIs
-        for kindex = 1:numKFolds
-            
-            % Grab data
-            % data = ROIdata.rois(ROIindex(rindex)).dFoF(:, FrameIndex(1):FrameIndex(2));
-            data = mean(ROIdata.rois(ROIindex(rindex)).dFoF(:, FrameIndex(1):FrameIndex(2)),2);
-            
-            % Compute logistic regression
-            [currentWeights(:,:,rindex,kindex),~,stats] = mnrfit(data(TrialIndex(KFoldIndices(:,1)~=kindex),:), KFoldIndices(KFoldIndices(:,1)~=kindex,2));
-            
-            % Validate & generate confusion matrix
-            [pihat,~,~] = mnrval(currentWeights(:,:,rindex,kindex), data(TrialIndex(KFoldIndices(:,1)==kindex),:),stats);
-            for sindex = 1:numStims
-                currentMatrix(sindex,:,rindex,kindex) = mean(pihat(KFoldIndices(KFoldIndices(:,1)==kindex, 2)==sindex,:),1);
-            end
-            
+    %% Compute
+    currentWeights = zeros(numROIs+1, numStims-1, numKFolds);
+    currentMatrix = nan(numStims, numStims, numKFolds);
+    for kindex = 1:numKFolds
+        
+        % Compute logistic regression
+        [currentWeights(:,:,kindex),~,stats] = mnrfit(Data(:,TrialIndex(KFoldIndices(:,1)~=kindex))', KFoldIndices(KFoldIndices(:,1)~=kindex,2));
+        
+        % Validate & generate confusion matrix
+        [pihat,~,~] = mnrval(currentWeights(:,:,kindex), Data(:,TrialIndex(KFoldIndices(:,1)==kindex))', stats);
+        for sindex = 1:numStims
+            currentMatrix(sindex,:,kindex) = mean(pihat(KFoldIndices(KFoldIndices(:,1)==kindex, 2)==sindex,:),1);
         end
+        
     end
     
-    confusionMatrix = confusionMatrix + mean(currentMatrix,4)/numRepeats;
-    Weights = Weights + mean(currentWeights,4)/numRepeats;
+    confusionMatrix = confusionMatrix + mean(currentMatrix,3)/numRepeats;
+    Weights = Weights + mean(currentWeights,3)/numRepeats;
     
     parfor_progress;
 end
@@ -151,20 +152,12 @@ toc
 stats = struct();
 
 % Compute percent correct
-PCC = nan(numROIs, 1);
-parfor rindex = 1:numROIs
-    PCC(rindex) = trace(confusionMatrix(:,:,rindex))/numStims;
-end
-stats.PCC = PCC;
+stats.PCC = trace(confusionMatrix)/numStims;
 
 % Compute selectivity (Elie & Theunissen 2015)
-Sel = nan(numROIs, 1);
-parfor rindex = 1:numROIs
-    d = diag(confusionMatrix(:,:,rindex));
-    [Sel(rindex), temp1] = max(d);
-    temp2 = false(numStims,1); 
-    temp2(temp1) = true;
-    Sel(rindex) = log2(Sel(rindex)*(numStims-1))/sum(d(~temp2)); % equal to log2(Sel(rindex)/mean(d(~temp2)));
-end
-stats.Sel = Sel;
+d = diag(confusionMatrix);
+[Sel, temp1] = max(d);
+temp2 = false(numStims,1);
+temp2(temp1) = true;
+stats.Sel = log2(Sel*(numStims-1))/sum(d(~temp2)); % equal to log2(Sel(rindex)/mean(d(~temp2)));
 
