@@ -208,7 +208,7 @@ function loadbtn_Callback(hObject, eventdata, handles)
     refresh_stats(handles)
 
 function refresh_stats(handles)
-    nrois = size(handles.mask,2);
+    nrois = handles.current-1;
     ntime = toc(handles.start_time);
     thestr = sprintf('%d ROIS\n% 2d:%02d\n%.1fs/ROI',nrois,floor(ntime/60),mod(round(ntime),60),ntime/(nrois+.01));
     set(handles.stats,'String',thestr);
