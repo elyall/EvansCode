@@ -68,18 +68,20 @@ if ischar(ROIMasks)
             load(ROIFile, 'ROIdata', '-mat');
             ROIMasks = reshape(full([ROIdata.rois(:).pixels]), size(ROIdata.rois(1).pixels,1), size(ROIdata.rois(1).pixels,2), numel(ROIdata.rois));
         case '.segment'
-            load(ROIFile, 'mask', '-mat');
-            ROIMasks = mask;
+            load(ROIFile, 'mask', 'dim', '-mat');
+            if issparse(mask)
+                ROIMasks = reshape(full(mask), dim(1), dim(2), size(mask,2));
+            else
+                ROIMasks = mask;
+            end
     end
-elseif issparse(ROIMasks)
-    ROIMasks = full(ROIMasks);
 end
 
 if numel(ROIindex)>1 && ROIindex(end)==inf
     ROIindex = cat(2, ROIindex(1:end-1), ROIindex(end-1)+1:size(ROIMasks,3));
 end
 ROIMasks = ROIMasks(:,:,ROIindex);
-numROIs = size(ROIMasks, 3);
+[H,W,numROIs] = size(ROIMasks);
 
 
 %% Load in Maps
@@ -110,7 +112,7 @@ if saveOut && ~isempty(saveFile)
     [~,~,ext] = fileparts(saveFile);
     switch ext
         case '.segment'
-            mask = ROIMasks;
+            mask = sparse(reshape(ROIMasks, H*W, numROIs));
             if ~exist(saveFile, 'file')
                 save(saveFile, 'mask', '-mat', '-v7.3');
             else

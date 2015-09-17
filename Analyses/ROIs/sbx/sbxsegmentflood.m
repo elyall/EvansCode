@@ -145,6 +145,7 @@ function loadbtn_Callback(hObject, eventdata, handles)
         %set(handles.corr,'visible','off');
     end
     handles.m = m;
+    handles.dim = size(m);
     handles.m_eq = adapthisteq(handles.m,'NumTiles',[16 16],'Distribution','Exponential');
     handles.xraypoint = [];
     try
@@ -160,10 +161,15 @@ function loadbtn_Callback(hObject, eventdata, handles)
     set(handles.histeq,'visible','on');
     
     try
-        load([fn(1:end-6) '.segment'],'-mat');
-        handles.mask = mask;
+        load([fn(1:end-6) '.segment'],'mask','-mat');
+        if ~issparse(mask)
+            mask = sparse(reshape(mask, prod(handles.dim), size(mask,3)));
+        end
+        handles.mask = [mask, sparse(prod(handles.dim), 500)];
+        handles.current = size(mask,2)+1;
     catch
-        handles.mask = [];
+        handles.mask = sparse(prod(handles.dim), 1000);
+        handles.current = 1;
     end
     handles.npixels = 250;
     handles.floodcenter = [];
@@ -202,7 +208,7 @@ function loadbtn_Callback(hObject, eventdata, handles)
     refresh_stats(handles)
 
 function refresh_stats(handles)
-    nrois = size(handles.mask,3);
+    nrois = size(handles.mask,2);
     ntime = toc(handles.start_time);
     thestr = sprintf('%d ROIS\n% 2d:%02d\n%.1fs/ROI',nrois,floor(ntime/60),mod(round(ntime),60),ntime/(nrois+.01));
     set(handles.stats,'String',thestr);
@@ -210,7 +216,13 @@ function refresh_stats(handles)
 function im_flood_ButtonDownFcn(hObject, eventdata)
     handles = guidata(hObject);
     newmask = handles.floodmap < handles.npixels;
-    handles.mask = cat(3, handles.mask, newmask);
+    
+    if handles.current>size(handles.mask,2)
+        handles.mask = cat(2, handles.mask, sparse(prod(handles.dim), 100));
+    end
+    
+    handles.mask(:,handles.current) = newmask(:);
+    handles.current = handles.current + 1;
     
     handles.floodcenter = [];
     guidata(hObject,handles);
@@ -223,10 +235,10 @@ function im_flood_ButtonDownFcn(hObject, eventdata)
     refresh_stats(handles);
     
 function drawfgim(handles)
-    if get(handles.hiderois,'Value') || isempty(handles.mask)
-        themask = zeros(size(handles.m));
+    if get(handles.hiderois,'Value')
+        themask = zeros(handles.dim);
     else
-        themask = any(handles.mask, 3);
+        themask = reshape(any(handles.mask, 2), handles.dim);
     end
     set(handles.im_mask,'AlphaData',.5*(themask));
     
@@ -341,19 +353,20 @@ function savebtn_Callback(hObject, eventdata, handles)
 zoom off;
 pan off;
 
-mask = handles.mask;
+mask = handles.mask(:,1:handles.current-1);
+dim = handles.dim;
 
-%create vertices from mask
-vert = cell(size(mask,3),1);
-for ii = 1:size(mask,3)
-    try
-        vert{ii} = mask2poly(mask(:,:,ii),'Inner','MinDist');
-    catch me
-        vert{ii} = [];
-    end
-end
+% %create vertices from mask
+% vert = cell(size(mask,3),1);
+% for ii = 1:size(mask,3)
+%     try
+%         vert{ii} = mask2poly(mask(:,:,ii),'Inner','MinDist');
+%     catch me
+%         vert{ii} = [];
+%     end
+% end
 
-save([strtok(handles.fn,'.') '.segment'],'mask','vert','-v7.3');
+save([strtok(handles.fn,'.') '.segment'],'mask','dim','-v7.3');
 fprintf('Saved segments\n');
 
 
@@ -596,8 +609,8 @@ function undobtn_Callback(hObject, eventdata, handles)
 % hObject    handle to undobtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-themax = size(handles.mask,3);
-handles.mask(:,:,themax) = [];
+handles.current = handles.current - 1;
+handles.mask(:,handles.current) = sparse(prod(handles.dim), 1);
 guidata(hObject,handles);
 drawfgim(handles);
 drawfloodim(handles);

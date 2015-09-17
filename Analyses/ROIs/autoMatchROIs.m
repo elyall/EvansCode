@@ -86,8 +86,12 @@ if iscellstr(ROIMasks)
         [~,~,ext] = fileparts(ROIFiles{findex});
         switch ext
             case '.segment'
-                load(ROIFiles{findex}, 'mask', '-mat');
-                ROIMasks{findex} = mask;
+                load(ROIFiles{findex}, 'mask', 'dim', '-mat');
+                if issparse(mask)
+                    ROIMasks{findex} = reshape(full(mask), dim(1), dim(2), size(mask,2));
+                else
+                    ROIMasks{findex} = mask;
+                end
                 Centroids{findex} = zeros(size(ROIMasks{findex},3), 2);
                 for rindex = 1:size(ROIMasks{findex},3)
                     temp = regionprops(ROIMasks{findex}(:,:,rindex), 'centroid');
@@ -313,7 +317,7 @@ if saveOut && ~isempty(saveFile)
             case '.segment'
                 
                 % Save variable to file
-                mask = ROIMasks{findex};
+                mask = sparse(reshape(ROIMasks{findex}, Height(findex)*Width(findex), size(ROIMasks{findex},3)));
                 if ~exist(saveFile{findex}, 'file')
                     save(saveFile{findex}, 'mask', '-mat', '-v7.3');
                 else
