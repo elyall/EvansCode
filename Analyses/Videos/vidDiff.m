@@ -1,4 +1,4 @@
-function saveFile = vidDiff(saveFile, ImagesA, MapsA, ImagesB, MapsB, varargin)
+function [saveFile, CLim] = vidDiff(saveFile, ImagesA, MapsA, ImagesB, MapsB, varargin)
 
 StimIndex = [2 inf]; % stimuli indices to save to file
 StimFrameIndex = [23, 47]; % frame indices of stimulus period for each stimulus
@@ -15,9 +15,9 @@ frameRate = 15.45;
 mergetype = 'quick'; % 'quick' or 'pretty'
 % Crop = false;
 Crop = [32.51, 0, 729.98, 512];
-CLim = [-5,5];
-% filt = false;
-filt = fspecial('gaussian',5,1);
+CLim = [];
+filt = false;
+% filt = fspecial('gaussian',5,1);
 
 directory = cd;
 
@@ -90,6 +90,8 @@ if ~exist('MapsA', 'var')
     else
         MapsA = {fullfile(p, MapsA)};
     end
+elseif ischar(MapsA)
+    MapsA = {MapsA};
 end
 
 if ~exist('ImagesB', 'var') || isempty(ImagesB)
@@ -113,6 +115,8 @@ if ~exist('MapsB', 'var')
     else
         MapsB = {fullfile(p, MapsB)};
     end
+elseif ischar(MapsB)
+    MapsB = {MapsB};
 end
 
 
@@ -181,14 +185,14 @@ if isempty(CLim)
     for index = 1:numA
         temp{index} = ImagesA{1}{5}(:,:,1,StimFrameIndex(5,2));
     end
-    ImageA = createImage(temp, MapsA, 'OutputView', outMap, 'filter', filt, 'crop', Crop);
+    ImageA = createImage(temp, MapsA, 'type', mergetype, 'OutputView', outMap, 'filter', filt, 'crop', Crop);
     
     % Create B frame
     temp = cell(numB, 1);
     for index = 1:numB
         temp{index} = ImagesB{1}{5}(:,:,1,StimFrameIndex(5,2));
     end
-    ImageB = createImage(temp, MapsB, 'OutputView', outMap, 'filter', filt, 'crop', Crop);
+    ImageB = createImage(temp, MapsB, 'type', mergetype, 'OutputView', outMap, 'filter', filt, 'crop', Crop);
     
     % Compute difference
     Image = (ImageB - ImageA);%./(ImageB + ImageA);
@@ -212,6 +216,12 @@ switch CMapType
         cmap = [zeros(128,1), zeros(128,1), linspace(0,1,128)'];
 end
 
+% % stimmarker color
+% if showStimMarker
+%     cmap = cat(2, cmap, [1,0,1]);
+%     showStimMarker = size(cmap,1);
+% end
+
 
 %% Save each stimulus average to video
 
@@ -226,7 +236,7 @@ hF = figure('Units', 'Pixels', 'Position', [50, 50, 1400, 800]);
 hA = axes('Parent', hF);
 
 for sindex = StimIndex
-    fprintf('\n\twriting s%d:', sindex);
+%     fprintf('\n\twriting s%d:', sindex);
     
     for findex = 1:size(ImagesA{1}{sindex},4)
         
@@ -235,35 +245,38 @@ for sindex = StimIndex
         for index = 1:numA
             temp{index} = ImagesA{1}{sindex}(:,:,1,findex);
         end
-        ImageA = createImage(temp, MapsA, 'OutputView', outMap, 'filter', filt, 'crop', Crop);
+        ImageA = createImage(temp, MapsA, 'type', mergetype, 'OutputView', outMap, 'crop', Crop, 'filter', filt);
         
         % Create B frame
         temp = cell(numB, 1);
         for index = 1:numB
             temp{index} = ImagesB{1}{sindex}(:,:,1,findex);
         end
-        ImageB = createImage(temp, MapsB, 'OutputView', outMap, 'filter', filt, 'crop', Crop);
+        ImageB = createImage(temp, MapsB, 'type', mergetype, 'OutputView', outMap, 'crop', Crop, 'filter', filt);
         
         % Compute difference
         Image = (ImageB - ImageA);%./(ImageB + ImageA);
+        
+        % Image = imfilter(Image, filt);
+        
+        % Display Image
+        imagesc(Image, CLim);
+        axis off;
+        colormap(cmap);
         
         % Determine frame dimensions
         if sindex == StimIndex(1) && findex == 1
             [H, W, ~] = size(Image);
             StimH = round(H/20);
             StimW = round(W/20);
+            hold on;
         end
-        
-        % Display Image
-        imagesc(Image, 'Parent', hA, CLim);
-        axis off;
-        colormap(cmap);
         
         % Place Stimulus mark
         if showStimMarker && sindex ~= ControlIndex && findex>=StimFrameIndex(sindex,1) && findex<=StimFrameIndex(sindex,2)
             patch([W-StimW*2; W-StimW; W-StimW; W-StimW*2],...
                 [H-StimH*2; H-StimH*2; H-StimH; H-StimH],...
-                'white','EdgeColor','white');
+                'magenta','EdgeColor','magenta');
         end
         
         % Place ID number
@@ -282,10 +295,12 @@ for sindex = StimIndex
         end
         
         % Write to video
-        frame = getframe(hA);
+        drawnow
+        pause(0.01);
+        frame = getframe(hF);
         writeVideo(vidObj, frame.cdata);
         
-        fprintf('\t%d', findex);
+%         fprintf('\t%d', findex);
     end
 
 end
