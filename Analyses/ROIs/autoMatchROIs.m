@@ -17,7 +17,7 @@ saveFile = {''};
 saveType = 'new'; % 'new' or 'all' (determines which files to save to)
 
 distanceThreshold = 10; % pixels
-overlapThreshold = .9; % percentage
+overlapThreshold = .7; % percentage
 addNewROIs = false; % add ROIs that don't match across files
 
 directory = cd;
@@ -129,51 +129,28 @@ fprintf('\t%s\n', temp{:});
 %% Load in Maps
 if iscellstr(Maps)
     MapFiles = Maps;
-    Maps = cell(numFiles, 1);
+    Maps = imref2d();
     for findex = 1:numFiles
         temp = load(MapFiles{findex}, 'Map', '-mat');
         if isfield(temp, 'Map')
-            Maps{findex} = temp.Map;
+            Maps(findex) = temp.Map;
         else
             warning('No map found in file %s, assuming file starts at origin', MapFiles{findex});
-            Maps{findex} = imref2d([Height(findex), Width(findex)]);
+            Maps(findex) = imref2d([Height(findex), Width(findex)]);
         end
     end
 elseif isempty(Maps)
     warning('No maps input, assuming all files start at origin');
     Maps = cell(numFiles, 1);
     for findex = 1:numFiles
-        Maps{findex} = imref2d([Height(findex), Width(findex)]);
+        Maps(findex) = imref2d([Height(findex), Width(findex)]);
     end
 end
 
 
-%% Determine location of images
-XLim = [inf, -inf];
-YLim = [inf, -inf];
-for findex = 1:numFiles
-    XLim(1) = min(XLim(1), Maps{findex}.XWorldLimits(1));
-    XLim(2) = max(XLim(2), Maps{findex}.XWorldLimits(2));
-    YLim(1) = min(YLim(1), Maps{findex}.YWorldLimits(1));
-    YLim(2) = max(YLim(2), Maps{findex}.YWorldLimits(2));
-end
-H = diff(YLim);
-W = diff(XLim);
-MainMap = imref2d([H,W], XLim, YLim);
-
-% Determine image offsets
-offsets = zeros(numFiles, 2);
-for findex = 1:numFiles
-    offsets(findex, :) = [Maps{findex}.XWorldLimits(1) - XLim(1), Maps{findex}.YWorldLimits(1) - YLim(1)];
-end
-
-% Build Map
-Map = zeros(H, W, numFiles);
-for findex = 1:numFiles
-    ylim = [ceil(Maps{findex}.YWorldLimits(1)),floor(Maps{findex}.YWorldLimits(2))] - floor(YLim(1));
-    xlim = [ceil(Maps{findex}.XWorldLimits(1)),floor(Maps{findex}.XWorldLimits(2))] - floor(XLim(1));
-    Map(ylim(1):ylim(2),xlim(1):xlim(2),findex) = 1;
-end
+%% Build Map
+[offsets, refMap, indMap] = mapFoVs(Maps);
+[H,W,~] = size(indMap);
 
 
 %% Translate ROIs
@@ -181,15 +158,15 @@ ActualMasks = cell(numFiles,1);
 ROIindex = cell(numFiles,1);
 for findex = 1:numFiles
     ROIindex{findex} = 1:numROIs(findex);
-    Centroids{findex} = bsxfun(@plus, Centroids{findex}, offsets(findex,:));
+    Centroids{findex} = bsxfun(@plus, Centroids{findex}, offsets(findex,1:2));
     ActualMasks{findex} = false(H, W, numROIs(findex));
     for rindex = 1:numROIs(findex)
-        ActualMasks{findex}(:,:,rindex) = imwarp(ROIMasks{findex}(:,:,rindex), Maps{findex}, affine2d(), 'OutputView', MainMap);
+        ActualMasks{findex}(:,:,rindex) = imwarp(ROIMasks{findex}(:,:,rindex), Maps(findex), affine2d(), 'OutputView', refMap);
     end
 end
 
 % Reshape variables
-Map = reshape(Map, H*W, numFiles);
+indMap = reshape(indMap, H*W, numFiles);
 ActualMasks = cellfun(@(x) reshape(x, size(x,1)*size(x,2), size(x,3)), ActualMasks, 'UniformOutput', false);
 
 
@@ -202,7 +179,7 @@ distances = cell(numCombinations, 1);
 overlapMasks = zeros(H*W, numCombinations);
 for cindex = 1:numCombinations
     distances{cindex} = pdist2(Centroids{combinations(cindex, 1)}, Centroids{combinations(cindex, 2)}); % distance between all ROIs in current 2 files
-    overlapMasks(:, cindex) = all(Map(:,[combinations(cindex, 1), combinations(cindex, 2)]),2);             % region of overlap between the current 2 files
+    overlapMasks(:, cindex) = all(indMap(:,[combinations(cindex, 1), combinations(cindex, 2)]),2);             % region of overlap between the current 2 files
 end
 
 
@@ -220,7 +197,7 @@ for findex = 1:numFiles
         % Determine what files current ROI should be found in
         X = min(max(round(Centroids{findex}(rindex,1)), 1), W);
         Y = min(max(round(Centroids{findex}(rindex,2)), 1), H);
-        FileIndices = find(Map(sub2ind([H,W], Y, X), :)); % centroid in FoV
+        FileIndices = find(indMap(sub2ind([H,W], Y, X), :)); % centroid in FoV
         % FileIndices = find(all(Map(ActualMasks{findex}(:,rindex),:), 1)); % ROI mask completely in FoV
         FileIndices(FileIndices==findex) = [];
         
@@ -288,7 +265,7 @@ if addNewROIs
         ROIMasks{findex} = cat(3, ROIMasks{findex}, zeros(Height(findex), Width(findex), numNew(findex)));
         for rindex = 1:numNew(findex)
             [~, mfindex, mrindex] = find(Index(uindex(rindex),:), 1);                                           % find matched ROI in another file
-            ROIMasks{findex}(:,:,numROIs(findex)+rindex) = transferROIs(ROIMasks{mfindex}(:,:,mrindex), Maps{mfindex}, Maps{findex});   % translate and add ROI                            % add new ROI
+            ROIMasks{findex}(:,:,numROIs(findex)+rindex) = transferROIs(ROIMasks{mfindex}(:,:,mrindex), Maps(mfindex), Maps(findex));   % translate and add ROI                            % add new ROI
             Index(uindex(rindex), findex) = numROIs(findex)+rindex;                                             % record index of new ROI
             newBoolean(uindex(rindex), findex) = true;
         end

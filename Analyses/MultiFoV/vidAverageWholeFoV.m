@@ -18,38 +18,6 @@ blur = false;
 h = fspecial('gaussian',5,1);
 
 %% Check input arguments
-if ~exist('SaveFile', 'var') || isempty(SaveFile)
-    directory = CanalSettings('DataDirectory');
-    [SaveFile, p] = uiputfile({'*.avi'},'Save file as',directory);
-    if isnumeric(SaveFile)
-        return
-    end
-    SaveFile = fullfile(p, SaveFile);
-end
-
-if ~exist('Data','var') || isempty(Data)
-    directory = CanalSettings('ExperimentDirectory');
-    [Data, p] = uigetfile({'*.mat'},'Choose Experiment file',directory,'MultiSelect','on');
-    if isnumeric(Data)
-        return
-    end
-    if iscellstr(Data)
-        Data = fullfile(p, Data);
-    else
-        error('Use ''vidAverageStim'' instead for a single FoV');
-    end
-elseif ischar(Data)
-    Data = {Data};
-end
-
-if ~exist('IndicesToSave', 'var') || isempty(IndicesToSave)
-    IndicesToSave = 'all';
-end
-
-if ~exist('Map', 'var')
-    Map = [];
-end
-
 index = 1;
 while index<=length(varargin)
     switch varargin{index}
@@ -95,6 +63,39 @@ while index<=length(varargin)
     end
 end
 
+if ~exist('SaveFile', 'var') || isempty(SaveFile)
+    directory = CanalSettings('DataDirectory');
+    [SaveFile, p] = uiputfile({'*.avi'},'Save file as',directory);
+    if isnumeric(SaveFile)
+        return
+    end
+    SaveFile = fullfile(p, SaveFile);
+end
+
+if ~exist('Data','var') || isempty(Data)
+    directory = CanalSettings('ExperimentDirectory');
+    [Data, p] = uigetfile({'*.mat'},'Choose Experiment file',directory,'MultiSelect','on');
+    if isnumeric(Data)
+        return
+    end
+    if iscellstr(Data)
+        Data = fullfile(p, Data);
+    else
+        error('Use ''vidAverageStim'' instead for a single FoV');
+    end
+elseif ischar(Data)
+    Data = {Data};
+end
+
+if ~exist('IndicesToSave', 'var') || isempty(IndicesToSave)
+    IndicesToSave = 'all';
+end
+
+if ~exist('Map', 'var')
+    Map = [];
+end
+
+
 %% Load In Data
 numFiles = numel(Data);
 fprintf('Will be saving average evoked dF/F to ''%s''\n', SaveFile);
@@ -105,7 +106,7 @@ if iscellstr(Data)
     for findex = 1:numFiles
         Data(findex) = load(ExperimentFiles{findex}, 'AnalysisInfo', type, 'Map', '-mat');
         if ~isfield(Data, 'Map')
-            Data(findex).Map = imref2d([size(Data(findex).AnalysisInfo, 1), size(Data(findex).AnalysisInfo, 2)]);
+            % Data(findex).Map = imref2d([size(Data(findex).AnalysisInfo, 1), size(Data(findex).AnalysisInfo, 2)]);
         end
         fprintf('\tloaded %d: %s\n', findex, ExperimentFiles{findex});
     end

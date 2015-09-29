@@ -169,7 +169,9 @@ for findex = 1:numFiles;
     
     %% Compute projections
     if ProcessFrames && (~any(strcmp({variables.name}, 'ImageFiles')) || override)
+        
         computeProjections(ImageFiles{findex}, [2,inf], saveFile, 'MotionCorrect', true, 'Avg', true, 'Min', true, 'Max', true, 'Var', true, 'Save', 'SaveFile', saveFile);
+        
     end
     
     

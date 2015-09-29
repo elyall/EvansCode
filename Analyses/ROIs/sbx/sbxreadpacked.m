@@ -100,13 +100,13 @@ function Z = sbxreadpacked(fname,offset,nframes)
 
         if isfield(info,'scanbox_version') && info.scanbox_version >= 2
 
-            info.max_idx =  d.bytes/info.recordsPerBuffer/size(info.S,2)*factor/4 - 1;
+            info.max_idx =  d.bytes/info.recordsPerBuffer/size(info.S,2)*factor/4; % -1
 
             info.nsamples = (size(info.S,2) * info.recordsPerBuffer * 2 * info.nchan);   % bytes per record 
 
         else
 
-            info.max_idx =  d.bytes/info.bytesPerBuffer*factor - 1;
+            info.max_idx =  d.bytes/info.bytesPerBuffer*factor; % -1
 
         end
 

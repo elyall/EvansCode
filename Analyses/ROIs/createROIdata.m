@@ -45,8 +45,12 @@ end
 %% Load masks
 if ischar(ROIMasks)
     ROIFile = ROIMasks;
-    load(ROIFile, 'mask', '-mat');
-    ROIMasks = mask;
+    load(ROIFile, 'mask', 'dim', '-mat');
+    if issparse(mask)
+        ROIMasks = reshape(full(mask), dim(1), dim(2), size(mask,2));
+    else
+        ROIMasks = mask;
+    end
 else
     ROIFile = '';
 end

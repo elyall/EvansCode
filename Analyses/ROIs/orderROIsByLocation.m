@@ -1,6 +1,5 @@
-function [Order, Distances, ROIs] = orderROIsByLocation(ROIs, ExperimentFiles, ROIindex, FileIndex, Label)
+function [Order, Distances, ROIindex, ROIs] = orderROIsByLocation(ROIs, ExperimentFiles, ROIindex, FileIndex, Label)
 
-type = 'mFoV'; % 'mFoV' or 'frame'
 
 
 %% Parse input arguments
@@ -22,10 +21,11 @@ numFiles = numel(ROIs);
 numROIs = numel(ROIindex);
 
 
-%% Determine ROI shifts
-if ~isfield([ROIs{:}], 'mFoVShift')
-    [~, ROIs] = determineROIShift(ROIs, ExperimentFiles);
+%% Shift ROIs
+if numel(ROIs)>1
+
 end
+
 
 %% Find distances between ROIs and given location
 Distances = nan(numROIs,1);

@@ -282,11 +282,11 @@ function sbxalignmaster(fname)
 
     try
 
-        save([fname '.align'],'m','v','thestd','sm','k','T','Q','-append');
+        save([fname '.align'],'m','v','thestd','sm','k','T','Q','-mat','-append');
 
     catch
 
-        save([fname '.align'],'m','v','thestd','sm','k','T','Q');
+        save([fname '.align'],'m','v','thestd','sm','k','T','Q','-mat','-v7.3');
 
     end
 

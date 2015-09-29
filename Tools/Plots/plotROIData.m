@@ -159,6 +159,7 @@ YLim = [];
 % YLim = [min([rois(ROIindex).curve]), max([rois(ROIindex).curve])];
 
 % Cycle through figures requested generating one at a time
+hF = [];
 for findex = FigureOrder
     rindices = ROIindex(FigureIndex==findex);
     
@@ -173,7 +174,9 @@ for findex = FigureOrder
     end
     
     % Create figure
-    hF = figure('Position', [50, 50, 1400, 800]);
+    if ~saveOut || isempty(hF)
+        hF = figure('Position', [50, 50, 1400, 800]);
+    end
     hA = zeros(1,4);
     for aindex = 1:4
         hA(aindex) = subplot(2,2,aindex);
@@ -239,7 +242,6 @@ for findex = FigureOrder
     if saveOut
         drawnow;
         export_fig(hF, saveFile, '-append');
-        close(hF);
     end
     
 end

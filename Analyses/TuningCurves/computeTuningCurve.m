@@ -90,6 +90,8 @@ end
 %% Determine ROIs to analyze
 if ischar(ROIindex) && strcmp(ROIindex, 'all')
     ROIindex = [1, inf];
+elseif iscolumn(ROIindex)
+    ROIindex = ROIindex';
 end
 if ROIindex(end) == inf
     ROIindex = cat(2, ROIindex(1:end-1), ROIindex(1:end-1)+1:numel(ROIdata.rois));
@@ -145,7 +147,7 @@ for rindex = ROIindex
         CaTraces = ROIdata.rois(rindex).dFoF(currentTrials,:);              % pull out data for these trials
         
         % Remove bad trials
-        badCurrent = any(isnan(CaTraces), 2);
+        badCurrent = any(isnan(CaTraces(:,StimFrames(sindex,1):StimFrames(sindex,2))), 2);
         if any(badCurrent)
             for bindex = currentTrials(badCurrent)
                 badTrials{bindex} = [badTrials{bindex}, rindex];
@@ -157,14 +159,21 @@ for rindex = ROIindex
         StimulusDFoF = mean(CaTraces(:, StimFrames(sindex,1):StimFrames(sindex,2)), 2);
         
         % Remove outliers
-        n = inf;
-        while n ~= length(StimulusDFoF)
-            n = length(StimulusDFoF);
-            StimulusDFoF(abs(StimulusDFoF-mean(StimulusDFoF))>outlierweight*std(StimulusDFoF)) = [];
+        go = false;
+        gindex = 1;
+        [~,order] = sort(abs(zscore(StimulusDFoF)),'descend'); % determine trials furthest from the mean
+        while ~go
+            [~,mu,sigma] = zscore(StimulusDFoF(order(gindex+1:end))); % determine mean and std without current trial
+            if abs(StimulusDFoF(order(gindex))-mu) > outlierweight*sigma % determine if current trial is an outlier
+                gindex = gindex + 1; % current trial is an outlier -> move to next trial
+            else
+                go = true; % no more outliers exist
+            end
         end
+        StimulusDFoF = StimulusDFoF(order(gindex:end)); % remove outlier trials
         
         % Save tuning curves
-        ROIdata.rois(rindex).curve(sindex) = mean(StimulusDFoF); % evoked dF/F over all trials for current stimulus
+        ROIdata.rois(rindex).curve(sindex) = median(StimulusDFoF); % evoked dF/F over all trials for current stimulus
         ROIdata.rois(rindex).StdError(sindex) = std(StimulusDFoF)/sqrt(length(StimulusDFoF)); % standard error for stimulus
         ROIdata.rois(rindex).Raw{sindex} = StimulusDFoF;
         ROIdata.rois(rindex).nTrials(sindex) = numel(StimulusDFoF);

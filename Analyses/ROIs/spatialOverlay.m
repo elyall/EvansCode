@@ -25,6 +25,7 @@ AdjustEdgeBrightness = true;
 Origin = [];
 hA = [];
 Image = [];
+CMap = [];
 Map = [];
 
 directory = cd;
@@ -74,6 +75,9 @@ while index<=length(varargin)
             index = index + 2;
         case 'Image'
             Image = varargin{index+1};
+            index = index + 2;
+        case 'Colormap'
+            CMap = varargin{index+1};
             index = index + 2;
         case 'Map'
             Map = varargin{index+1};
@@ -227,7 +231,16 @@ switch ImgToDisplay
     case 'none'
         imshow(Image);
     otherwise
+        if size(Image,3)==1
+            if isempty(CMap)
+                CMap = parula(250);
+            end
+            Image = gray2ind(mat2gray(Image), size(CMap,1));
+        end
         image(Image);
+        if size(Image,3)==1
+            colormap(CMap)
+        end
 end
 
 % Plot overlay

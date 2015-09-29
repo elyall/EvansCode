@@ -11,13 +11,12 @@ end
 colornum = 250;
 
 range = cmax - cmin;
-mid = round(colornum*(abs(cmin)/range));
+mid = round(colornum*(abs(cmin)/range))+1;
 
 cmap = zeros(colornum, 3);
 
 for cindex = 1:3
     cmap(1:mid,cindex) = linspace(color_input(1,cindex), color_input(2,cindex), mid);
-%     cmap(mid, cindex) = color_input(2, cindex);
     cmap(mid:colornum,cindex) = linspace(color_input(2,cindex), color_input(3,cindex), colornum-mid+1);
 end
     

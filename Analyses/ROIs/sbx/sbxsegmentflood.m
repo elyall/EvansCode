@@ -366,7 +366,7 @@ dim = handles.dim;
 %     end
 % end
 
-save([strtok(handles.fn,'.') '.segment'],'mask','dim','-v7.3');
+save([strtok(handles.fn,'.') '.segment'],'mask','dim','-mat','-v7.3');
 fprintf('Saved segments\n');
 
 

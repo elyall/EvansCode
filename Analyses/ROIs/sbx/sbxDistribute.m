@@ -35,8 +35,8 @@ end
 
 
 %% Create MCdata variable
-% vars = whos(matfile([fname,'.align']));
-% if ~any(strcmp({vars(:).name}, 'MCdata'))
+vars = whos(matfile([fname,'.align']));
+if ~any(strcmp({vars(:).name}, 'MCdata'))
     load([fname, '.align'], 'T', '-mat');
     MCdata.T = T;
     MCdata.type = 'Translation';
@@ -45,7 +45,7 @@ end
     MCdata.Channel2AlignFrom = 1;
     MCdata.Parameters = [];
     save([fname, '.align'], 'MCdata', '-append', '-mat');
-% end
+end
 
 
 %% Create ROIdata
