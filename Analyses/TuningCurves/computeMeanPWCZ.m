@@ -46,7 +46,7 @@ numROIs = cellfun(@(x) numel(x.rois), ROIs);
 
 
 %% Compute mean of PWCZ
-fprintf('\tComputing TMI...');
+fprintf('\tComputing mean of PWCZ (positions %d to %d)...', pos1, pos2);
 PWCZmean = cell(numFiles/2, 1);
 for findex = 1:2:numFiles
     PWCZmean{(findex+1)/2} = nan(numROIs(findex),2);

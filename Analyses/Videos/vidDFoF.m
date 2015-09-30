@@ -1,4 +1,4 @@
-function [saveFile, CLim] = vidDiff(saveFile, ImagesA, MapsA, ImagesB, MapsB, varargin)
+function [saveFile, CLim] = vidDFoF(saveFile, Images, Maps, varargin)
 
 StimIndex = [2 inf]; % stimuli indices to save to file
 StimFrameIndex = [23, 47]; % frame indices of stimulus period for each stimulus
@@ -7,11 +7,11 @@ StimID = 0:8; % ID #'s to display (including control trial)
 
 % Display settings
 type = 'AvgTrialdFoF';
-CMapType = 'HiLo';
+CMapType = 'green';
 showStimID = true;
 showStimMarker = true;
 showColorBar = true;
-frameRate = 15.45;
+frameRate = 15.45*3;
 mergetype = 'quick'; % 'quick' or 'pretty'
 % Crop = false;
 Crop = [32.51, 0, 729.98, 512];
@@ -74,108 +74,59 @@ if ~exist('saveFile', 'var') || isempty(saveFile)
     saveFile = fullfile(p, saveFile);
 end
 
-if ~exist('ImagesA', 'var') || isempty(ImagesA)
-    [ImagesA,p] = uigetfile({'*.exp;*.align'}, 'Select image files for first dataset:', directory, 'MultiSelect', 'on');
-    if isnumeric(ImagesA)
+if ~exist('Images', 'var') || isempty(Images)
+    [Images,p] = uigetfile({'*.exp;*.align'}, 'Select image files for first dataset:', directory, 'MultiSelect', 'on');
+    if isnumeric(Images)
         return
-    elseif iscellstr(ImagesA)
-        ImagesA = fullfile(p, ImagesA);
+    elseif iscellstr(Images)
+        Images = fullfile(p, Images);
     else
-        ImagesA = {fullfile(p, ImagesA)};
+        Images = {fullfile(p, Images)};
     end
     directory = p;
-elseif ischar(ImagesA)
-    ImagesA = {ImagesA};
+elseif ischar(Images)
+    Images = {Images};
 end
 
-if ~exist('MapsA', 'var') || isempty(MapsA)
-    [MapsA,p] = uigetfile({'*.exp;*.align'}, 'Select map files for first dataset:', directory, 'MultiSelect', 'on');
-    if isnumeric(MapsA)
+if ~exist('Maps', 'var') || isempty(Maps)
+    [Maps,p] = uigetfile({'*.exp;*.align'}, 'Select map files for first dataset:', directory, 'MultiSelect', 'on');
+    if isnumeric(Maps)
         return
-    elseif iscellstr(MapsA)
-        MapsA = fullfile(p, MapsA);
+    elseif iscellstr(Maps)
+        Maps = fullfile(p, Maps);
     else
-        MapsA = {fullfile(p, MapsA)};
+        Maps = {fullfile(p, Maps)};
     end
-elseif ischar(MapsA)
-    MapsA = {MapsA};
-end
-
-if ~exist('ImagesB', 'var') || isempty(ImagesB)
-    [ImagesB,p] = uigetfile({'*.exp;*.align'}, 'Select image files for second dataset:', directory, 'MultiSelect', 'on');
-    if isnumeric(ImagesB)
-        return
-    elseif iscellstr(ImagesB)
-        ImagesB = fullfile(p, ImagesB);
-    else
-        ImagesB = {fullfile(p, ImagesB)};
-    end
-    directory = p;
-elseif ischar(ImagesB)
-    ImagesB = {ImagesB};
-end
-
-if ~exist('MapsB', 'var') || isempty(MapsB)
-    [MapsB,p] = uigetfile({'*.exp;*.align'}, 'Select map files for second dataset:', directory, 'MultiSelect', 'on');
-    if isnumeric(MapsB)
-        return
-    elseif iscellstr(MapsB)
-        MapsB = fullfile(p, MapsB);
-    else
-        MapsB = {fullfile(p, MapsB)};
-    end
-elseif ischar(MapsB)
-    MapsB = {MapsB};
+elseif ischar(Maps)
+    Maps = {Maps};
 end
 
 
 %% Load in images from the two datasets
-if iscellstr(ImagesA)
-    ImageFiles = ImagesA;
-    ImagesA = cell(numel(ImageFiles),1);
+if iscellstr(Images)
+    ImageFiles = Images;
+    Images = cell(numel(ImageFiles),1);
     for findex = 1:numel(ImageFiles)
         temp = load(ImageFiles{findex}, type, '-mat');
-        ImagesA{findex} = temp.(type);
+        Images{findex} = temp.(type);
     end
 end
-numA = numel(ImagesA);
-
-if iscellstr(ImagesB)
-    ImageFiles = ImagesB;
-    ImagesB = cell(numel(ImageFiles),1);
-    for findex = 1:numel(ImageFiles)
-        temp = load(ImageFiles{findex}, type, '-mat');
-        ImagesB{findex} = temp.(type);
-    end
-end
-numB = numel(ImagesB);
+numFiles = numel(Images);
 
 
 %% Load in maps from the two datasets
-if iscellstr(MapsA)
-    MapFiles = MapsA;
-    MapsA = imref2d();
+if iscellstr(Maps)
+    MapFiles = Maps;
+    Maps = imref2d();
     for findex = 1:numel(MapFiles)
         load(MapFiles{findex}, 'Map', '-mat');
-        MapsA(findex) = Map;
+        Maps(findex) = Map;
     end
 end
-
-if iscellstr(MapsB)
-    MapFiles = MapsB;
-    MapsB = imref2d();
-    for findex = 1:numel(MapFiles)
-        load(MapFiles{findex}, 'Map', '-mat');
-        MapsB(findex) = Map;
-    end
-end
-
-% Initialize Map for Generating Images
-outMap = mapOverlap(MapsA, MapsB, 'crop', Crop);
 
 
 %% Determine stimuli to save
-numStims = numel(ImagesA{1});
+numStims = numel(Images{1});
 if StimIndex(end) == inf
     StimIndex = [StimIndex(1:end-1), StimIndex(end-1)+1:numStims];
 end
@@ -190,23 +141,14 @@ end
 if isempty(CLim)
     
     % Create A frame
-    temp = cell(numA, 1);
-    for index = 1:numA
-        temp{index} = ImagesA{1}{5}(:,:,1,StimFrameIndex(5,2));
+    temp = cell(numFiles, 1);
+    for index = 1:numFiles
+        temp{index} = Images{1}{5}(:,:,1,StimFrameIndex(5,2));
     end
-    ImageA = createImage(temp, MapsA, 'type', mergetype, 'OutputView', outMap, 'filter', filt, 'crop', Crop);
-    
-    % Create B frame
-    temp = cell(numB, 1);
-    for index = 1:numB
-        temp{index} = ImagesB{1}{5}(:,:,1,StimFrameIndex(5,2));
-    end
-    ImageB = createImage(temp, MapsB, 'type', mergetype, 'OutputView', outMap, 'filter', filt, 'crop', Crop);
-    
-    % Compute difference
-    Image = (ImageB - ImageA);%./(ImageB + ImageA);
-        
+    Image = createImage(temp, Maps, 'type', mergetype, 'filter', filt, 'crop', Crop);
+
     CLim = prctile(Image(:), [.01,99.99]);
+    
 end
 
 % Determine colormap
@@ -225,12 +167,6 @@ switch CMapType
         cmap = [zeros(128,1), zeros(128,1), linspace(0,1,128)'];
 end
 
-% % stimmarker color
-% if showStimMarker
-%     cmap = cat(2, cmap, [1,0,1]);
-%     showStimMarker = size(cmap,1);
-% end
-
 
 %% Save each stimulus average to video
 
@@ -247,27 +183,15 @@ hA = axes('Parent', hF);
 for sindex = StimIndex
 %     fprintf('\n\twriting s%d:', sindex);
     
-    for findex = 1:size(ImagesA{1}{sindex},4)
+    for findex = 1:size(Images{1}{sindex},4)
         
-        % Create A frame
-        temp = cell(numA, 1);
-        for index = 1:numA
-            temp{index} = ImagesA{1}{sindex}(:,:,1,findex);
+        % Create frame
+        temp = cell(numFiles, 1);
+        for index = 1:numFiles
+            temp{index} = Images{1}{sindex}(:,:,1,findex);
         end
-        ImageA = createImage(temp, MapsA, 'type', mergetype, 'OutputView', outMap, 'crop', Crop, 'filter', filt);
-        
-        % Create B frame
-        temp = cell(numB, 1);
-        for index = 1:numB
-            temp{index} = ImagesB{1}{sindex}(:,:,1,findex);
-        end
-        ImageB = createImage(temp, MapsB, 'type', mergetype, 'OutputView', outMap, 'crop', Crop, 'filter', filt);
-        
-        % Compute difference
-        Image = (ImageB - ImageA);%./(ImageB + ImageA);
-        
-        % Image = imfilter(Image, filt);
-        
+        Image = createImage(temp, Maps, 'type', mergetype, 'crop', Crop, 'filter', filt);
+                
         % Display Image
         imagesc(Image, CLim);
         axis off;
@@ -300,7 +224,7 @@ for sindex = StimIndex
         % Display color bar
         if showColorBar
             cbH = colorbar;
-            ylabel(cbH, 'Change in dF/F');
+            ylabel(cbH, 'dF/F');
         end
         
         % Write to video

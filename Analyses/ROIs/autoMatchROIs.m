@@ -1,5 +1,6 @@
 function [Index, ROIMasks, newBoolean] = autoMatchROIs(ROIMasks, Maps, Centroids, varargin)
-% ROIMasks - cell array of HxWxN ROI masks or cell array of ROI files
+% ROIMasks - cell array of HxWxN ROI masks or cell array of ROI files or
+% cell array of ROIdata structs
 % Maps - cell array of imref2d objects or cell array of filenames
 % Centroids - cell array of centroids of ROIs or empty
 
@@ -103,6 +104,16 @@ if iscellstr(ROIMasks)
                 ROIMasks{findex} = reshape(full([ROIdata.rois(:).pixels]), size(ROIdata.rois(1).pixels,1), size(ROIdata.rois(1).pixels,2), numel(ROIdata.rois));
                 Centroids{findex} = reshape([ROIdata.rois(:).centroid], 2, numel(ROIdata.rois))';
         end
+    end
+elseif isstruct(ROIMasks{1}) % ROIs cell input
+    ROIFiles = strcat('file', {' '}, num2str((1:numFiles)'));
+    InitialROIdata = cell(numFiles, 1);
+    ROIMasks = cell(numFiles, 1);
+    Centroids = cell(numFiles, 1);
+    for findex = 1:numFiles
+        InitialROIdata{findex} = ROIMasks{findex};
+        ROIMasks{findex} = reshape(full([InitialROIdata{findex}.rois(:).pixels]), size(InitialROIdata{findex}.rois(1).pixels,1), size(InitialROIdata{findex}.rois(1).pixels,2), numel(InitialROIdata{findex}.rois));
+        Centroids{findex} = reshape([InitialROIdata{findex}.rois(:).centroid], 2, numel(InitialROIdata{findex}.rois))';
     end
 else
     ROIFiles = strcat('file', {' '}, num2str((1:numFiles)'));

@@ -1,7 +1,7 @@
 function [Weights, confusionMatrix, stats] = computeMLR(ROIdata, varargin)
 
-numKFolds = 10;
-numRepeats = 100;
+numKFolds = 5;
+numRepeats = 1;
 
 FrameIndex = [];
 TrialIndex = [1 inf];
@@ -164,7 +164,7 @@ parfor rindex = 1:numROIs
     [Sel(rindex), temp1] = max(d);
     temp2 = false(numStims,1); 
     temp2(temp1) = true;
-    Sel(rindex) = log2(Sel(rindex)*(numStims-1))/sum(d(~temp2)); % equal to log2(Sel(rindex)/mean(d(~temp2)));
+    Sel(rindex) = log2(Sel(rindex)*(numStims-1)/sum(d(~temp2))); % equal to log2(Sel(rindex)/mean(d(~temp2)));
 end
 stats.Sel = Sel;
 
