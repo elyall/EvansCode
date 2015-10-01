@@ -1,7 +1,5 @@
-function [Weights, confusionMatrix, stats] = computeMLR(ROIdata, varargin)
+function [confusionMatrix, stats] = computeMLR(ROIdata, varargin)
 
-numKFolds = 5;
-numRepeats = 1;
 
 FrameIndex = [];
 TrialIndex = [1 inf];
@@ -13,12 +11,6 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
-            case 'numKFolds'
-                numKFolds = varargin{index+1};
-                index = index + 2;
-            case 'numRepeats'
-                numRepeats = varargin{index+1};
-                index = index + 2;
             case {'FrameIndex', 'Frames', 'frames'}
                 FrameIndex = varargin{index+1};
                 index = index + 2;
@@ -64,13 +56,14 @@ numROIs = numel(ROIindex);
 if TrialIndex(end) == inf
     TrialIndex = [TrialIndex(1:end-1), TrialIndex(end-1)+1:numel(ROIdata.DataInfo.StimID)];
 end
+numTrials = numel(TrialIndex);
 
 if isempty(FrameIndex)
     FrameIndex = [ROIdata.DataInfo.numFramesBefore+1, ROIdata.DataInfo.numFramesBefore+mode(ROIdata.DataInfo.numStimFrames(TrialIndex))];
 end
 
 
-%% Initialize output
+%% Determine stimuli
 
 % Set control trials to be last stimulus (mnrfit assumes last category as
 % reference)
@@ -79,92 +72,92 @@ if isempty(ControlID)
 end
 ROIdata.DataInfo.StimID(ROIdata.DataInfo.StimID==ControlID) = max(ROIdata.DataInfo.StimID) + 1;
 
-% Initialize outputs
-[StimIDs,~,StimIndex] = unique(ROIdata.DataInfo.StimID(TrialIndex));
-numStims = numel(StimIDs);
-Weights = zeros(2, numStims-1, numROIs);
-confusionMatrix = zeros(numStims, numStims, numROIs);
+% Initialize output
+[temp,~,StimIndex] = unique(ROIdata.DataInfo.StimID(TrialIndex));
+totalStims = numel(temp);
+
+
+%% Determine number of each type of trial
+numStims = nan(totalStims,1);
+for sindex = 1:totalStims
+    numStims(sindex) = nnz(StimIndex==sindex);
+end
+minNumStim = min(numStims);
 
 
 %% Perform analysis
+predictions = zeros(numTrials, numROIs);
+
 tic
-parfor_progress(numRepeats);
-parfor bindex = 1:numRepeats
+parfor_progress(numROIs);
+parfor rindex = 1:numROIs
     warning('off', 'stats:mnrfit:IterOrEvalLimit');
+
+    % Pull out current ROI's data
+    data = mean(ROIdata.rois(ROIindex(rindex)).dFoF(TrialIndex, FrameIndex(1):FrameIndex(2)),2);
     
-    %% Determine indices for k-means cross validation
-    KFoldIndices = nan(numel(TrialIndex), 2);
-    for sindex = 1:numStims
+    % Cycle through testing each trial after training on other trials
+    for testIndex = 1:numTrials
         
-        % Determine in what trials current stimulus was shown
-        currentIndices = find(StimIndex==sindex);
-        numTrials = numel(currentIndices);
+        % Determine number of trials to use for each stimlus
+        stim = StimIndex(testIndex);                    % ID of current trial
+        n = min(minNumStim, numStims(stim) - 1);        % minimum number of trials available for single stimuli
         
-        % Determine number of trials that should exist in each fold
-        numPerFold = diff(round(linspace(1,numTrials+1,numKFolds+1)));
-        % numPerFold = numPerFold(randperm(numKFolds)); % randomize order of fold sizes (not necessary I believe)
-        if any(numPerFold==0)
-            warning('Requesting more folds than observations for a given stimulus -> some folds will not have a certain stimulus type.');
-        end
-        
-        % Distribute the trials to the folds
-        for kindex = 1:numKFolds
-            temp = randsample(numTrials-sum(numPerFold(1:kindex-1)), numPerFold(kindex)); % select random trial(s) for current fold
-            KFoldIndices(currentIndices(temp),:) = repmat([kindex, sindex], numPerFold(kindex), 1);
-            currentIndices(temp) = [];
-        end
-        
-    end
-    
-    %% Compute for each unit
-    currentWeights = zeros(2, numStims-1, numROIs, numKFolds);
-    currentMatrix = nan(numStims, numStims, numROIs, numKFolds);
-    for rindex = 1:numROIs
-        for kindex = 1:numKFolds
-            
-            % Grab data
-            % data = ROIdata.rois(ROIindex(rindex)).dFoF(:, FrameIndex(1):FrameIndex(2));
-            data = mean(ROIdata.rois(ROIindex(rindex)).dFoF(:, FrameIndex(1):FrameIndex(2)),2);
-            
-            % Compute logistic regression
-            [currentWeights(:,:,rindex,kindex),~,stats] = mnrfit(data(TrialIndex(KFoldIndices(:,1)~=kindex),:), KFoldIndices(KFoldIndices(:,1)~=kindex,2));
-            
-            % Validate & generate confusion matrix
-            [pihat,~,~] = mnrval(currentWeights(:,:,rindex,kindex), data(TrialIndex(KFoldIndices(:,1)==kindex),:),stats);
-            for sindex = 1:numStims
-                currentMatrix(sindex,:,rindex,kindex) = mean(pihat(KFoldIndices(KFoldIndices(:,1)==kindex, 2)==sindex,:),1);
+        % Determine trials to use for each stimulus
+        trainIndices = nan(n*totalStims, 1);
+        for index = 1:totalStims
+            if index~=stim % stimulus is not stimulus being tested
+                trainIndices(n*(index-1)+1:n*index) = randsample(find(StimIndex==index), n); % randomly choose n trials for current stimulus
+            else % stimulus is one being tested
+                temp = find(StimIndex==index);  % find trials for current stimulus
+                temp(temp==testIndex) = [];     % remove trial being tested
+                trainIndices(n*(index-1)+1:n*index) = randsample(temp, n); % randomly choose n trials for current stimulus
             end
-            
         end
+        
+        % Compute logistic regression
+        [Weights,~,Statistics] = mnrfit(data(trainIndices), StimIndex(trainIndices));
+        
+        % Validate & generate confusion matrix
+        [~,est] = max(mnrval(Weights, data(testIndex), Statistics));
+        predictions(testIndex, rindex) = est;
+        
     end
-    
-    confusionMatrix = confusionMatrix + mean(currentMatrix,4)/numRepeats;
-    Weights = Weights + mean(currentWeights,4)/numRepeats;
-    
     parfor_progress;
 end
 parfor_progress(0);
 toc
 
 
-%% Compute stats
-stats = struct();
-
-% Compute percent correct
-PCC = nan(numROIs, 1);
-parfor rindex = 1:numROIs
-    PCC(rindex) = trace(confusionMatrix(:,:,rindex))/numStims;
+%% Build confusion matrices
+confusionMatrix = zeros(totalStims, totalStims, numROIs);
+for rindex = 1:numROIs
+    for sindex = 1:totalStims
+        confusionMatrix(sindex, :, rindex) = hist(predictions(StimIndex==sindex,rindex), 1:totalStims);
+    end
 end
-stats.PCC = PCC;
 
-% Compute selectivity (Elie & Theunissen 2015)
+
+%% Compute stats
+
+% Compute percent correct & selectivity
+PCC = nan(numROIs, 1);
 Sel = nan(numROIs, 1);
 parfor rindex = 1:numROIs
-    d = diag(confusionMatrix(:,:,rindex));
-    [Sel(rindex), temp1] = max(d);
-    temp2 = false(numStims,1); 
-    temp2(temp1) = true;
-    Sel(rindex) = log2(Sel(rindex)*(numStims-1)/sum(d(~temp2))); % equal to log2(Sel(rindex)/mean(d(~temp2)));
+    
+    % Normalize confusion matrix
+    normCM = bsxfun(@rdivide, confusionMatrix(:,:,rindex), numStims); % numStims == sum(confusionMatrix(:,:,rindex),2)
+    
+    % Compute PCC
+    PCC(rindex) = trace(normCM)/totalStims;
+    
+    % Compute Selectivity
+    [maxV, maxL] = max(diag(normCM));
+    Sel(rindex) = log2(maxV*(totalStims-1)/sum(d(setdiff(1:totalStims, maxL)))); % equal to log2(Sel(rindex)/mean(d(~temp2)));
+    
 end
+
+% Create output
+stats.PCC = PCC;
 stats.Sel = Sel;
 

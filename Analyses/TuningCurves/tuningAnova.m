@@ -5,8 +5,8 @@ function PValues = tuningAnova(ROIs, ROIindex)
 %
 % PValues - Nx3 array of p-values -> [btwn positions, btwn pre and post, interaction btwn the two]
 
+StimIndex = [1 inf];
 
-ControlIndex = 1; % index in curve that are control trials (false if no control)
 
 %% Parse input arguments
 % index = 1;
@@ -62,12 +62,15 @@ end
 numROIs = size(ROIindex, 1);
 
 
-%% Compute anova
+%% Determine stimuli to analyze
+numStims = length(ROIs{1}.rois(ROIindex(1,1)).curve);
+if StimIndex(end) == inf
+    StimIndex = [StimIndex(1:end-1), StimIndex(end-1)+1:numStims];
+end
+numStims = numel(StimIndex);
 
-% Determine stimuli to analyze
-numStim = length(ROIs{1}.rois(ROIindex(1,1)).curve)-any(ControlIndex);
-StimIndex = 1:numStim+any(ControlIndex);
-StimIndex(ControlIndex) = [];
+
+%% Compute anova
 
 % Compute significance
 PValues = nan(numROIs, 3); % [btwn positions, btwn pre and post, interaction btwn the two]
@@ -82,16 +85,17 @@ parfor rindex = 1:numROIs
     % Organize data
     dFoFPre = [];
     dFoFPost = [];
-    for tindex = StimIndex %ignore control position
+    for tindex = StimIndex
         dFoFPre = cat(1, dFoFPre, [temp1{tindex}; nan(N-numel(temp1{tindex}),1)]);
         dFoFPost = cat(1, dFoFPost, [temp2{tindex}; nan(N-numel(temp2{tindex}),1)]);
     end
     
     % Create dictionary
-    g1 = repmat(reshape(repmat(1:numStim, N, 1), numStim*N, 1), 2, 1);
-    g2 = reshape(repmat([numStim+1, numStim+2], numStim*N, 1), numStim*N*2, 1);
+    g1 = repmat(reshape(repmat(1:numStims, N, 1), numStims*N, 1), 2, 1);
+    g2 = reshape(repmat([numStims+1, numStims+2], numStims*N, 1), numStims*N*2, 1);
     
     % Compute 2-way ANOVA
     PValues(rindex,:) = anovan([dFoFPre;dFoFPost], [g1,g2], 'model','full','display','off')';
     
 end
+
