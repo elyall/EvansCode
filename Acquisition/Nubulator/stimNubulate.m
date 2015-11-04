@@ -12,11 +12,13 @@ Display.position = [100, 100, 800, 400];
 
 %% Initialize Experiment
 
+% Saving info
 gd.Internal.save.path = 'C:\Users\Resonant-2\OneDrive\StimData';
 gd.Internal.save.base = '0000';
 gd.Internal.save.depth = '000';
 gd.Internal.save.index = '000';
 
+% Experiment info
 gd.Experiment.saving.save = false;
 gd.Experiment.saving.SaveFile = fullfile(gd.Internal.save.path, gd.Internal.save.base);
 gd.Experiment.saving.DataFile = '';
@@ -31,15 +33,19 @@ gd.Experiment.timing.preDuration = 1.5; % in seconds
 gd.Experiment.timing.stimDuration = 1.5; % in seconds
 
 gd.Experiment.stim.setup = table(...
-    {'C1';'C2';'B1';'D1';'a';'b';'';''},...
-    {'port0/line0';'port0/line0';'port0/line0';'port0/line0';'port0/line0';'port0/line0';'port0/line0';'port0/line0'},...
+    {'C1';'C2';'B1';'D1';'beta';'gamma';'';''},...
+    {'port0/line8';'port0/line9';'port0/line10';'port0/line11';'port0/line12';'port0/line13';'port0/line14';'port0/line15'},...
     [true;true;true;true;true;true;false;false],...
     'VariableNames',{'Name','Port','Active'});
 gd.Experiment.stim.pistonCombinations = {};
 gd.Experiment.stim.control = true; % true or false (give control stimulus)
 
+% Properties for display or processing input data
 gd.Internal.buffer.numscans = gd.Experiment.params.samplingFrequency * 6;
 gd.Internal.buffer.downSample = 20;
+
+% Place holder for offline control of stimulus
+gd.Internal.daq = [];
 
 %% Parse input arguments
 index = 1;
@@ -187,23 +193,31 @@ gd.Stimuli.panel = uipanel(...
     'Units',                'Normalized',...
     'Position',             [0, 0, .5, .8]);
 % ports list
+numPorts = size(gd.Experiment.stim.setup,1);
 gd.Stimuli.ports = uitable(...
     'Parent',               gd.Stimuli.panel,...
     'Units',                'Normalized',...
     'Position',             [0,.2,.6,.8],...
-    'ColumnName',           {'Name','Port','Active'},...
-    'ColumnFormat',         {'char','char','logical'},...
-    'ColumnEditable',       [true,true,true],...
-    'Data',                 table2cell(gd.Experiment.stim.setup),...
+    'ColumnName',           {'Name','Port','Active','Toggle'},...
+    'ColumnFormat',         {'char','char','logical','logical'},...
+    'ColumnEditable',       [true,true,true,true],...
+    'Data',                 [table2cell(gd.Experiment.stim.setup), mat2cell(false(numPorts, 1), ones(numPorts,1), 1)],...
     'CellEditCallback',     @(hObject,eventdata)EditPorts(hObject, eventdata, guidata(hObject)));
-% add port
-% create all port combinations
-gd.Stimuli.generateCombinations = uicontrol(...
-    'Style',                'pushbutton',...
-    'String',               'Generate all combinations',...
+% basis for combination creation
+gd.Stimuli.editCombinations = uicontrol(...
+    'Style',                'edit',...
+    'String',               num2str(1:nnz(gd.Experiment.stim.setup.Active)),...
     'Parent',               gd.Stimuli.panel,...
     'Units',                'normalized',...
-    'Position',             [0,0,.4,.2],...
+    'Position',             [0,.1,.4,.1],...
+    'Callback',             @(hObject,eventdata)EditCombinations(hObject, eventdata, guidata(hObject)));
+% create port combinations
+gd.Stimuli.generateCombinations = uicontrol(...
+    'Style',                'pushbutton',...
+    'String',               'Generate combinations',...
+    'Parent',               gd.Stimuli.panel,...
+    'Units',                'normalized',...
+    'Position',             [0,0,.4,.1],...
     'Callback',             @(hObject,eventdata)GenerateCombinations(hObject, eventdata, guidata(hObject)));
 % load combinations
 gd.Stimuli.load = uicontrol(...
@@ -212,7 +226,7 @@ gd.Stimuli.load = uicontrol(...
     'Parent',               gd.Stimuli.panel,...
     'Units',                'normalized',...
     'Position',             [.4,.1,.2,.1],...
-    'Callback',             @(hObject,eventdata)SaveStimuli(hObject, eventdata, guidata(hObject)));
+    'Callback',             @(hObject,eventdata)LoadStimuli(hObject, eventdata, guidata(hObject)));
 % save combinations
 gd.Stimuli.save = uicontrol(...
     'Style',                'pushbutton',...
@@ -220,7 +234,7 @@ gd.Stimuli.save = uicontrol(...
     'Parent',               gd.Stimuli.panel,...
     'Units',                'normalized',...
     'Position',             [.4,0,.2,.1],...
-    'Callback',             @(hObject,eventdata)LoadStimuli(hObject, eventdata, guidata(hObject)));
+    'Callback',             @(hObject,eventdata)SaveStimuli(hObject, eventdata, guidata(hObject)));
 % stimuli list
 gd.Stimuli.list = uitable(...
     'Parent',               gd.Stimuli.panel,...
@@ -257,7 +271,7 @@ gd.Run.control = uicontrol(...
     'Style',                'checkbox',...
     'String',               'Control Trial?',...
     'Parent',               gd.Run.panel,...
-    'HorizontalAlignment',  'right',...
+    'Value',                gd.Experiment.stim.control,...
     'Units',                'normalized',...
     'Position',             [.5,.8,.5,.1]);
 % run button
@@ -278,15 +292,8 @@ guidata(gd.fig, gd); % save guidata
 CreateFilename(gd.Saving.FullFilename, [], gd);
 end
 
+
 %% SAVING CALLBACKS
-function ImagingSelection(hObject, eventdata, gd)
-if isequal(gd.Saving.tabgroup.SelectedTab, gd.Saving.scim.tab)
-    gd.Internal.ImagingType = 'scim';
-elseif isequal(gd.Saving.tabgroup.SelectedTab, gd.Saving.sbx.tab)
-    gd.Internal.ImagingType = 'sbx';
-end
-guidata(hObject, gd);
-end
 
 function ChooseDir(hObject, eventdata, gd)
 temp = uigetdir(gd.Internal.save.path, 'Choose directory to save to');
@@ -337,6 +344,7 @@ else
 end
 end
 
+
 %% STIMULI CALLBACKS
 % function linearMotorPos(hObject, eventdata, gd)
 % if str2num(hObject.String) < 0
@@ -356,8 +364,18 @@ end
 % end
 
 function EditPorts(hObject, eventdata, gd)
-gd.Experiment.stim.setup = cell2table(hObject.Data,'VariableNames',{'Name','Port','Active'});
-guidata(hObject,gd);
+if eventdata.Indices(2)==4 % Trigger port
+    if isempty(gd.Internal.daq)
+        gd.Internal.daq = daq.createSession('ni');
+        gd.Internal.daq.addDigitalChannel('Dev1', gd.Experiment.stim.setup.Port, 'OutputOnly');
+    end
+    gd.Internal.daq.outputSingleScan([hObject.Data{:,4}]);
+else % Save user changes
+    gd.Experiment.stim.setup = cell2table(hObject.Data(:,1:3),'VariableNames',{'Name','Port','Active'}); % save edits
+    EditCombinations(gd.Stimuli.editCombinations, 'edit', gd);
+end
+
+guidata(hObject,gd); % update guidata
 end
 
 function EditStimuli(hObject, eventdata, gd)
@@ -368,7 +386,20 @@ if eventdata.Indices(2)==2
 end
 
 % Update registry
-gd.Experiment.stim.pistonCombinations = cellfun(@str2num, hObject.Data, 'UniformOutput',false);
+gd.Experiment.stim.pistonCombinations = cellfun(@str2num, hObject.Data(:,1:3), 'UniformOutput',false);
+
+end
+
+function EditCombinations(hObject, eventdata, gd)
+
+if ischar(eventdata) % Update to all possible combinations
+    hObject.String = num2str(1:nnz(gd.Experiment.stim.setup.Active));
+else % Remove not possible combinations
+    combinations = str2num(hObject.String);
+    combinations(combinations > nnz(gd.Experiment.stim.setup.Active)) = [];
+    combinations(combinations < 1) = [];
+    hObject.String = num2str(combinations);
+end
 
 end
 
@@ -376,9 +407,8 @@ function GenerateCombinations(hObject, eventdata, gd)
 
 % Generate combinations
 activePorts = find(gd.Experiment.stim.setup.Active);
-numPorts = numel(activePorts);
 stimuli = [];
-for cindex = 1:numPorts
+for cindex = str2num(gd.Stimuli.editCombinations.String)
     current = nchoosek(activePorts,cindex);
     stimuli = cat(1,stimuli,mat2cell(current, ones(size(current,1),1), size(current,2)));
 end
@@ -388,9 +418,49 @@ gd.Stimuli.list.Data = cellfun(@num2str, stimuli, 'UniformOutput',false);
 
 % Update registry
 gd.Experiment.stim.pistonCombinations = stimuli;
+
+% Update number of trials
+gd.Run.numTrials.String = num2str(size(stimuli,1)*10);
+
 guidata(hObject, gd);
 
 end
+
+function LoadStimuli(hObject, eventdata, gd)
+
+% Select and load file
+[f,p] = uigetfile({'*.stim';'*.mat'},'Select stim file to load',cd);
+if isnumeric(f)
+    return
+end
+load(fullfile(p,f), 'stimuli', '-mat');
+fprintf('Loaded stimuli from: %s\n', fullfile(p,f));
+
+% Display combinations
+gd.Stimuli.list.Data = cellfun(@num2str, stimuli, 'UniformOutput',false);
+
+% Save loaded stimuli
+gd.Experiment.stim.pistonCombinations = stimuli;
+
+% Update number of trials
+gd.Run.numTrials.String = num2str(size(stimuli,1)*10);
+
+guidata(hObject, gd);
+end
+
+function SaveStimuli(hObject, eventdata, gd)
+% Determine file to save to
+[f,p] = uiputfile({'*.stim';'*.mat'},'Save stimuli as?',cd);
+if isnumeric(f)
+    return
+end
+
+% Save stimuli
+stimuli = gd.Experiment.stim.pistonCombinations;
+save(fullfile(p,f), 'stimuli', '-mat', '-v7.3');
+fprintf('Stimuli saved to: %s\n', fullfile(p,f));
+end
+
 
 %% RUN EXPERIMENT
 function RunExperiment(hObject, eventdata, gd)
@@ -425,29 +495,23 @@ if hObject.Value
         hObject.String = 'Stop';
         
         %% Initialize NI-DAQ session
+        gd.Internal.daq = [];
+        
         DAQ = daq.createSession('ni'); % initialize session
         DAQ.IsContinuous = true; % set session to be continuous (call's 'DataRequired' listener)
         DAQ.Rate = gd.Experiment.params.samplingFrequency; % set sampling frequency
         gd.Experiment.params.samplingFrequency = DAQ.Rate; % the actual sampling frequency is rarely perfect from what is input
         
-        % Add clock
-        % daqClock = daq.createSession('ni');
-        % daqClock.addCounterOutputChannel('Dev1',0,'PulseGeneration')
-        % clkTerminal = daqClock.Channels(1).Terminal;
-        % daqClock.Channels(1).Frequency = DAQ.Rate;
-        % daqClock.IsContinuous = true;
-        % daqClock.startBackground;
-        % DAQ.addClockConnection('External',['Dev1/' clkTerminal],'ScanClock');
-        
         % Add ports
+        % Pistons
+        activePorts = find(gd.Experiment.stim.setup.Active);
+        for index = activePorts'
+            [~,id] = DAQ.addDigitalChannel('Dev1',gd.Experiment.stim.setup.Port(index),'OutputOnly');
+            DAQ.Channels(id).Name = strcat('O_Piston',index);
+        end
         % Imaging Computer Trigger (for timing)
         [~,id] = DAQ.addDigitalChannel('Dev1','port0/line0','OutputOnly');
         DAQ.Channels(id).Name = 'O_2PTrigger';
-        % Pistons
-        [~,id] = DAQ.addDigitalChannel('Dev1','port0/line8:15','OutputOnly');
-        for index = 1:numel(id)
-            DAQ.Channels(id).Name = strcat('O_Piston',num2str(index));
-        end
         % Running Wheel
         [~,id] = DAQ.addDigitalChannel('Dev1','port0/line5:7','InputOnly');
         DAQ.Channels(id(1)).Name = 'I_RunWheelA';
@@ -464,6 +528,15 @@ if hObject.Value
         OutChannels = DAQChannels(~cellfun(@isempty,strfind(DAQChannels, 'O_')));
         InChannels = DAQChannels(~cellfun(@isempty,strfind(DAQChannels, 'I_')));
         
+        % Add clock
+        daqClock = daq.createSession('ni');
+        daqClock.addCounterOutputChannel('Dev1',0,'PulseGeneration')
+        clkTerminal = daqClock.Channels(1).Terminal;
+        daqClock.Channels(1).Frequency = DAQ.Rate;
+        daqClock.IsContinuous = true;
+        daqClock.startBackground;
+        DAQ.addClockConnection('External',['Dev1/' clkTerminal],'ScanClock');
+        
         % Add QueueData callback
         DAQ.addlistener('DataRequired', @QueueData); % create listener for queueing trials
         DAQ.NotifyWhenScansQueuedBelow = DAQ.Rate-1; % queue more data when less than a second of data left
@@ -473,27 +546,33 @@ if hObject.Value
         
         
         %% Create triggers
-%         gd.Experiment.StimID = 1:gd.Experiment.stim.numPositions;
+        
+        % Determine stimulus IDs
+        gd.Experiment.StimID = 1:numel(gd.Experiment.stim.pistonCombinations);
+
+        % Determine if presenting control stimulus
+        gd.Experiment.stim.control = gd.Run.control.Value;
         if gd.Experiment.stim.control
             gd.Experiment.StimID = [0, gd.Experiment.StimID];
         end
         
         % Initial
-        gd.Experiment.Triggers = zeros(round(gd.Experiment.params.samplingFrequency*gd.Experiment.timing.trialDuration), numel(OutChannels), 1+gd.Experiment.stim.control);
+        gd.Experiment.Triggers = zeros(round(gd.Experiment.params.samplingFrequency*gd.Experiment.timing.trialDuration), numel(OutChannels));
         
         % Trigger pistons
         startTrig = floor(gd.Experiment.params.samplingFrequency*gd.Experiment.timing.preDuration);
         endTrig = ceil(gd.Experiment.params.samplingFrequency*(gd.Experiment.timing.preDuration+gd.Experiment.timing.stimDuration));
-        
+        gd.Experiment.PistonTrigger = zeros(size(gd.Experiment.Triggers,1), 1);
+        gd.Experiment.PistonTrigger(startTrig:endTrig) = 1;
         
         % Trigger imaging computer
-        gd.Experiment.Triggers([startTrig, endTrig], strcmp(OutChannels, 'O_2PTrigger'), :) = 1;
+        gd.Experiment.Triggers([startTrig, endTrig], strcmp(OutChannels, 'O_2PTrigger')) = 1;
         
         % Trigger whisker tracking camera
-        gd.Experiment.Triggers(startTrig-ceil(DAQ.Rate/100):endTrig, strcmp(OutChannels, 'O_WhiskerIllumination'), :) = 1;
-        gd.Experiment.Triggers(startTrig:ceil(DAQ.Rate/gd.Experiment.params.frameRateWT):endTrig, strcmp(OutChannels, 'O_WhiskerTracker'), :) = 1;
-        % gd.Experiment.Triggers(1, strcmp(OutChannels, 'O_WhiskerTracker'), :) = 1;        % mode 15 limited to 255 frames
-        % gd.Experiment.Triggers(stopMove1, strcmp(OutChannels, 'O_WhiskerTracker'), :) = 1;
+        gd.Experiment.Triggers(startTrig-ceil(DAQ.Rate/100):endTrig, strcmp(OutChannels, 'O_WhiskerIllumination')) = 1;
+        gd.Experiment.Triggers(startTrig:ceil(DAQ.Rate/gd.Experiment.params.frameRateWT):endTrig, strcmp(OutChannels, 'O_WhiskerTracker')) = 1;
+        % gd.Experiment.Triggers(1, strcmp(OutChannels, 'O_WhiskerTracker')) = 1;        % mode 15 limited to 255 frames
+        % gd.Experiment.Triggers(stopMove1, strcmp(OutChannels, 'O_WhiskerTracker')) = 1;
         
         % Stimulus info
         gd.Experiment.Stimulus = zeros(size(gd.Experiment.Triggers,1), 1);
@@ -529,10 +608,12 @@ if hObject.Value
         % Necessary variables
         numTrials = str2num(gd.Run.numTrials.String);
         numStimuli = numel(gd.Experiment.StimID);
-        Triggers = gd.Experiment.Triggers;
+        BaseTriggers = gd.Experiment.Triggers;
+        PistonTrigger = gd.Experiment.PistonTrigger;
         ControlTrial = gd.Experiment.stim.control;
         currentBlockOrder = gd.Experiment.StimID;
         currentTrial = 0;
+        PistonCombinations = gd.Experiment.stim.pistonCombinations;
         TrialInfo = struct('StimID', []);
         saveOut = gd.Experiment.saving.save;
 
@@ -579,7 +660,7 @@ if hObject.Value
         Experiment.timing.finish = datestr(now);
         
         %% End Experiment
-        fclose(H_LinearStage);
+%         fclose(H_LinearStage);
         if strcmp(ImagingType, 'sbx')
             fprintf(H_Scanbox,'S'); %stop
             fclose(H_Scanbox);
@@ -590,7 +671,7 @@ if hObject.Value
             gd.Saving.index.String = sprintf('%03d',str2num(gd.Saving.index.String) + 1);
             CreateFilename(gd.Saving.FullFilename, [], gd);
         end
-        
+
         hObject.Value = false;
         hObject.BackgroundColor = [.94,.94,.94];
         hObject.ForegroundColor = [0,0,0];
@@ -680,9 +761,11 @@ end
             
             % Queue output data
             if ControlTrial && TrialInfo.StimID(currentTrial) == 0                              % current trial is control trial
-                DAQ.queueOutputData(Triggers(:,:,2));
+                DAQ.queueOutputData(BaseTriggers);
             else                                                                                % current trial is not control trial
-                DAQ.queueOutputData(Triggers(:,:,1));
+                CurrentTriggers = BaseTriggers;
+                CurrentTriggers(:,PistonCombinations{TrialInfo.StimID(currentTrial)}) = repmat(PistonTrigger, 1, numel(PistonCombinations{TrialInfo.StimID(currentTrial)}));
+                DAQ.queueOutputData(CurrentTriggers);
             end
             
             % Update information
