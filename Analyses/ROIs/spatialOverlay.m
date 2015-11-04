@@ -10,9 +10,10 @@ function [Image, Origin, hA] = spatialOverlay(ROIs, Data, ROIindex, FileIndex, C
 
 % Data
 DataType = 'continuous'; % 'discrete' or 'continuous'
+Radius = [];
 
 % Display Properties
-transparency = .8; % value from 0 to 1
+transparency = 1; % value from 0 to 1
 ImgToDisplay = 'average'; % 'average' or 'none' or 'var' or 'max' or 'min'
 mergetype = 'quick'; % 'quick' or 'pretty'
 showColorBar = false;
@@ -69,6 +70,9 @@ while index<=length(varargin)
     switch varargin{index}
         case 'DataType'
             DataType = varargin{index+1};
+            index = index + 2;
+        case 'Radius'
+            Radius = varargin{index+1};
             index = index + 2;
         case 'Crop'
             Crop = varargin{index+1};
@@ -159,8 +163,12 @@ end
 switch DataType
     case 'discrete'
         if ~exist('Labels', 'var') || isempty(Labels)
-            Labels = cellstr(num2str((1:size(Colors,1))'));
+            Labels = flip(cellstr(num2str((1:size(Colors,1))')));
+        else
+            Labels = flip(Labels);
         end
+        Colors = flip(Colors);
+        ColorIndex = abs(ColorIndex - max(ColorIndex) - 1);
     case 'continuous'
         if ~exist('Labels', 'var') || isempty(Labels)
             Labels = [min(ColorIndex), max(ColorIndex)];
@@ -233,7 +241,7 @@ switch ImgToDisplay
     otherwise
         if size(Image,3)==1
             if isempty(CMap)
-                CMap = parula(250);
+                CMap = gray(250);
             end
             Image = gray2ind(mat2gray(Image), size(CMap,1));
         end
@@ -246,7 +254,11 @@ end
 % Plot overlay
 hold on
 for rindex = 1:numROIs
-    vertices = ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).vertices;
+    if isempty(Radius)
+        vertices = ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).vertices;
+    else
+        vertices = circle(ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).centroid, Radius(rindex));
+    end
     hP = patch(vertices(:,1),...
         vertices(:,2),...
         Colors(ColorIndex(rindex),:).*Brightness(rindex,:),...
@@ -272,14 +284,15 @@ if showColorBar
     Split = (NewYLim(2)-NewYLim(1))/numel(Labels); % determine the distance on the colorbar between two colors
     switch DataType
         case 'discrete'
-            set(cbH, 'Limits', NewYLim, 'Ticks', NewYLim(1)+Split/2:Split:NewYLim(2), 'YTickLabel', Labels);
+            set(cbH, 'Limits', NewYLim, 'FontSize', 20, 'Ticks', NewYLim(1)+Split/2:Split:NewYLim(2), 'YTickLabel', Labels);
         case 'continuous'
-            set(cbH, 'Limits', NewYLim, 'Ticks', NewYLim(1):(NewYLim(2)-NewYLim(1))/(numel(Labels)-1):NewYLim(2), 'YTickLabel', Labels);
+            set(cbH, 'Limits', NewYLim, 'FontSize', 20, 'Ticks', NewYLim(1):(NewYLim(2)-NewYLim(1))/(numel(Labels)-1):NewYLim(2), 'YTickLabel', Labels);
     end
     % set(cbH, 'Ticks', YLim(1):(YLim(2)-YLim(1))/(numel(Labels)-1):YLim(2), 'YTickLabel', Labels);
     if ~isempty(colorbarLabel)
-        ylabel(cbH, colorbarLabel);
+        ylabel(cbH, colorbarLabel, 'FontSize', 20);
     end
+    
 end
 
 % Display title
@@ -287,4 +300,9 @@ if ~isempty(Title)
     title(Title);
 end
 
+end
 
+function vertices = circle(centroid,r)
+th = (0:pi/50:2*pi)';
+vertices = [r * cos(th) + centroid(1), r * sin(th) + centroid(2)];
+end

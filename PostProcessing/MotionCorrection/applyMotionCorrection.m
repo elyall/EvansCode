@@ -114,7 +114,7 @@ switch MCdata(1).type
                     try
                         Images(:,:,iD,iC,iF) = circshift(Images(:,:,iD,iC,iF), MCdata(MCindex(iF,1)).T(MCindex(iF,2),:));
                     catch ME
-                        if MCindex(iF,2) == size(MCdata(MCindex(iF,1)).T,1)+1 % old bug where code doesn't motion correct last image
+                        if MCindex(iF,2) ~= size(MCdata(MCindex(iF,1)).T,1)+1 % old bug where code doesn't motion correct last image
                             rethrow(ME)
                         end
                     end        

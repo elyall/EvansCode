@@ -1,7 +1,8 @@
-function [confusionMatrix, stats] = computeMLR(ROIdata, varargin)
+function [confusionMatrix, stats, StimulusIDs] = computeMLR(ROIdata, varargin)
 
 
 FrameIndex = [];
+StimulusIDs = [1 inf];
 TrialIndex = [1 inf];
 ROIindex = [1 inf];
 ControlID = [];
@@ -16,6 +17,12 @@ while index<=length(varargin)
                 index = index + 2;
             case {'TrialIndex', 'Trials', 'trials'}
                 TrialIndex = varargin{index+1};
+                index = index + 2;
+            case {'StimulusIDs', 'StimulusIDs'}
+                StimulusIDs = varargin{index+1};
+                index = index + 2;
+            case 'ControlID'
+                ControlID = varargin{index+1};
                 index = index + 2;
             case {'ROIindex', 'ROIs', 'rois'}
                 ROIindex = varargin{index+1};
@@ -65,15 +72,25 @@ end
 
 %% Determine stimuli
 
+% Remove stimuli not being analyzed
+StimID = ROIdata.DataInfo.StimID(TrialIndex);
+if StimulusIDs(end) == inf
+    StimulusIDs = [StimulusIDs(1:end-1),StimulusIDs(1:end-1)+1:numel(temp)];
+end
+TrialIndex(~ismember(StimID, StimulusIDs)) = [];
+StimID(~ismember(StimID, StimulusIDs)) = [];
+
 % Set control trials to be last stimulus (mnrfit assumes last category as
 % reference)
-if isempty(ControlID)
-    ControlID = min(ROIdata.DataInfo.StimID(TrialIndex));
+if ~isequal(ControlID, false)
+    if isempty(ControlID)
+        ControlID = min(StimID);
+    end
+    StimID(StimID==ControlID) = max(StimID) + 1;
 end
-ROIdata.DataInfo.StimID(ROIdata.DataInfo.StimID==ControlID) = max(ROIdata.DataInfo.StimID) + 1;
 
-% Initialize output
-[temp,~,StimIndex] = unique(ROIdata.DataInfo.StimID(TrialIndex));
+% Determine stimuli to analyze
+[temp,~,StimIndex] = unique(StimID);
 totalStims = numel(temp);
 
 
@@ -90,15 +107,15 @@ predictions = zeros(numTrials, numROIs);
 
 tic
 parfor_progress(numROIs);
-parfor rindex = 1:numROIs
-    warning('off', 'stats:mnrfit:IterOrEvalLimit');
-
+for rindex = 1:numROIs
+    
     % Pull out current ROI's data
     data = mean(ROIdata.rois(ROIindex(rindex)).dFoF(TrialIndex, FrameIndex(1):FrameIndex(2)),2);
     
     % Cycle through testing each trial after training on other trials
-    for testIndex = 1:numTrials
-        
+    parfor testIndex = 1:numTrials
+        warning('off', 'stats:mnrfit:IterOrEvalLimit');
+    
         % Determine number of trials to use for each stimlus
         stim = StimIndex(testIndex);                    % ID of current trial
         n = min(minNumStim, numStims(stim) - 1);        % minimum number of trials available for single stimuli
@@ -131,7 +148,7 @@ toc
 
 %% Build confusion matrices
 confusionMatrix = zeros(totalStims, totalStims, numROIs);
-for rindex = 1:numROIs
+parfor rindex = 1:numROIs
     for sindex = 1:totalStims
         confusionMatrix(sindex, :, rindex) = hist(predictions(StimIndex==sindex,rindex), 1:totalStims);
     end
@@ -146,14 +163,15 @@ Sel = nan(numROIs, 1);
 parfor rindex = 1:numROIs
     
     % Normalize confusion matrix
-    normCM = bsxfun(@rdivide, confusionMatrix(:,:,rindex), numStims); % numStims == sum(confusionMatrix(:,:,rindex),2)
+    normCM = bsxfun(@rdivide, confusionMatrix(:,:,rindex), numStims);
     
     % Compute PCC
     PCC(rindex) = trace(normCM)/totalStims;
     
     % Compute Selectivity
-    [maxV, maxL] = max(diag(normCM));
-    Sel(rindex) = log2(maxV*(totalStims-1)/sum(d(setdiff(1:totalStims, maxL)))); % equal to log2(Sel(rindex)/mean(d(~temp2)));
+    d = diag(normCM);
+    [maxV, maxL] = max(d);
+    Sel(rindex) = log2(maxV*(totalStims-1)/sum(d(setdiff(1:totalStims, maxL))));
     
 end
 

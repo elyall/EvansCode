@@ -4,26 +4,30 @@ saveOut = false;
 saveFile = ''; % filename to save plots to
 
 % Items to display
+showControl = false;
 showFit = false;
 showDataPoints = false;
 showStimStars = false;
 showN = false;
 showPValues = false;
+PWCZ = [];
 
 % Plot colors & display options
 curveColor = 'r';
 fitColor = 'g';
 fitLegendLocation = 'NorthWest'; % 'NorthWest' or 'NorthEast'
 fontSize = 12;
+labelAxes = true;
 
 % Constant variables
 AxesIndex = [];
 hA = [];
-SubplotDim = [];
-Title = [];
+Title = true;
 YLim = [];
 Legend = {};
 LegendLocation = 'NorthEastOutside';
+MarkerSize = 10; % 20
+LineWidth = 1; % 2
 
 directory = cd;
 
@@ -44,6 +48,9 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
+            case 'showControl'
+                showControl = true;
+                index = index + 1;
             case 'showFit'
                 showFit = true;
                 index = index + 1;
@@ -59,6 +66,9 @@ while index<=length(varargin)
             case 'showPValues'
                 showPValues = true;
                 index = index + 1;
+            case 'PWCZ'
+                PWCZ = varargin{index+1};
+                index = index + 2;
             case 'curveColor'
                 curveColor = varargin{index+1};
                 index = index + 2;
@@ -70,6 +80,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'fontSize'
                 fontSize = varargin{index+1};
+                index = index + 2;
+            case 'labelAxes'
+                labelAxes = varargin{index+1};
                 index = index + 2;
             case 'AxesIndex'
                 AxesIndex = varargin{index+1};
@@ -88,6 +101,12 @@ while index<=length(varargin)
                 index = index + 2;
             case 'LegendLocation'
                 LegendLocation = varargin{index+1};
+                index = index + 2;
+            case 'LineWidth'
+                LineWidth = varargin{index+1};
+                index = index + 2;
+            case 'MarkerSize'
+                MarkerSize = varargin{index+1};
                 index = index + 2;
             case {'Save', 'save'}
                 saveOut = true;
@@ -157,6 +176,8 @@ numAxes = numel(hA);
 % Initialize titles container
 if isempty(Title)
     Title = cell(numAxes, 1);
+elseif ~iscell(Title)
+    Title = repmat({Title}, numAxes, 1);
 end
 
 
@@ -206,8 +227,10 @@ for index = 1:numel(ROIindex)
     
     % Plot tuning curves
     numStimuli = numel(rois(rindex).curve);
-    errorbar(1,rois(rindex).curve(1),rois(rindex).StdError(1),'Color',curveColor{index},'LineStyle','-','LineWidth',2,'Marker','.','MarkerSize',20);  %plot control position
-    errorbar(2:numStimuli,rois(rindex).curve(2:end),rois(rindex).StdError(2:end),'Color',curveColor{index},'LineStyle','-','LineWidth',2,'Marker','.','MarkerSize',20); %plot curve
+    if showControl
+        errorbar(1,rois(rindex).curve(1),rois(rindex).StdError(1),'Color',curveColor{index},'LineStyle','-','LineWidth',LineWidth,'Marker','.','MarkerSize',MarkerSize);  %plot control position
+    end
+    errorbar(1+showControl:numStimuli-1+showControl,rois(rindex).curve(2:end),rois(rindex).StdError(2:end),'Color',curveColor{index},'LineStyle','-','LineWidth',LineWidth,'Marker','.','MarkerSize',MarkerSize); %plot curve
     
     % Plot fit
     if showFit && numStimuli > 1
@@ -222,21 +245,40 @@ for index = 1:numel(ROIindex)
                 text(Xdim(1),Ydim(2),sprintf('r^2=%.2f\nFWHM=%.2f', rois(rindex).rsquare, rois(rindex).Coeff(3)),'Color',fitColor{index},'FontSize',fontSize,'HorizontalAlignment','left','VerticalAlignment','top');
         end
     end
-    
+        
     % Set axes labels
-    set(gca,'XTick',1:numStimuli,'XTickLabel',[{'control'}; cellstr(num2str((1:numStimuli-1)'))]);
-    xlabel('Position');
-    ylabel('Average Stimulus-Evoked dF/F');
-    xlim([0,numStimuli+1]);
     if ~isempty(YLim)
-        ylim(YLim);
+        if isnumeric(YLim)
+            ylim(YLim);
+        elseif ischar(YLim)
+            axis(YLim);
+        end
+    end
+    if showControl
+        set(gca,'XTick',1:numStimuli,'XTickLabel',[{'no contact'}; cellstr(num2str((1:numStimuli-1)'))]);
+        xlim([0,numStimuli+1]);
+    else
+        set(gca,'XTick',1:numStimuli-1,'XTickLabel',[cellstr(num2str((1:numStimuli-1)'))]);
+        xlim([0,numStimuli]);
+    end
+    if labelAxes
+        xlabel('Position');
+        ylabel('Average Stimulus-Evoked dF/F');
+    end
+    
+    % Show PWCZ
+    if ~isempty(PWCZ)
+        temp = ylim(gca);
+        plot(repmat([PWCZ(1)+showControl-0.5, PWCZ(end)+showControl+0.5],2,1), repmat(temp',1,2), 'k--');
     end
     
     % Set Title
-    if isempty(Title{AxesIndex(index)})
+    if isequal(Title{AxesIndex(index)}, true)
         Title{AxesIndex(index)} = sprintf('ROI: %d, Label: %s',rindex,rois(rindex).label{1});
     end
-    title(Title{AxesIndex(index)});
+    if ~isempty(Title{AxesIndex(index)})
+        title(Title{AxesIndex(index)});
+    end
     
     % Plot 0 line
     plot([0,numStimuli+1], [0 0], 'k--');

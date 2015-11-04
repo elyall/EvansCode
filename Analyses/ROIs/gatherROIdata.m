@@ -82,7 +82,7 @@ if isnumeric(temp)
     extraction = 'numeric';
 else
     Data = cell(totalROIs, 1);
-    if ischar(temp) || (iscell(temp) && numel(temp>1))
+    if ischar(temp) || (iscell(temp) && numel(temp)>1)
         extraction = 'cell';
     elseif iscell(temp)
         extraction = 'numeric';

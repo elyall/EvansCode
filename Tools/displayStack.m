@@ -23,7 +23,7 @@ gd.dim = size(gd.Images);
 % Determine color limits
 if ~exist('CLim', 'var') || isempty(CLim)
 %     gd.CLim = prctile(Images(linspace(1,numel(Images),512*796*100)), [1,99]);
-    gd.CLim = [min(Images(:)), max(Images(:))];
+    gd.CLimits = [min(Images(:)), max(Images(:))];
 else
     gd.CLim = CLim;
 end
@@ -41,10 +41,14 @@ end
 % Create figure
 gd.fig = figure;
 
-% Create axes
-gd.axes = axes('Parent', gd.fig, 'Units', 'normalized', 'Position', [0, 0, 1, .9]);
+% Create axis
+if isequal(gd.class, 'logical')
+    gd.axes = axes('Parent', gd.fig, 'Units', 'normalized', 'Position', [0, 0, 1, .9]);
+else
+    gd.axes = axes('Parent', gd.fig, 'Units', 'normalized', 'Position', [0, .1, 1, .9]);
+end
 
-% Create sliders
+% Create indexing sliders
 sliderIndex = find(gd.dim(3:end)>1);
 ndim = numel(sliderIndex);
 for sindex = 1:ndim
@@ -73,6 +77,51 @@ for sindex = 1:ndim
 end
 gd.Position = ones(1,3);
 
+% Create colorlimit sliders
+for index = 1:2
+    minorstep = 1/(gd.CLimits(2)-1);
+    yloc = (index-1)*.1/2;
+    gd.CLimSliders(index) = uicontrol(...
+        'Style',                'slider',...
+        'Parent',               gd.fig,...
+        'Units',                'normalized',...
+        'Position',             [.1,yloc,.7,.1/2],...
+        'Min',                  gd.CLimits(1),...
+        'Max',                  gd.CLimits(2),...
+        'Value',                gd.CLimits(index),...
+        'SliderStep',           [minorstep,max(2*minorstep,.1)],...
+        'UserData',             index,...
+        'Callback',             @(hObject,eventdata)updateCLim(hObject, eventdata, guidata(hObject)));
+    gd.CLimText(index) = uicontrol(...
+        'Style',                'text',...
+        'Parent',               gd.fig,...
+        'Units',                'normalized',...
+        'Position',             [0,yloc,.1,.1/2],...
+        'String',               sprintf('%d', gd.CLimits(index)),...
+        'HorizontalAlignment',  'right');
+end
+gd.CLim = gd.CLimits;
+
+% Create colorlimit individual toggle
+gd.CLimIndiv = uicontrol(...
+    'Style',                'radiobutton',...
+    'Parent',               gd.fig,...
+    'Units',                'normalized',...
+    'Position',             [.8,.05,.2,.05],...
+    'Value',                0,...
+    'String',               'CLim each',...
+    'Callback',             @(hObject,eventdata)CLimIndiv(hObject, eventdata, guidata(hObject)));
+
+% Create histeq toggle
+gd.histeq = uicontrol(...
+    'Style',                'radiobutton',...
+    'Parent',               gd.fig,...
+    'Units',                'normalized',...
+    'Position',             [.8,0,.2,.05],...
+    'Value',                0,...
+    'String',               'hist eq',...
+    'Callback',             @(hObject,eventdata)plotmainaxes(guidata(hObject)));
+
 guidata(gd.fig, gd);
 
 % Plot first image
@@ -92,13 +141,58 @@ gd.text(hObject.UserData(1)).String = sprintf('%d/%d', gd.Position(hObject.UserD
 % plot new image
 plotmainaxes(gd)
 
+
+function updateCLim(hObject, eventdata, gd)
+% update CLim
+value = round(hObject.Value);
+if hObject.UserData==1
+    if value >= gd.CLim(2)
+        hObject.Value = eventdata;
+        return
+    end
+elseif hObject.UserData==2
+    if value <= gd.CLim(1)
+        hObject.Value = eventdata;
+        return
+    end
+end
+gd.CLim(hObject.UserData) = value;
+guidata(hObject, gd);
+
+% update text
+gd.CLimText(hObject.UserData).String = sprintf('%d', gd.CLim(hObject.UserData));
+
+% plot new image
+plotmainaxes(gd);
+
+
+function CLimIndiv(hObject, ~, gd)
+% disable clim sliders
+if hObject.Value
+    set([gd.CLimSliders,gd.CLimText], 'Enable', 'off');
+else
+    set([gd.CLimSliders,gd.CLimText], 'Enable', 'on');
+end
+
+% plot new image
+plotmainaxes(gd);
+
+
 function plotmainaxes(gd)
 axes(gd.axes)
+img = gd.Images(:,:, gd.Position(1), gd.Position(2), gd.Position(3));
+if gd.histeq.Value
+    img = adapthisteq(img, 'NumTiles', [16 16], 'Distribution', 'Exponential');
+end
 switch gd.class
     case 'logical'
-        imshow(gd.Images(:,:, gd.Position(1), gd.Position(2), gd.Position(3)));
+        imshow(img);
     otherwise
-        imagesc(gd.Images(:,:, gd.Position(1), gd.Position(2), gd.Position(3)), gd.CLim);
+        if gd.CLimIndiv.Value
+            imagesc(img);
+        else
+            imagesc(img, gd.CLim);
+        end
 end
 colormap(gd.CMap)
 axis off

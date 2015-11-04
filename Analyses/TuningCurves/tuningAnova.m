@@ -1,69 +1,54 @@
-function PValues = tuningAnova(ROIs, ROIindex)
-% ROIs - 1x2 or 2x1 cell array of ROIdata structs or cell array of filenames
-% ROIindex - Nx2 array of ROI indices to analyze or cell array of filenames
-% to load Maps from for auto matching or vector of imref2d w/ numel=2
-%
-% PValues - Nx3 array of p-values -> [btwn positions, btwn pre and post, interaction btwn the two]
+function PValues = tuningAnova(ROIdata, varargin)
 
-StimIndex = [1 inf];
 
+StimIndex = [2 inf];
+ROIindex = [1 inf];
 
 %% Parse input arguments
-% index = 1;
-% while index<=length(varargin)
-%     try
-%         switch varargin{index}
-%             otherwise
-%                 warning('Argument ''%s'' not recognized',varargin{index});
-%                 index = index + 1;
-%         end
-%     catch
-%         warning('Argument %d not recognized',index);
-%         index = index + 1;
-%     end
-% end
-
-if ~exist('ROIs', 'var') || isempty(ROIs)
-    [ROIs,p] = uigetfile({'*.rois;*.mat'}, 'Select ROI files:', directory, 'MultiSelect', 'on');
-    if isnumeric(ROIs)
-        return
-    elseif iscellstr(ROIs)
-        ROIs = fullfile(p, ROIs);
-    else
-        ROIs = {fullfile(p, ROIs)};
+index = 1;
+while index<=length(varargin)
+    try
+        switch varargin{index}
+            case 'StimIndex'
+                StimIndex = varargin{index+1};
+                index = index + 2;
+            case 'ROIindex'
+                ROIindex = varargin{index+1};
+                index = index + 2;
+            otherwise
+                warning('Argument ''%s'' not recognized',varargin{index});
+                index = index + 1;
+        end
+    catch
+        warning('Argument %d not recognized',index);
+        index = index + 1;
     end
 end
 
-if ~exist('ROIindex', 'var') || isempty(ROIindex)
-    [ROIindex,p] = uigetfile({'*.exp;*.align'}, 'Select map files for first dataset:', directory, 'MultiSelect', 'on');
-    if isnumeric(ROIindex)
+if ~exist('ROIdata', 'var') || isempty(ROIdata)
+    [ROIdata,p] = uigetfile({'*.rois;*.mat'}, 'Select ROI files:', directory);
+    if isnumeric(ROIdata)
         return
-    elseif iscellstr(MapsA)
-        ROIindex = fullfile(p, ROIindex);
-    else
-        ROIindex = {fullfile(p, ROIindex)};
     end
+    ROIdata = {fullfile(p, ROIdata)};
 end
 
 
 %% Load data
-if iscellstr(ROIs)
-    ROIFiles = ROIs;
-    for findex = 1:numel(ROIFiles)
-        load(ROIFiles{1}, 'ROIdata', '-mat');
-        ROIs{findex} = ROIdata;
-    end
+if ischar(ROIdata)
+    ROIFile = ROIdata;
+    load(ROIFile, 'ROIdata', '-mat');
 end
 
 % Determine ROIs to analyze
-if iscellstr(ROIindex) || isa(ROIindex, 'imref2d')
-    ROIindex = autoMatchROIs(ROIs, ROIindex);
+if ROIindex(end) == inf
+    ROIindex = [ROIindex(1:end-1), ROIindex(end-1)+1:numel(ROIdata.rois)];
 end
-numROIs = size(ROIindex, 1);
+numROIs = numel(ROIindex);
 
 
 %% Determine stimuli to analyze
-numStims = length(ROIs{1}.rois(ROIindex(1,1)).curve);
+numStims = length(ROIdata.rois(ROIindex(1)).curve);
 if StimIndex(end) == inf
     StimIndex = [StimIndex(1:end-1), StimIndex(end-1)+1:numStims];
 end
@@ -72,30 +57,33 @@ numStims = numel(StimIndex);
 
 %% Compute anova
 
+% Initialize output
+PValues = nan(numROIs, 1); % [btwn positions, btwn pre and post, interaction btwn the two]
+
 % Compute significance
-PValues = nan(numROIs, 3); % [btwn positions, btwn pre and post, interaction btwn the two]
-parfor rindex = 1:numROIs
+parfor_progress(numROIs);
+tic
+for rindex = 1:numROIs
     
     % Gather data
-    temp1 = ROIs{1}.rois(ROIindex(rindex,1)).Raw;
-    temp2 = ROIs{2}.rois(ROIindex(rindex,2)).Raw;
-    N = cellfun(@numel, [temp1,temp2]);
+    temp = ROIdata.rois(ROIindex(rindex)).Raw;
+    N = cellfun(@numel, temp);
     N = max(N(:));
     
     % Organize data
-    dFoFPre = [];
-    dFoFPost = [];
+    dFoF = [];
     for tindex = StimIndex
-        dFoFPre = cat(1, dFoFPre, [temp1{tindex}; nan(N-numel(temp1{tindex}),1)]);
-        dFoFPost = cat(1, dFoFPost, [temp2{tindex}; nan(N-numel(temp2{tindex}),1)]);
+        dFoF = cat(1, dFoF, [temp{tindex}; nan(N-numel(temp{tindex}),1)]);
     end
     
     % Create dictionary
-    g1 = repmat(reshape(repmat(1:numStims, N, 1), numStims*N, 1), 2, 1);
-    g2 = reshape(repmat([numStims+1, numStims+2], numStims*N, 1), numStims*N*2, 1);
+    g1 = reshape(repmat(1:numStims, N, 1), numStims*N, 1);
     
     % Compute 2-way ANOVA
-    PValues(rindex,:) = anovan([dFoFPre;dFoFPost], [g1,g2], 'model','full','display','off')';
+    PValues(rindex) = anovan(dFoF, g1, 'model','full','display','off');
     
+    parfor_progress;
 end
+toc
+parfor_progress(0);
 

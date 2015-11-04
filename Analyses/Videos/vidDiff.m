@@ -241,7 +241,7 @@ set(vidObj, 'FrameRate', frameRate);
 open(vidObj);
 
 % Create figure
-hF = figure('Units', 'Pixels', 'Position', [50, 50, 1400, 800]);
+hF = figure('Units', 'Pixels', 'Position', [50, 50, 1400, 900], 'Color', 'w');
 hA = axes('Parent', hF);
 
 for sindex = StimIndex
@@ -300,7 +300,7 @@ for sindex = StimIndex
         % Display color bar
         if showColorBar
             cbH = colorbar;
-            ylabel(cbH, 'Change in dF/F');
+            ylabel(cbH, 'Post (dF/F) - Pre (dF/F)');
         end
         
         % Write to video

@@ -7,7 +7,7 @@ saveFile = 'test.pdf'; %filename to save plots to
 datatype = 'dFoF'; %'dFoF'; % 'dFoF' or 'raw'
 sorttype = 'stim'; % 'stim' or 'trial' (will not show averages)
 showdata = true;
-showavgs = true;
+showavgs = false;
 TrialIndex = [1 inf];
 StimIndex = [];
 
@@ -208,7 +208,11 @@ for rindex = 1:numROIs
             TrialID(TrialID == ControlID) = -Inf; %this doesn't matter if controlindex is the smallest value (but does if controlindex is higher)
             [TrialID, displayIndex] = sort(TrialID);
             TrialID(TrialID == -Inf) = ControlID;
-            labels = cellstr(num2str(StimIDs));
+            if ~isnan(ControlID)
+                labels = [{'no contact'};cellstr(num2str(StimIDs(~ismember(StimIDs, ControlID))))];
+            else
+                labels = cellstr(num2str(StimIDs));
+            end 
 %             labels = [{'control'}; cellstr(num2str((1:numStimuli-1)'))];
             blockLength = [];
             for sindex = 1:numStimuli
@@ -265,13 +269,21 @@ for rindex = 1:numROIs
             data = cat(1, data, AvgStim);
             blockLength = cat(1, blockLength, repmat(avgPixelHeight, numStimuli,1));
             StimFrames = cat(1, StimFrames, AvgStimuliFrames);
-            labels = cat(1, labels, cellstr([num2str(StimIDs), repmat(' avg', numStimuli,1)]));
+            if ~isnan(ControlID)
+                labels = cat(1, labels, [{'no contact avg'}; cellstr([num2str(StimIDs(~ismember(StimIDs, ControlID))), repmat(' avg', numStimuli-1,1)])]);
+            else
+                labels = cat(1, labels, cellstr([num2str(StimIDs), repmat(' avg', numStimuli,1)]));
+            end
 %             labels = cat(1, labels, [{'control avg'}; cellstr([num2str((1:numStimuli-1)'),repmat(' avg',numStimuli-1,1)])]);
         else
             data = AvgStim;
             blockLength = repmat(avgPixelHeight, numStimuli,1);
             StimFrames = AvgStimuliFrames;
-            labels = cellstr([num2str(StimIDs), repmat(' avg', numStimuli,1)]);
+            if ~isnan(ControlID)
+                labels = [{'no contact'}, cellstr([num2str(StimIDs(~ismember(StimIDs, ControlID))), repmat(' avg', numStimuli-1,1)])];
+            else
+                labels = cellstr([num2str(StimIDs), repmat(' avg', numStimuli,1)]);
+            end
 %             labels = [{'control avg'}; cellstr([num2str((1:numStimuli-1)'),repmat(' avg',numStimuli-1,1)])];
         end
     end

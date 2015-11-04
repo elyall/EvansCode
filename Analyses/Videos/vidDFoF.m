@@ -177,7 +177,7 @@ set(vidObj, 'FrameRate', frameRate);
 open(vidObj);
 
 % Create figure
-hF = figure('Units', 'Pixels', 'Position', [50, 50, 1400, 800]);
+hF = figure('Units', 'Pixels', 'Position', [50, 50, 1450, 950], 'Color', 'w');
 hA = axes('Parent', hF);
 
 for sindex = StimIndex

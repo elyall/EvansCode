@@ -134,6 +134,7 @@ fprintf('Computing tuning curves...');
 [ROIdata.rois(ROIindex).Raw] = deal(cell(numStimuli, 1));
 if ~isempty(ControlID)
     [ROIdata.rois(ROIindex).PValue] = deal(nan(1, numStimuli));
+    [ROIdata.rois(ROIindex).PValueCorrected] = deal(nan(1, numStimuli-1));
 end
 
 % Calculate tuning
@@ -187,6 +188,9 @@ for rindex = ROIindex
                 ControlDFoF,....
                 StimulusDFoF);
         end
+        
+        % Correct for multiple comparisons
+        [~,~,ROIdata.rois(rindex).PValueCorrected] = fdr_bh(ROIdata.rois(rindex).PValue(2:end));
         
     end %stimuli
 end %ROIs

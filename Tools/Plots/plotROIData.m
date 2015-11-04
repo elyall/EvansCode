@@ -175,7 +175,7 @@ for findex = FigureOrder
     
     % Create figure
     if ~saveOut || isempty(hF)
-        hF = figure('Position', [50, 50, 1400, 800]);
+        hF = figure('Position', [50, 50, 1400, 800], 'Color', 'w');
     end
     hA = zeros(1,4);
     for aindex = 1:4
