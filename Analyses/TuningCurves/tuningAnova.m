@@ -84,6 +84,7 @@ for rindex = 1:numROIs
     
     parfor_progress;
 end
-toc
 parfor_progress(0);
+
+toc
 

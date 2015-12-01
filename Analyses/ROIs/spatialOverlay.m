@@ -22,6 +22,10 @@ Crop = false;
 Title = '';
 AdjustEdgeBrightness = true;
 
+% Text
+FontSize_colorbarLabel = 20;
+FontSize_colorbarTicks = 20;
+
 % Default variables
 Origin = [];
 hA = [];
@@ -146,6 +150,10 @@ if ~exist('FileIndex', 'var') || isempty(FileIndex)
     FileIndex = ones(numROIs, 1);
 end
 
+if ~isempty(Radius) && numel(Radius) == 1
+    Radius = repmat(Radius, numROIs, 1);
+end
+
 
 %% Build colormap
 if ~exist('Colors', 'var') || isempty(Colors)
@@ -163,7 +171,11 @@ end
 switch DataType
     case 'discrete'
         if ~exist('Labels', 'var') || isempty(Labels)
-            Labels = flip(cellstr(num2str((1:size(Colors,1))')));
+            if exist('Vals', 'var')
+                Labels = flip(cellstr(num2str(Vals)));
+            else
+                Labels = flip(cellstr(num2str((1:size(Colors,1))')));
+            end
         else
             Labels = flip(Labels);
         end
@@ -284,13 +296,13 @@ if showColorBar
     Split = (NewYLim(2)-NewYLim(1))/numel(Labels); % determine the distance on the colorbar between two colors
     switch DataType
         case 'discrete'
-            set(cbH, 'Limits', NewYLim, 'FontSize', 20, 'Ticks', NewYLim(1)+Split/2:Split:NewYLim(2), 'YTickLabel', Labels);
+            set(cbH, 'Limits', NewYLim, 'FontSize', FontSize_colorbarTicks, 'Ticks', NewYLim(1)+Split/2:Split:NewYLim(2), 'YTickLabel', Labels);
         case 'continuous'
-            set(cbH, 'Limits', NewYLim, 'FontSize', 20, 'Ticks', NewYLim(1):(NewYLim(2)-NewYLim(1))/(numel(Labels)-1):NewYLim(2), 'YTickLabel', Labels);
+            set(cbH, 'Limits', NewYLim, 'FontSize', FontSize_colorbarTicks, 'Ticks', NewYLim(1):(NewYLim(2)-NewYLim(1))/(numel(Labels)-1):NewYLim(2), 'YTickLabel', Labels);
     end
     % set(cbH, 'Ticks', YLim(1):(YLim(2)-YLim(1))/(numel(Labels)-1):YLim(2), 'YTickLabel', Labels);
     if ~isempty(colorbarLabel)
-        ylabel(cbH, colorbarLabel, 'FontSize', 20);
+        ylabel(cbH, colorbarLabel, 'FontSize', FontSize_colorbarLabel);
     end
     
 end
