@@ -35,31 +35,35 @@ end
 
 
 %% Create MCdata variable
-vars = whos(matfile([fname,'.align']));
-if ~any(strcmp({vars(:).name}, 'MCdata'))
-    load([fname, '.align'], 'T', '-mat');
-    MCdata.T = T;
-    MCdata.type = 'Translation';
-    MCdata.date = datestr(now);
-    MCdata.FullFilename = [fname, '.sbx'];
-    MCdata.Channel2AlignFrom = 1;
-    MCdata.Parameters = [];
-    save([fname, '.align'], 'MCdata', '-append', '-mat');
+if exist([fname,'.align'], 'file')
+    vars = whos(matfile([fname,'.align']));
+    if ~any(strcmp({vars(:).name}, 'MCdata'))
+        load([fname, '.align'], 'T', '-mat');
+        MCdata.T = T;
+        MCdata.type = 'Translation';
+        MCdata.date = datestr(now);
+        MCdata.FullFilename = [fname, '.sbx'];
+        MCdata.Channel2AlignFrom = 1;
+        MCdata.Parameters = [];
+        save([fname, '.align'], 'MCdata', '-append', '-mat');
+    end
 end
 
 
 %% Create ROIdata
-ROIdata = createROIdata([fname,'.segment'], 'ImageFile', {[fname,'.sbx']});
+if exist([fname,'.segment'], 'file')
+    ROIdata = createROIdata([fname,'.segment'], 'ImageFile', {[fname,'.sbx']});
+end
 
 
 %% Distribute ROI signals
-% if exist([fname, '.signals'], 'file')
-%     load([fname, '.signals'], 'sig', 'pil', '-mat');
-%     for rindex = 1:numel(ROIdata.rois)
-%         ROIdata.rois(rindex).rawdata = sig(:,rindex)';
-%         ROIdata.rois(rindex).rawneuropil = pil(:,rindex)';
-%     end
-% end
+if exist([fname,'.signals'], 'file')
+    load([fname,'.signals'], 'sig', 'pil', '-mat');
+    for rindex = 1:numel(ROIdata.rois)
+        ROIdata.rois(rindex).rawdata = sig(:,rindex)';
+        ROIdata.rois(rindex).rawneuropil = pil(:,rindex)';
+    end
+end
 
 
 %% Save ROIdata to file
