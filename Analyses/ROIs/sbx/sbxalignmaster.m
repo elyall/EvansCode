@@ -9,7 +9,10 @@ function sbxalignmaster(fname)
     %%
 
     z = sbxreadpacked(fname,0,1);
-
+    if ndims(z) == 3
+        z = squeeze(z(1,:,:));
+    end
+    
     szz = size(z);
 
     
@@ -35,7 +38,9 @@ function sbxalignmaster(fname)
     parfor jj = 1:info.max_idx
 
         z = double(sbxreadpacked(fname,jj-1,1));
-
+        if ndims(z) == 3
+            z = squeeze(z(1,:,:));
+        end
 
 
         ms = ms + z(:)*X(jj,:);

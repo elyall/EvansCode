@@ -1,12 +1,8 @@
 classdef ROI < handle
     
-    properties (Constant = true)
-        roiID = now;                    % set ROI's unique ID
-    end %constant properties
-    
-    properties (GetAccess = private)
-        numDataSets = 0;
-    end %private properties
+    properties (Hidden = true)
+        roiID                           % ROI's unique identifier
+    end % hidden properties
     
     properties
         Mouse                           % Mouse ROI is associated with
@@ -18,7 +14,8 @@ classdef ROI < handle
         
         % Constructor
         function obj = ROI(MouseID, varargin)
-            
+            obj.roiID = now;                    % set ROI's unique ID
+
             % Define mouse ROI is tied to
             if nargin > 0
                 obj.Mouse = MouseID;
@@ -31,20 +28,24 @@ classdef ROI < handle
                 end
             else
                 obj.DataSets = ROIdataset;
+                obj.DataSets(1) = [];
             end
             
         end %constructor
         
         % Add dataset
         function obj = addDataSet(obj, ImagingFile, varargin)
-            obj.DataSets(obj.numDataSets+1) = ROIdataset(ImagingFile, varargin);
-            obj.numDataSets = obj.numDataSets + 1;
+            obj.DataSets(end+1) = ROIdataset(ImagingFile, varargin);
         end
         
         % Remove dataset
         function obj = removeDataSet(obj, index)
+            if index < 1 || mod(index,1)~=0
+                error('Value has to be a positive integer');
+            elseif index > length(obj.DataSets)
+                error('ROI only has %d dataset(s)', length(obj.DataSets));
+            end
             obj.DataSets(index) = [];
-            obj.numDataSets = obj.numDataSets - 1;
         end
         
     end %methods
