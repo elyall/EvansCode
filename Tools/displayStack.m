@@ -1,18 +1,26 @@
 function displayStack(Images, CLim, CMap)
 
+FrameIndex = 1:500; % loading only
 
 %% Parse input arguments
 
+% Select file
+if ~exist('Images', 'var')
+    [f,p] = uigetfile({'*.tif;*.sbx'}, 'Select image file');
+    if isnumeric(f)
+        return
+    end
+    Images = fullfile(p,f);
+end
+
 % Load images
 if ischar(Images)
-    ImageFiles = Images;
-    load(ImageFiles, 'data');
-    Images = data;
-    [gd.Images, gd.loadObj] = load2P(ImageFiles, 'Type', 'Direct');
+    ImageFile = Images;
+    [gd.Images, gd.loadObj] = load2P(ImageFile, 'Type', 'Direct', 'Frames', FrameIndex, 'Double');
 else
     gd.Images = Images;
 end
-gd.class = class(Images);
+gd.class = class(gd.Images);
 
 % Format images
 while ndims(gd.Images) < 5
@@ -23,7 +31,7 @@ gd.dim = size(gd.Images);
 % Determine color limits
 if ~exist('CLim', 'var') || isempty(CLim)
 %     gd.CLim = prctile(Images(linspace(1,numel(Images),512*796*100)), [1,99]);
-    gd.CLimits = [min(Images(:)), max(Images(:))];
+    gd.CLimits = [min(gd.Images(:)), max(gd.Images(:))];
 else
     gd.CLim = CLim;
 end

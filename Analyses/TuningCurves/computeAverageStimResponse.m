@@ -3,6 +3,8 @@ function [AvgTrial, AvgTrialdFoF, StimResponse] = computeAverageStimResponse(Ima
 saveOut = false;
 saveFile = '';
 
+directory = cd;
+
 %% Parse input arguments
 index = 1;
 while index<=length(varargin)
@@ -28,11 +30,8 @@ if ~exist('ImageFiles', 'var') || isempty(ImageFiles)
     [ImageFiles,p] = uigetfile({'*.sbx;*.tif;*.imgs'}, 'Choose files to process', directory, 'MultiSelect', 'on');
     if isnumeric(ImageFiles) % no file selected
         return
-    elseif iscellstr(ImageFiles) % multiple files selected
-        ImageFiles = fullfile(p, ImageFiles);
-    elseif ischar(ImageFiles) % single file selected
-        ImageFiles = {fullfile(p, ImageFiles)};
     end
+    ImageFiles = fullfile(p, ImageFiles);
 elseif ischar(ImageFiles)
     if isdir(ImageFiles) % directory input
         p = ImageFiles;
@@ -44,7 +43,6 @@ elseif ischar(ImageFiles)
 end
 
 if ~exist('ExperimentFile','var') || isempty(ExperimentFile)
-    directory = CanalSettings('ExperimentDirectory');
     [ExperimentFile, p] = uigetfile({'*.mat'},'Choose Experiment file',directory);
     if isnumeric(ExperimentFile)
         return

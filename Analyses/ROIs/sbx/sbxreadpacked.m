@@ -133,10 +133,12 @@ function Z = sbxreadpacked(fname,offset,nframes)
 
         
 
-        Z = reshape(Z,[msize(2:-1:1),info.nchan,nframes]);
+        Z = reshape(Z,[info.nchan,msize(2:-1:1),nframes]);
 
         Z = permute(Z,[3,2,1,4]);
-
+        
+        Z = Z(:,:,1,:);
+        
         Z = squeeze(Z);
 
         Z = intmax('uint16')-Z;
