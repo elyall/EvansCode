@@ -87,7 +87,7 @@ gd.Position = ones(1,3);
 
 % Create colorlimit sliders
 for index = 1:2
-    minorstep = 1/(gd.CLimits(2)-1);
+    minorstep = 1/(gd.CLimits(2)-gd.CLimits(1));
     yloc = (index-1)*.1/2;
     gd.CLimSliders(index) = uicontrol(...
         'Style',                'slider',...
@@ -150,17 +150,17 @@ gd.text(hObject.UserData(1)).String = sprintf('%d/%d', gd.Position(hObject.UserD
 plotmainaxes(gd)
 
 
-function updateCLim(hObject, eventdata, gd)
+function updateCLim(hObject, ~, gd)
 % update CLim
 value = round(hObject.Value);
 if hObject.UserData==1
     if value >= gd.CLim(2)
-        hObject.Value = eventdata;
+        hObject.Value = hObject.Min;
         return
     end
 elseif hObject.UserData==2
     if value <= gd.CLim(1)
-        hObject.Value = eventdata;
+        hObject.Value = hObject.Max;
         return
     end
 end

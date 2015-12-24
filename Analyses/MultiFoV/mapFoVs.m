@@ -11,7 +11,7 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
-            case 'type'
+            case {'Type','type'}
                 type = varargin{index+1};
                 index = index + 2;
             otherwise
@@ -92,7 +92,7 @@ if nargout > 2
     switch type
         
         case 'index'
-            % leave as is
+            indMap = logical(indMap);
             
         case 'mean'
             indMap = bsxfun(@rdivide, indMap, sum(indMap,3));
@@ -102,7 +102,7 @@ if nargout > 2
             for findex = 1:numFiles
                 
                 % Find data points current data set is overlapping with others
-                currentRegion = reshape(fullMap(imwarp(true(Dim(findex,4),Dim(findex,3)),Maps(findex),affine2d(),'OutputView', refMap)), Dim(findex,4), Dim(findex,3));
+                currentRegion = reshape(fullMap(logical(indMap(:,:,findex))), Dim(findex,4), Dim(findex,3));
                 [I,J] = find(currentRegion > 1);
                 J = J + Dim(findex,1);
                 I = I + Dim(findex,2);
@@ -124,13 +124,14 @@ if nargout > 2
                 % Determine distance of overlapping pixels from border
                 dist = ipdm([I,J], borders, 'Subset','NearestNeighbor', 'Result', 'Structure');
                 
-                % Record distance from border as pixel's weight
+                % Record distance from border as overlapping pixel's weight
                 indMap(sub2ind([H,W,numFiles],I,J,repmat(findex,numel(I),1))) = [dist(:).distance];
                 
             end
             
-            % Normalize weights across overlapping images to sum to 1 (data closer
-            % to the border will count less than data further from the border)
+            % Normalize weights across overlapping regions to sum to 1
+            % (data closer to the border will count less than data further
+            % from the border)
             indMap = bsxfun(@rdivide, indMap, sum(indMap,3));
     end
 end

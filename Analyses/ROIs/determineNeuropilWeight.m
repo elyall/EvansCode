@@ -56,7 +56,7 @@ totalFrames = numel(ROIdata.rois(1).rawdata);
 
 % Determine ROIs to compute weights for
 if ROIindex(end) == inf
-    ROIindex = [ROIindex(1:end-1), ROIindex(1:end-1)+1:numROIs];
+    ROIindex = [ROIindex(1:end-1), ROIindex(1:end-1)+1:numel(ROIdata.rois)];
 end
 numROIs = numel(ROIindex);
 
@@ -65,7 +65,10 @@ if FrameIndex(end) == inf
     FrameIndex = [FrameIndex(1:end-1), FrameIndex(1:end-1)+1:totalFrames];
 end
 
+
 %% Calculate minimal Neuropil Weight
+
+% Compute ratio of fluorescence to neuropil
 Data = reshape([ROIdata.rois(ROIindex).rawdata], totalFrames, numROIs)./reshape([ROIdata.rois(ROIindex).rawneuropil], totalFrames, numROIs);
 
 % Keep only requested frames
@@ -76,16 +79,18 @@ Data(bsxfun(@ge, abs(bsxfun(@minus, Data, nanmean(Data))), outlierWeight * nanst
 
 
 %% Calculate individual weights
+% Assumes when ratio of Neuropil to Data is largest that all of Data's
+% signal is a result of Neuropil contamination; this ensures no ROI's
+% fluorescence goes below 0 as a result of neuropil subtraction
 switch type
     
     case 'same'
-        % Assumes when ratio of Neuropil to Data is largest that all of Data's signal is a result of Neuropil contamination; this ensures no ROI's fluorescence goes below 0
         NeuropilWeight = repmat(nanmin(Data(:)), numROIs, 1);
         % NeuropilWeight = repmat(prctile(Data(:), 1), numROIs, 1);
         
     case 'individual'
-        NeuropilWeight = nanmin(Data)'; % assumes when ratio of Neuropil to Data is largest, that all of Data's signal is a result of Neuropil contamination
+        NeuropilWeight = nanmin(Data)';
         
 end
-NeuropilWeight(NeuropilWeight > maxWeight) = maxWeight;          % adjust top of range
+NeuropilWeight(NeuropilWeight > maxWeight) = maxWeight; % rectify top of range (some neurons will always have signal so previous assumption can't be made)
 

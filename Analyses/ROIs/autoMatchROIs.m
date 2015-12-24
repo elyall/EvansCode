@@ -13,13 +13,13 @@ function [Index, ROIMasks, newBoolean] = autoMatchROIs(ROIMasks, Maps, Centroids
 % newROIs - logical array equal in size to index specifying whether the ROI
 % of that index is a new ROI (added via this function)
 
-saveOut = false;
-saveFile = {''};
-saveType = 'new'; % 'new' or 'all' (determines which files to save to)
+saveOut = false;            % save ROIs to files
+saveFile = {''};            % files to save to
+saveType = 'new';           % 'new' or 'all' (determines which files will be written to)
 
-distanceThreshold = 10; % pixels
-overlapThreshold = .7; % percentage
-addNewROIs = false; % add ROIs that don't match across files
+distanceThreshold = 10;     % pixels
+overlapThreshold = .7;      % percentage
+addNewROIs = false;         % add ROIs that don't match across files
 
 directory = cd;
 
@@ -132,7 +132,12 @@ if ~exist('Centroids', 'var') || isempty(Centroids)
     end
 end
 
-fprintf('Matching ROIs between %d files\n', numFiles);
+fprintf('Matching ROIs between %d files', numFiles);
+if addNewROIs
+    fprintf('\t(saving missing ROIs across files)\n');
+else
+    fprintf('\t(not saving missing ROIs to files)\n');
+end
 temp = strcat(num2str(numROIs), {' rois from '}, ROIFiles');
 fprintf('\t%s\n', temp{:});
 
@@ -160,7 +165,7 @@ end
 
 
 %% Build Map
-[offsets, refMap, indMap] = mapFoVs(Maps);
+[offsets, refMap, indMap] = mapFoVs(Maps, 'Type', 'index');
 [H,W,~] = size(indMap);
 
 
@@ -190,7 +195,7 @@ distances = cell(numCombinations, 1);
 overlapMasks = zeros(H*W, numCombinations);
 for cindex = 1:numCombinations
     distances{cindex} = pdist2(Centroids{combinations(cindex, 1)}, Centroids{combinations(cindex, 2)}); % distance between all ROIs in current 2 files
-    overlapMasks(:, cindex) = all(indMap(:,[combinations(cindex, 1), combinations(cindex, 2)]),2);             % region of overlap between the current 2 files
+    overlapMasks(:, cindex) = all(indMap(:,[combinations(cindex, 1), combinations(cindex, 2)]),2);      % region of overlap between the current 2 files
 end
 
 
@@ -340,3 +345,5 @@ if saveOut && ~isempty(saveFile)
         fprintf('(%d of %d) Saved rois to file: %s\n', findex, numel(findices), saveFile{findex});
     end %findex
 end
+
+

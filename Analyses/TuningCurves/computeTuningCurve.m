@@ -98,7 +98,7 @@ if ROIindex(end) == inf
 end
 
 %% Determine stimuli info
-StimIDs = unique(ROIdata.DataInfo.StimID(TrialIndex));
+StimIDs = unique(ROIdata.DataInfo.StimID(TrialIndex)); % NEEDS TO REFERENCE TRIALS IN ROIdata.DataInfo
 numStimuli = numel(StimIDs);
 
 % Determine order to cycle through stimuli (necessary for t-test to control trials)

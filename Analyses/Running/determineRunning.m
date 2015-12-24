@@ -1,6 +1,7 @@
 function RunIndex = determineRunning(AnalysisInfo, frames, thresh, varargin)
 
 directory = cd;
+TrialIndex = [2 inf];
 type = 'TrialStimMean'; % 'TrialStimMean' or 'ExpStimVar'
 comparison = '>=';
 
@@ -9,6 +10,9 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
+            case 'TrialIndex'
+                TrialIndex = varargin{index+1};
+                index = index + 2;
             case 'type'
                 type = varargin{index+1};
                 index = index + 2;
@@ -46,11 +50,17 @@ if ~exist('frames', 'var') || isempty(frames)
 end
 
 
+%% Determine trials to analyze
+if TrialIndex(end) == inf
+    TrialIndex = [TrialIndex(1:end-1), TrialIndex(end-1)+1:size(AnalysisInfo, 1)];
+end
+numTrials = numel(TrialIndex);
+
+
 %% Format running speed
-numTrials = size(AnalysisInfo, 1);
 numFrames = max(AnalysisInfo.nFrames);
-RunningSpeed = nan(numTrials, numFrames);
-for tindex = 1:numTrials
+RunningSpeed = nan(size(AnalysisInfo,1), numFrames);
+for tindex = TrialIndex
     RunningSpeed(tindex, :) = frames.RunningSpeed(AnalysisInfo.ExpFrames(tindex, 1):AnalysisInfo.ExpFrames(tindex, 1) + numFrames -1);
 end
 
@@ -63,7 +73,7 @@ RunIndex = false(numTrials, 1);
 switch type
     
     case 'TrialStimMean'
-        for tindex = 1:numTrials
+        for tindex = TrialIndex
             if eval(sprintf('mean(RunningSpeed(tindex, AnalysisInfo.TrialStimFrames(tindex,1):AnalysisInfo.TrialStimFrames(tindex,2))) %s thresh', comparison))
                 RunIndex(tindex) = true;
             end
@@ -74,6 +84,7 @@ switch type
         figure;
         for sindex = 1:numel(StimIDs)
             currentTrials = find(AnalysisInfo.StimID==StimIDs(sindex));
+            currentTrials = currentTrials(ismember(currentTrials, TrialIndex));
             stimRunning = RunningSpeed(currentTrials, AnalysisInfo.TrialStimFrames(currentTrials(1), 1):AnalysisInfo.TrialStimFrames(currentTrials(1), 2));
             RunIndex(currentTrials) = mean(stimRunning, 2) >= thresh;
             

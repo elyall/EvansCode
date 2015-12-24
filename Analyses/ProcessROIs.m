@@ -19,7 +19,7 @@ ComputeAvgStim = false;
 minrunspeed = 100;
 outlierweight = 4;
 
-saveOut = true;
+saveOut = false;
 saveFiles = {[]};
 ROIindex = [1 inf];
 directory = cd;
@@ -170,7 +170,7 @@ for findex = 1:numFiles;
     fprintf('Processing ROI files %d of %d: %s\n', findex, numFiles, ROIFiles{findex});
     
     %% Determine file to save to
-    if isempty(saveFiles{findex})
+    if saveOut && isempty(saveFiles{findex})
         saveFiles{findex} = ROIFiles{findex};
     end
     
