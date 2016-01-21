@@ -43,7 +43,13 @@ if ~isempty(Images)
         rect(findex,[3,4]) = ceil(rect(findex,[3,4]));
         
         % Crop image
-        Images{findex} = Images{findex}(rect(findex,2)+1:rect(findex,2)+rect(findex,4), rect(findex,1)+1:rect(findex,1)+rect(findex,3),:,:,:);
+        if ~iscell(Images{findex})
+            Images{findex} = Images{findex}(rect(findex,2)+1:rect(findex,2)+rect(findex,4), rect(findex,1)+1:rect(findex,1)+rect(findex,3),:,:,:);
+        else
+            for cindex = 1:numel(Images{findex})
+                Images{findex}{cindex} = Images{findex}{cindex}(rect(findex,2)+1:rect(findex,2)+rect(findex,4), rect(findex,1)+1:rect(findex,1)+rect(findex,3),:,:,:);
+            end
+        end
         
     end
     

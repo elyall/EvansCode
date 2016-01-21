@@ -1,5 +1,12 @@
 function Corr = computeCurveCorrelation(Curves)
 
+%% Kendall's
+
+
+
+%% Pearson's
+
+% Likley not necessary
 % % shift bottom of curves to 0
 % Curves = bsxfun(@minus, Curves, min(Curves, [], 2));
 
@@ -16,3 +23,6 @@ for rindex = 1:numROIs
     Corr(rindex,rindex+1:end) = sum(bsxfun(@times, Curves(rindex,:), Curves(rindex+1:end,:)),2);
 %     Corr(rindex,rindex+1:end) = sum(abs(bsxfun(@minus, Curves(rindex,:), Curves(rindex+1:end,:))),2);
 end
+
+
+

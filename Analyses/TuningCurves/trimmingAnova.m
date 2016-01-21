@@ -34,17 +34,6 @@ if ~exist('ROIs', 'var') || isempty(ROIs)
     end
 end
 
-if ~exist('ROIindex', 'var') || isempty(ROIindex)
-    [ROIindex,p] = uigetfile({'*.exp;*.align'}, 'Select map files for first dataset:', directory, 'MultiSelect', 'on');
-    if isnumeric(ROIindex)
-        return
-    elseif iscellstr(MapsA)
-        ROIindex = fullfile(p, ROIindex);
-    else
-        ROIindex = {fullfile(p, ROIindex)};
-    end
-end
-
 
 %% Load data
 if iscellstr(ROIs)
@@ -56,7 +45,13 @@ if iscellstr(ROIs)
 end
 
 % Determine ROIs to analyze
-if iscellstr(ROIindex) || isa(ROIindex, 'imref2d')
+if ~exist('ROIindex', 'var') || isempty(ROIindex)
+    numROIs = cellfun(@(x) (numel(x.rois)), ROIs); % vector of number of rois in each element of cell array
+    if numel(unique(numROIs))>1
+        error('Both files must have the same number of ROIs');
+    end
+    ROIindex = repmat((1:numROIs(1))',1,2);
+elseif iscellstr(ROIindex) || isa(ROIindex, 'imref2d')
     ROIindex = autoMatchROIs(ROIs, ROIindex);
 end
 numROIs = size(ROIindex, 1);
@@ -77,7 +72,6 @@ PValues = nan(numROIs, 3); % [btwn positions, btwn pre and post, interaction btw
 
 % Compute significance
 parfor_progress(numROIs);
-tic
 for rindex = 1:numROIs
     
     % Gather data
@@ -104,7 +98,4 @@ for rindex = 1:numROIs
     parfor_progress;
 end
 parfor_progress(0);
-
-toc
-
 

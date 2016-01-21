@@ -11,8 +11,8 @@ CMapType = 'HiLo';
 showStimID = true;
 showStimMarker = true;
 showColorBar = true;
-frameRate = 15.45;
-mergetype = 'quick'; % 'quick' or 'pretty'
+frameRate = 15.45*3;
+mergetype = 'pretty'; % 'quick' or 'pretty'
 % Crop = false;
 Crop = [32.51, 0, 729.98, 512];
 CLim = [];
@@ -78,13 +78,11 @@ if ~exist('ImagesA', 'var') || isempty(ImagesA)
     [ImagesA,p] = uigetfile({'*.exp;*.align'}, 'Select image files for first dataset:', directory, 'MultiSelect', 'on');
     if isnumeric(ImagesA)
         return
-    elseif iscellstr(ImagesA)
-        ImagesA = fullfile(p, ImagesA);
-    else
-        ImagesA = {fullfile(p, ImagesA)};
     end
+    ImagesA = fullfile(p, ImagesA);
     directory = p;
-elseif ischar(ImagesA)
+end
+if ischar(ImagesA)
     ImagesA = {ImagesA};
 end
 
@@ -92,12 +90,10 @@ if ~exist('MapsA', 'var') || isempty(MapsA)
     [MapsA,p] = uigetfile({'*.exp;*.align'}, 'Select map files for first dataset:', directory, 'MultiSelect', 'on');
     if isnumeric(MapsA)
         return
-    elseif iscellstr(MapsA)
-        MapsA = fullfile(p, MapsA);
-    else
-        MapsA = {fullfile(p, MapsA)};
     end
-elseif ischar(MapsA)
+    MapsA = fullfile(p, MapsA);
+end
+if ischar(MapsA)
     MapsA = {MapsA};
 end
 
@@ -105,13 +101,11 @@ if ~exist('ImagesB', 'var') || isempty(ImagesB)
     [ImagesB,p] = uigetfile({'*.exp;*.align'}, 'Select image files for second dataset:', directory, 'MultiSelect', 'on');
     if isnumeric(ImagesB)
         return
-    elseif iscellstr(ImagesB)
-        ImagesB = fullfile(p, ImagesB);
-    else
-        ImagesB = {fullfile(p, ImagesB)};
     end
+    ImagesB = fullfile(p, ImagesB);
     directory = p;
-elseif ischar(ImagesB)
+end
+if ischar(ImagesB)
     ImagesB = {ImagesB};
 end
 
@@ -119,12 +113,10 @@ if ~exist('MapsB', 'var') || isempty(MapsB)
     [MapsB,p] = uigetfile({'*.exp;*.align'}, 'Select map files for second dataset:', directory, 'MultiSelect', 'on');
     if isnumeric(MapsB)
         return
-    elseif iscellstr(MapsB)
-        MapsB = fullfile(p, MapsB);
-    else
-        MapsB = {fullfile(p, MapsB)};
     end
-elseif ischar(MapsB)
+    MapsB = fullfile(p, MapsB);
+end
+if ischar(MapsB)
     MapsB = {MapsB};
 end
 
@@ -170,8 +162,28 @@ if iscellstr(MapsB)
     end
 end
 
+% Crop images
+if ~islogical(Crop) || Crop ~= false
+    [ImagesA, MapsA] = crop(ImagesA, Crop, MapsA);
+    [ImagesB, MapsB] = crop(ImagesB, Crop, MapsB);
+end
+
+% Create map for pretty merge
+if strcmp(mergetype, 'pretty')
+    [DimA, MapA, indMapA] = mapFoVs(MapsA, 'type', 'blend');
+    [DimB, MapB, indMapB] = mapFoVs(MapsB, 'type', 'blend');
+else
+    indMapA = [];
+    MapA = [];
+    DimA = [];
+    indMapB = [];
+    MapB = [];
+    DimB = [];
+end
+
 % Initialize Map for Generating Images
-outMap = mapOverlap(MapsA, MapsB, 'crop', Crop);
+[~, outMap] = mapFoVs([MapsA, MapsB]);
+% outMap = mapOverlap(MapsA, MapsB, 'crop', Crop); % line above should do same thing
 
 
 %% Determine stimuli to save
@@ -184,7 +196,7 @@ end
 if size(StimFrameIndex,1) == 1 && numel(StimIndex) > 1
     StimFrameIndex = repmat(StimFrameIndex,numStims,1);
 end
-   
+
 
 %% Determine color info
 if isempty(CLim)
@@ -192,16 +204,16 @@ if isempty(CLim)
     % Create A frame
     temp = cell(numA, 1);
     for index = 1:numA
-        temp{index} = ImagesA{1}{5}(:,:,1,StimFrameIndex(5,2));
+        temp{index} = ImagesA{index}{5}(:,:,1,StimFrameIndex(5,2));
     end
-    ImageA = createImage(temp, MapsA, 'type', mergetype, 'OutputView', outMap, 'filter', filt, 'crop', Crop);
+    ImageA = createImage(temp, MapsA, 'speed', mergetype, 'OutputView', outMap, 'filter', filt, 'Map', indMapA, DimA, MapA);
     
     % Create B frame
     temp = cell(numB, 1);
     for index = 1:numB
-        temp{index} = ImagesB{1}{5}(:,:,1,StimFrameIndex(5,2));
+        temp{index} = ImagesB{index}{5}(:,:,1,StimFrameIndex(5,2));
     end
-    ImageB = createImage(temp, MapsB, 'type', mergetype, 'OutputView', outMap, 'filter', filt, 'crop', Crop);
+    ImageB = createImage(temp, MapsB, 'speed', mergetype, 'OutputView', outMap, 'filter', filt, 'Map', indMapB, DimB, MapB);
     
     % Compute difference
     Image = (ImageB - ImageA);%./(ImageB + ImageA);
@@ -235,7 +247,7 @@ end
 %% Save each stimulus average to video
 
 % Open video
-fprintf('Writing video: %s\n', saveFile);
+fprintf('Writing video: %s...', saveFile);
 vidObj = VideoWriter(saveFile,'Motion JPEG AVI');
 set(vidObj, 'FrameRate', frameRate);
 open(vidObj);
@@ -245,23 +257,22 @@ hF = figure('Units', 'Pixels', 'Position', [50, 50, 1400, 900], 'Color', 'w');
 hA = axes('Parent', hF);
 
 for sindex = StimIndex
-%     fprintf('\n\twriting s%d:', sindex);
     
     for findex = 1:size(ImagesA{1}{sindex},4)
         
         % Create A frame
         temp = cell(numA, 1);
         for index = 1:numA
-            temp{index} = ImagesA{1}{sindex}(:,:,1,findex);
+            temp{index} = ImagesA{index}{sindex}(:,:,1,findex);
         end
-        ImageA = createImage(temp, MapsA, 'type', mergetype, 'OutputView', outMap, 'crop', Crop, 'filter', filt);
+        ImageA = createImage(temp, MapsA, 'speed', mergetype, 'OutputView', outMap, 'filter', filt, 'Map', indMapA, DimA, MapA);
         
         % Create B frame
         temp = cell(numB, 1);
         for index = 1:numB
-            temp{index} = ImagesB{1}{sindex}(:,:,1,findex);
+            temp{index} = ImagesB{index}{sindex}(:,:,1,findex);
         end
-        ImageB = createImage(temp, MapsB, 'type', mergetype, 'OutputView', outMap, 'crop', Crop, 'filter', filt);
+        ImageB = createImage(temp, MapsB, 'speed', mergetype, 'OutputView', outMap, 'filter', filt, 'Map', indMapB, DimB, MapB);
         
         % Compute difference
         Image = (ImageB - ImageA);%./(ImageB + ImageA);
@@ -309,7 +320,6 @@ for sindex = StimIndex
         frame = getframe(hF);
         writeVideo(vidObj, frame.cdata);
         
-%         fprintf('\t%d', findex);
     end
 
 end
@@ -317,4 +327,4 @@ end
 close(vidObj);
 close(hF);
 
-fprintf('\nfinished\n');
+fprintf('\tfinished\n');

@@ -2,7 +2,7 @@ function [ROIdata, badTrials] = computeTuningCurve(ROIdata, ROIindex, TrialIndex
 
 
 FitTuningCurves = false; % gaussian fit
-ControlID = 0; % StimID of control trials, or '[]' if no control trial
+ControlID = 1; % StimID of control trials, or '[]' if no control trial
 outlierweight = 3; % # of std dev to ignore
 StimFrames = [];
 
@@ -98,7 +98,7 @@ if ROIindex(end) == inf
 end
 
 %% Determine stimuli info
-StimIDs = unique(ROIdata.DataInfo.StimID(TrialIndex)); % NEEDS TO REFERENCE TRIALS IN ROIdata.DataInfo
+StimIDs = unique(ROIdata.DataInfo.StimID(ismember(ROIdata.DataInfo.TrialIndex, TrialIndex)));
 numStimuli = numel(StimIDs);
 
 % Determine order to cycle through stimuli (necessary for t-test to control trials)
@@ -143,9 +143,9 @@ for rindex = ROIindex
     for sindex = indexorder'
         
         % Select data for current stimulus
-        currentTrials = find(ROIdata.DataInfo.StimID==StimIDs(sindex));     % determine all trials for current stimulus
+        currentTrials = ROIdata.DataInfo.TrialIndex(ROIdata.DataInfo.StimID==StimIDs(sindex));     % determine all trials for current stimulus
         currentTrials = currentTrials(ismember(currentTrials,TrialIndex));  % remove non-specified trials
-        CaTraces = ROIdata.rois(rindex).dFoF(currentTrials,:);              % pull out data for these trials
+        CaTraces = ROIdata.rois(rindex).dFoF(ismember(ROIdata.DataInfo.TrialIndex, currentTrials),:);              % pull out data for these trials
         
         % Remove bad trials
         badCurrent = any(isnan(CaTraces(:,StimFrames(sindex,1):StimFrames(sindex,2))), 2);
@@ -189,10 +189,13 @@ for rindex = ROIindex
                 StimulusDFoF);
         end
         
-        % Correct for multiple comparisons
-        [~,~,ROIdata.rois(rindex).PValueCorrected] = fdr_bh(ROIdata.rois(rindex).PValue(2:end));
-        
     end %stimuli
+    
+    % Correct for multiple comparisons
+    if ~isempty(ControlID)
+        [~,~,ROIdata.rois(rindex).PValueCorrected] = fdr_bh(ROIdata.rois(rindex).PValue(2:end));
+    end
+        
 end %ROIs
 if any(~cellfun(@isempty, badTrials))
     warning('Some trials couldn''t be included as they contained at least one NaN');

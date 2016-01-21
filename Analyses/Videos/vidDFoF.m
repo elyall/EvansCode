@@ -12,9 +12,9 @@ showStimID = true;
 showStimMarker = true;
 showColorBar = true;
 frameRate = 15.45*3;
-mergetype = 'quick'; % 'quick' or 'pretty'
-% Crop = false;
-Crop = [32.51, 0, 729.98, 512];
+mergetype = 'pretty'; % 'quick' or 'pretty'
+Crop = false;
+% Crop = [32.51, 0, 729.98, 512];
 CLim = [];
 filt = false;
 % filt = fspecial('gaussian',5,1);
@@ -102,7 +102,7 @@ elseif ischar(Maps)
 end
 
 
-%% Load in images from the two datasets
+%% Load in images from the datasets
 if iscellstr(Images)
     ImageFiles = Images;
     Images = cell(numel(ImageFiles),1);
@@ -114,7 +114,7 @@ end
 numFiles = numel(Images);
 
 
-%% Load in maps from the two datasets
+%% Load in maps from the datasets
 if iscellstr(Maps)
     MapFiles = Maps;
     Maps = imref2d();
@@ -122,6 +122,20 @@ if iscellstr(Maps)
         load(MapFiles{findex}, 'Map', '-mat');
         Maps(findex) = Map;
     end
+end
+
+% Crop images
+if ~islogical(Crop) || Crop ~= false
+    [Images, Maps] = crop(Images, Crop, Maps);
+end
+
+% Create map for pretty merge
+if strcmp(mergetype, 'pretty')
+    [Dim, Map, indMap] = mapFoVs(Maps, 'type', 'blend');
+else
+    indMap = [];
+    Dim = [];
+    Map = [];
 end
 
 
@@ -143,9 +157,9 @@ if isempty(CLim)
     % Create A frame
     temp = cell(numFiles, 1);
     for index = 1:numFiles
-        temp{index} = Images{1}{5}(:,:,1,StimFrameIndex(5,2));
+        temp{index} = Images{index}{ceil(end/2)}(:,:,1,StimFrameIndex(5,2));
     end
-    Image = createImage(temp, Maps, 'type', mergetype, 'filter', filt, 'crop', Crop);
+    Image = createImage(temp, Maps, 'speed', mergetype, 'filter', filt, 'Map', indMap, Dim, Map);
 
     CLim = prctile(Image(:), [.01,99.99]);
     
@@ -171,7 +185,7 @@ end
 %% Save each stimulus average to video
 
 % Open video
-fprintf('Writing video: %s\n', saveFile);
+fprintf('Writing video: %s...', saveFile);
 vidObj = VideoWriter(saveFile,'Motion JPEG AVI');
 set(vidObj, 'FrameRate', frameRate);
 open(vidObj);
@@ -181,16 +195,15 @@ hF = figure('Units', 'Pixels', 'Position', [50, 50, 1450, 950], 'Color', 'w');
 hA = axes('Parent', hF);
 
 for sindex = StimIndex
-%     fprintf('\n\twriting s%d:', sindex);
     
     for findex = 1:size(Images{1}{sindex},4)
         
         % Create frame
         temp = cell(numFiles, 1);
         for index = 1:numFiles
-            temp{index} = Images{1}{sindex}(:,:,1,findex);
+            temp{index} = Images{index}{sindex}(:,:,1,findex);
         end
-        Image = createImage(temp, Maps, 'type', mergetype, 'crop', Crop, 'filter', filt);
+        Image = createImage(temp, Maps, 'speed', mergetype, 'filter', filt, 'Map', indMap, Dim, Map);
                 
         % Display Image
         imagesc(Image, CLim);
@@ -233,7 +246,6 @@ for sindex = StimIndex
         frame = getframe(hF);
         writeVideo(vidObj, frame.cdata);
         
-%         fprintf('\t%d', findex);
     end
 
 end
@@ -241,4 +253,4 @@ end
 close(vidObj);
 close(hF);
 
-fprintf('\nfinished\n');
+fprintf('\tfinished\n');

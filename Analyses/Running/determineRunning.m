@@ -1,7 +1,7 @@
-function RunIndex = determineRunning(AnalysisInfo, frames, thresh, varargin)
+function [TrialIndex, RunIndex] = determineRunning(AnalysisInfo, frames, thresh, varargin)
 
 directory = cd;
-TrialIndex = [2 inf];
+TrialIndex = [1 inf];
 type = 'TrialStimMean'; % 'TrialStimMean' or 'ExpStimVar'
 comparison = '>=';
 
@@ -98,3 +98,7 @@ switch type
         
         
 end
+
+% Remove non-running trials from index
+TrialIndex(~RunIndex) = [];
+

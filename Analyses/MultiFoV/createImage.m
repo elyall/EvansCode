@@ -6,8 +6,9 @@ speed = 'quick'; % 'quick' or 'pretty'
 % type = 'blend'; % 'mean' or 'blend' (for pretty only)
 scaling = 'Independent'; % 'Independent' or 'Joint' (for quick only)
 
+Crop = false;
 % Crop = true; % matrix (numFiles x 4:[xmin, ymin, width, height]) or 'true' for prompting
-Crop = repmat([32.51, 0, 729.98, 512], 1, 1);
+% Crop = repmat([32.51, 0, 729.98, 512], 1, 1);
 
 filt = false;
 % filt = fspecial('gaussian', 5, 1);
@@ -30,7 +31,7 @@ while index<=length(varargin)
                 speed = varargin{index+1};
                 index = index + 2;
             case 'type'
-                type = varargin{index+1};
+                imageType = varargin{index+1};
                 index = index + 2;
             case 'scaling'
                 scaling = varargin{index+1};
@@ -46,8 +47,8 @@ while index<=length(varargin)
                 index = index + 2;
             case 'Map'
                 indMap = varargin{index+1};
-                Dim = varargin{index+1};
-                Map = varargin{index+1};
+                Dim = varargin{index+2};
+                Map = varargin{index+3};
                 index = index + 4;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -157,28 +158,30 @@ if numFiles > 1
             
             % Create Image
             Image = zeros(H, W, max(Dimensions(:,3)));
-            for findex = 1:findex
+            for findex = 1:numFiles
                 Image(Dim(findex,2)+1:sum(Dim(findex,[2,4])),Dim(findex,1)+1:sum(Dim(findex,[1,3])),1:Dimensions(findex,3))...
                     = Image(Dim(findex,2)+1:sum(Dim(findex,[2,4])),Dim(findex,1)+1:sum(Dim(findex,[1,3])),1:Dimensions(findex,3))...
-                    + repmat(indMap(Dim(findex,2)+1:sum(Dim(findex,[2,4])),Dim(findex,1)+1:sum(Dim(findex,[1,3]))),[1,1,Dimensions(findex,3)]).*Images{findex};
+                    + repmat(indMap(Dim(findex,2)+1:sum(Dim(findex,[2,4])),Dim(findex,1)+1:sum(Dim(findex,[1,3])),findex),[1,1,Dimensions(findex,3)]).*Images{findex};
             end
             
             
             
         case 'quick' % Build Quick Image
-            for cindex = 1:Dimensions(findex,3);
-                Image = Images{1}(:,:,cindex);
-                Map = Maps(1);
-                for findex = 2:numFiles
-                    [Image, Map] = imfuse(...
-                        Image,...
-                        Map,...
-                        Images{findex}(:,:,1),...
-                        Maps(findex),...
-                        'blend',...
-                        'Scaling', scaling);
-                end
+            %             for cindex = 1:Dimensions(1,3);
+            %                 Image = Images{1}(:,:,cindex);
+            Image = Images{1}(:,:,1);
+            Map = Maps(1);
+            for findex = 2:numFiles
+                [Image, Map] = imfuse(...
+                    Image,...
+                    Map,...
+                    Images{findex}(:,:,1),...
+                    Maps(findex),...
+                    'blend',...
+                    'Scaling', scaling);
             end
+            Image = double(Image);
+            %             end
             %         Origin = [Map.XWorldLimits(1), Map.YWorldLimits(1)];
     end
     

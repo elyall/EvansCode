@@ -16,6 +16,7 @@ NeuropilWeight = {[]};
 
 % Tuning Curves
 ComputeAvgStim = false;
+TrialIndex = {};
 minrunspeed = 100;
 outlierweight = 4;
 
@@ -50,6 +51,9 @@ while index<=length(varargin)
             case 'ComputeAvgStim'
                 ComputeAvgStim = true;
                 index = index + 1;
+            case 'TrialIndex'
+                TrialIndex = varargin{index+1};
+                index = index + 2;
             case 'minrunspeed'
                 minrunspeed = varargin{index+1};
                 index = index + 2;
@@ -164,6 +168,13 @@ if numel(saveFiles) == 1
     saveFiles = repmat(saveFiles, numFiles, 1);
 end
 
+if ~iscell(TrialIndex)
+    TrialIndex = {TrialIndex};
+end
+if numel(TrialIndex) == 1
+    TrialIndex = repmat(TrialIndex, numFiles, 1);
+end
+
 
 %% Cycle through files
 for findex = 1:numFiles;
@@ -221,19 +232,9 @@ for findex = 1:numFiles;
     
     %% Compute tuning curves
     if ComputeAvgStim
-        
-        % Determine trials to analyze
-        load(ExperimentFiles{findex}, 'AnalysisInfo', 'frames', '-mat');
-        if exist('frames', 'var') && isfield(frames, 'RunningSpeed')
-            TrialIndex = determineRunning(AnalysisInfo, frames, minrunspeed);
-        else
-            TrialIndex = [1 inf];
-        end
-        
-        % Compute tuning curves
-        ROIdata = computeTuningCurve(ROIdata, ROIindex{findex}, TrialIndex,...
+        ROIdata = computeTuningCurve(ROIdata, ROIindex{findex}, TrialIndex{findex},...
             'Fit',...
-            'ControlID', 0,...
+            'ControlID', 1,...
             'outlierweight', outlierweight);
     end
     

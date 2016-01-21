@@ -106,7 +106,7 @@ gd.Control.selection = uitable(...
     'Position',             [0,0,1,.85],...
     'RowName',              [],...
     'ColumnName',           {'File','View','Move','Y','X','Path','Remove'},...
-    'ColumnEditable',       [true,true,true,false,false,true,true],...
+    'ColumnEditable',       [true,true,true,true,true,true,true],...
     'ColumnFormat',         {'char','logical','logical','char','char','char','logical'},...
     'ColumnWidth',          {100,40,40,40,40,200,40},...
     'Enable',               'off',...
@@ -403,6 +403,21 @@ function DataSelection(hObject,eventdata,gd)
 
 if eventdata.Indices(2) == 2 || eventdata.Indices(2) == 3       % display selected images
     plotDataAxes(gd);
+    
+elseif eventdata.Indices(2) == 4 || eventdata.Indices(2) == 5   % move image
+    % Check input is numeric and valid
+    if ~isnumeric(eventdata.NewData) || isnan(eventdata.NewData)
+        hObject.Data{eventdata.Indices(1),eventdata.Indices(2)} = eventdata.PreviousData;
+        return
+    end
+    % Record shift
+    if eventdata.Indices(2) == 4    % up/down
+        gd.DataSets(eventdata.Indices(1)).Map.YWorldLimits = [.5,gd.DataSets(eventdata.Indices(1)).Map.ImageSize(1)+.5] + eventdata.NewData;
+    else                            % left/right
+        gd.DataSets(eventdata.Indices(1)).Map.XWorldLimits = [.5,gd.DataSets(eventdata.Indices(1)).Map.ImageSize(2)+.5] + eventdata.NewData;
+    end
+    guidata(hObject, gd);   % save guidata
+    plotDataAxes(gd);       % display shift
     
 elseif eventdata.Indices(2) == 1 || eventdata.Indices(2) == 6   % adjust filename
     contents = get(hObject, 'Data'); 

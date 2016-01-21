@@ -1,8 +1,12 @@
-function PValues = tuningAnova(ROIdata, varargin)
+function [PValues, ROIdata] = tuningAnova(ROIdata, varargin)
 
 
 StimIndex = [2 inf];
 ROIindex = [1 inf];
+
+saveOut = false;
+saveFile = '';
+
 
 %% Parse input arguments
 index = 1;
@@ -14,6 +18,12 @@ while index<=length(varargin)
                 index = index + 2;
             case 'ROIindex'
                 ROIindex = varargin{index+1};
+                index = index + 2;
+            case {'Save', 'save'}
+                saveOut = true;
+                index = index + 1;
+            case {'SaveFile', 'saveFile'}
+                saveFile = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -38,9 +48,17 @@ end
 if ischar(ROIdata)
     ROIFile = ROIdata;
     load(ROIFile, 'ROIdata', '-mat');
+    if saveOut && isempty(saveFile)
+        saveFile = ROIFile;
+    end
+end
+if saveOut && isempty(saveFile)
+    warning('Cannot save output as no file specified');
+    saveOut = false;
 end
 
-% Determine ROIs to analyze
+
+%% Determine ROIs to analyze
 if ROIindex(end) == inf
     ROIindex = [ROIindex(1:end-1), ROIindex(end-1)+1:numel(ROIdata.rois)];
 end
@@ -62,7 +80,6 @@ PValues = nan(numROIs, 1); % [btwn positions, btwn pre and post, interaction btw
 
 % Compute significance
 parfor_progress(numROIs);
-tic
 for rindex = 1:numROIs
     
     % Gather data
@@ -86,5 +103,22 @@ for rindex = 1:numROIs
 end
 parfor_progress(0);
 
-toc
+
+%% Distribute to struct
+if nargin > 1 || saveOut
+    for rindex = 1:numROIs
+        ROIdata.rois(ROIindex(rindex)).TunedPValue = PValues(rindex);
+    end
+end
+
+
+%% Save to file
+if saveOut
+    if ~exist(saveFile, 'file')
+        save(saveFile, 'ROIdata', '-mat', '-v7.3');
+    else
+        save(saveFile, 'ROIdata', '-mat', '-append');
+    end
+    fprintf('\tROIdata saved to: %s\n', saveFile);
+end
 

@@ -1,4 +1,4 @@
-function matchROIs(ExperimentFiles1, ExperimentFiles2, ROIFiles1, ROIFiles2)
+function matchROIs(ExperimentFiles, ExperimentFiles2, ROIFiles1, ROIFiles2)
 
 
 %% Check input arguments

@@ -100,6 +100,9 @@ while index<=length(varargin)
             case 'CLim'
                 CLim = varargin{index+1};
                 index = index + 2;
+            case 'CMap'
+                CMap = varargin{index+1};
+                index = index + 2;
             case 'ControlID'
                 ControlID = varargin{index+1};
                 index = index + 2;
@@ -322,10 +325,12 @@ for rindex = 1:numROIs
     if range(CLim(rindex,:)) == 0
         CLim(rindex,:) = [min(data(:)), max(data(:))];
     end
-    if ~strcmp(zscoreby, 'none') || strcmp(datatype, 'dFoF')
-        CMap{rindex} = b2r(CLim(rindex,1),CLim(rindex,2));
-    else
-        CMap{rindex} = redblue(64);
+    if isempty(CMap{rindex})
+        if ~strcmp(zscoreby, 'none') || strcmp(datatype, 'dFoF')
+            CMap{rindex} = b2r(CLim(rindex,1),CLim(rindex,2));
+        else
+            CMap{rindex} = redblue(64);
+        end
     end
     
     % Display Data

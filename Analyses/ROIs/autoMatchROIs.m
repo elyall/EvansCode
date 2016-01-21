@@ -275,7 +275,7 @@ if addNewROIs
         
         % Determine indices of missing ROIs
         uindex = find(needsROI(:,findex));
-        fprintf('\tadding %d ROI(s) to %s', numNew(findex), ROIFiles{findex});
+        fprintf('adding %d ROI(s) to %s\n', numNew(findex), ROIFiles{findex});
         
         % Cycle through new ROIs adding each to the output
         ROIMasks{findex} = cat(3, ROIMasks{findex}, zeros(Height(findex), Width(findex), numNew(findex)));
@@ -287,7 +287,7 @@ if addNewROIs
         end
         
     end
-    fprintf('\nComplete\n');
+    fprintf('Complete\n');
 end
 
 

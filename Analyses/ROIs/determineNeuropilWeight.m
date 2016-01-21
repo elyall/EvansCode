@@ -92,5 +92,5 @@ switch type
         NeuropilWeight = nanmin(Data)';
         
 end
-NeuropilWeight(NeuropilWeight > maxWeight) = maxWeight; % rectify top of range (some neurons will always have signal so previous assumption can't be made)
+NeuropilWeight(NeuropilWeight > maxWeight) = maxWeight; % rectify top of range (some neurons will always have baseline signal so previous assumption can't be made)
 

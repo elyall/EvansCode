@@ -25,7 +25,7 @@ hA = [];
 Title = true;
 YLim = [];
 Legend = {};
-LegendLocation = 'NorthEastOutside';
+LegendLocation = 'NorthWest';
 MarkerSize = 10; % 20
 LineWidth = 1; % 2
 
@@ -245,7 +245,7 @@ for index = 1:numel(ROIindex)
                 text(Xdim(1),Ydim(2),sprintf('r^2=%.2f\nFWHM=%.2f', rois(rindex).rsquare, rois(rindex).Coeff(3)),'Color',fitColor{index},'FontSize',fontSize,'HorizontalAlignment','left','VerticalAlignment','top');
         end
     end
-        
+    
     % Set axes labels
     if ~isempty(YLim)
         if isnumeric(YLim)
@@ -266,10 +266,21 @@ for index = 1:numel(ROIindex)
         ylabel('Average Stimulus-Evoked dF/F');
     end
     
+    % Place legend
+    if ~isempty(Legend) && ismember(index, lastROI)
+        legend(Legend, 'Location', LegendLocation);
+    end
+    
     % Show PWCZ
     if ~isempty(PWCZ)
         temp = ylim(gca);
-        plot(repmat([PWCZ(1)+showControl-0.5, PWCZ(end)+showControl+0.5],2,1), repmat(temp',1,2), 'k--');
+        patch([repmat(PWCZ(1)+showControl-0.5,2,1);repmat(PWCZ(end)+showControl+0.5,2,1)], [temp';flip(temp')],[.5,.5,.5],...
+            'FaceAlpha',    0.2,...
+            'EdgeColor',    [.5,.5,.5],...
+            'EdgeAlpha',    0.2);
+        temp = get(gca,'children');             % get ordering
+        set(gca,'children',temp([2:end,1]));    % move patch to back of plot 
+        % plot(repmat([PWCZ(1)+showControl-0.5, PWCZ(end)+showControl+0.5],2,1), repmat(temp',1,2), 'k--'); % line boundaries
     end
     
     % Set Title
@@ -281,7 +292,7 @@ for index = 1:numel(ROIindex)
     end
     
     % Plot 0 line
-    plot([0,numStimuli+1], [0 0], 'k--');
+    % plot([0,numStimuli+1], [0 0], 'k--');
     
     % Plot stars for stimuli that evoked a significant response
     if showStimStars
@@ -306,11 +317,6 @@ for index = 1:numel(ROIindex)
         for s = 1:numStimuli
             text(s,Ydim(1)+(Ydim(2)-Ydim(1))/20,sprintf('p=%.3f',rois(rindex).PValue(s)),'HorizontalAlignment','center');
         end
-    end
-    
-    % Place legend
-    if ~isempty(Legend) && ismember(index, lastROI)
-        legend(Legend, 'Location', LegendLocation);
     end
     
     hold off

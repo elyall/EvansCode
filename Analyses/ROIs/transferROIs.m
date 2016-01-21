@@ -114,9 +114,9 @@ if saveOut && ~isempty(saveFile)
         case '.segment'
             mask = sparse(reshape(ROIMasks, H*W, numROIs));
             if ~exist(saveFile, 'file')
-                save(saveFile, 'mask', '-mat', '-v7.3');
+                save(saveFile, 'mask', 'dim', '-mat', '-v7.3');
             else
-                save(saveFile, 'mask', '-mat', '-append');
+                save(saveFile, 'mask', 'dim', '-mat', '-append');
             end
         case '.rois'
             ROIdata = createROIdata(ROIMasks, 'ROIdata', saveFile);     

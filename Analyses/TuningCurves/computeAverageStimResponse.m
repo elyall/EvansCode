@@ -136,12 +136,12 @@ for sindex = 1:numStims
     trialdFoF{sindex} = zeros([Config(1).size(1:end-2), numTrials]);
     
     % Cycle through trials adding each to the average
-    for tindex = currentTrials'
+    for tindex = 1:numel(currentTrials)
         
         % Load trial
-        [frames, loadObj] = load2P(AnalysisInfo.ImgFilename{tindex},...
+        [frames, loadObj] = load2P(AnalysisInfo.ImgFilename{tindex},... % ImageFiles{1},...
             'Type',     'Direct',...
-            'Frames',   AnalysisInfo.ExpFrames(tindex,1):AnalysisInfo.ExpFrames(tindex,1)+numFrames-1,...
+            'Frames',   AnalysisInfo.ExpFrames(currentTrials(tindex),1):AnalysisInfo.ExpFrames(currentTrials(tindex),1)+numFrames-1,...
             'Double');
         if MotionCorrect
             frames = applyMotionCorrection(frames, MCdata, loadObj);
@@ -151,14 +151,14 @@ for sindex = 1:numStims
         AvgTrial{sindex} = AvgTrial{sindex} + frames/numTrials;
         
         % Compute trial's dFoF
-        lastFrame = AnalysisInfo.TrialStimFrames(tindex,1)-1;
+        lastFrame = AnalysisInfo.TrialStimFrames(currentTrials(tindex),1)-1;
         baseline = median(frames(:,:,:,1,1:lastFrame),5);
         baseline(baseline<1) = 1; % in reality this never happens
         frames = bsxfun(@rdivide, bsxfun(@minus, frames(:,:,:,1,:), baseline), baseline);
         AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex} + permute(frames, [1,2,3,5,4])/numTrials;
         
         % Save for later calculation
-        trialdFoF{sindex}(:,:,:,tindex) = mean(frames(:,:,:,1,AnalysisInfo.TrialStimFrames(tindex,1):AnalysisInfo.TrialStimFrames(tindex,2)), 5);
+        trialdFoF{sindex}(:,:,:,tindex) = mean(frames(:,:,:,1,AnalysisInfo.TrialStimFrames(currentTrials(tindex),1):AnalysisInfo.TrialStimFrames(currentTrials(tindex),2)), 5);
     end
     
     fprintf('\tfinished stim %d of %d (%d trials)\n',sindex,numStims,numTrials);

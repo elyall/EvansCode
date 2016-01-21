@@ -7,6 +7,7 @@ saveOut = false;
 saveFile = '';
 saveInputData = false;
 
+
 %% Parse input arguments
 index = 1;
 while index<=length(varargin)
@@ -105,7 +106,7 @@ end
 
 warning('off', 'MATLAB:table:RowsAddedExistingVars');
 trialCounter = 0;
-fprintf('Postprocessing %d experiment file(s)...\n', numFiles);
+fprintf('Post-processing %d experiment file(s)...\n', numFiles);
 fprintf('\t%s\n', ExperimentFiles{:});
 for findex = 1:numFiles
     
