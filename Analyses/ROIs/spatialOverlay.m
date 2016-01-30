@@ -185,7 +185,15 @@ switch DataType
         if ~exist('Labels', 'var') || isempty(Labels)
             Labels = [min(ColorIndex), max(ColorIndex)];
         end
-        Labels = cellstr(num2str((Labels(1):(Labels(2)-Labels(1))/10:Labels(2))'));
+        if numel(Labels)==2
+            Labels = min(Labels):range(Labels)/9:max(Labels);
+        end
+        if isnumeric(Labels)
+            if size(Labels,1)==1
+                Labels = Labels';
+            end
+            Labels = cellstr(num2str(Labels));
+        end
 end
 
 
@@ -262,6 +270,7 @@ switch ImgToDisplay
             colormap(CMap)
         end
 end
+axis equal
 
 % Plot overlay
 hold on
@@ -286,19 +295,19 @@ axis off
 
 % Plot colorbar
 if showColorBar
-    cmap = colormap;            % determine colormap of image
-    cbH = colorbar;             % place colorbar
-    YLim = get(cbH, 'Limits');  % determine colorbar limits
-    NewCMap = cat(1,cmap,Colors); % concatenate plot colors to colormap
-    colormap(NewCMap);          % set new colormap
+    cmap = colormap;                % determine colormap of image
+    cbH = colorbar;                 % place colorbar
+    YLim = get(cbH, 'Limits');      % determine colorbar limits
+    NewCMap = cat(1,cmap,Colors);   % concatenate plot colors to colormap
+    colormap(NewCMap);              % set new colormap
     HeightNewCMapInColorbar = size(Colors,1)*(YLim(2)/size(NewCMap,1)); % determine portion of colorbar taken by colors that were added
-    NewYLim = [YLim(2)-HeightNewCMapInColorbar, YLim(2)]; % limit the colormap to this range
-    Split = (NewYLim(2)-NewYLim(1))/numel(Labels); % determine the distance on the colorbar between two colors
+    NewYLim = [YLim(2)-HeightNewCMapInColorbar, YLim(2)];               % limit the colormap to this range
+    Split = range(NewYLim)/numel(Labels);                               % determine the distance on the colorbar between two colors
     switch DataType
         case 'discrete'
             set(cbH, 'Limits', NewYLim, 'FontSize', FontSize_colorbarTicks, 'Ticks', NewYLim(1)+Split/2:Split:NewYLim(2), 'YTickLabel', Labels);
         case 'continuous'
-            set(cbH, 'Limits', NewYLim, 'FontSize', FontSize_colorbarTicks, 'Ticks', NewYLim(1):(NewYLim(2)-NewYLim(1))/(numel(Labels)-1):NewYLim(2), 'YTickLabel', Labels);
+            set(cbH, 'Limits', NewYLim, 'FontSize', FontSize_colorbarTicks, 'Ticks', NewYLim(1):range(NewYLim)/(numel(Labels)-1):NewYLim(2), 'YTickLabel', Labels);
     end
     % set(cbH, 'Ticks', YLim(1):(YLim(2)-YLim(1))/(numel(Labels)-1):YLim(2), 'YTickLabel', Labels);
     if ~isempty(colorbarLabel)

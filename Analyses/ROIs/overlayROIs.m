@@ -1,4 +1,4 @@
-function patchHandles = plotROIs(Vertices, varargin)
+function patchHandles = overlayROIs(Vertices, varargin)
 
 axesHandle = [];
 Maps = [];
