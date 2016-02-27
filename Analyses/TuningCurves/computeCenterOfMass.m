@@ -29,7 +29,7 @@ for rindex = 1:numROIs
     
     % Compute center of mass (preference)
     index = distBetween:distBetween:numel(current)*distBetween; 
-    CoM(rindex) = sum(index.*current)./sum(current);
+    CoM(rindex) = sum(index.*current)/sum(current);
 
     
 end

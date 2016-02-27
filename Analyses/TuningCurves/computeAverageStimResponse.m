@@ -5,6 +5,9 @@ saveFile = '';
 
 directory = cd;
 
+numFramesBefore = 30;
+numFramesAfter = 59;
+
 %% Parse input arguments
 index = 1;
 while index<=length(varargin)
@@ -130,7 +133,7 @@ for sindex = 1:numStims
     numTrials = numel(currentTrials);
     
     % Initialize outputs
-    numFrames = mode(AnalysisInfo.nFrames(currentTrials));
+    numFrames = numFramesBefore+numFramesAfter+1;
     AvgTrial{sindex} = zeros([Config(1).size(1:end-1), numFrames]);
     AvgTrialdFoF{sindex} = zeros([Config(1).size(1:end-2), numFrames]);
     trialdFoF{sindex} = zeros([Config(1).size(1:end-2), numTrials]);
@@ -141,7 +144,7 @@ for sindex = 1:numStims
         % Load trial
         [frames, loadObj] = load2P(AnalysisInfo.ImgFilename{tindex},... % ImageFiles{1},...
             'Type',     'Direct',...
-            'Frames',   AnalysisInfo.ExpFrames(currentTrials(tindex),1):AnalysisInfo.ExpFrames(currentTrials(tindex),1)+numFrames-1,...
+            'Frames',   AnalysisInfo.ExpStimFrames(currentTrials(tindex),1)-numFramesBefore:AnalysisInfo.ExpStimFrames(currentTrials(tindex),1)+numFramesAfter,...
             'Double');
         if MotionCorrect
             frames = applyMotionCorrection(frames, MCdata, loadObj);
@@ -151,14 +154,14 @@ for sindex = 1:numStims
         AvgTrial{sindex} = AvgTrial{sindex} + frames/numTrials;
         
         % Compute trial's dFoF
-        lastFrame = AnalysisInfo.TrialStimFrames(currentTrials(tindex),1)-1;
-        baseline = median(frames(:,:,:,1,1:lastFrame),5);
+        baseline = median(frames(:,:,:,1,1:numFramesBefore),5);
         baseline(baseline<1) = 1; % in reality this never happens
         frames = bsxfun(@rdivide, bsxfun(@minus, frames(:,:,:,1,:), baseline), baseline);
         AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex} + permute(frames, [1,2,3,5,4])/numTrials;
         
         % Save for later calculation
-        trialdFoF{sindex}(:,:,:,tindex) = mean(frames(:,:,:,1,AnalysisInfo.TrialStimFrames(currentTrials(tindex),1):AnalysisInfo.TrialStimFrames(currentTrials(tindex),2)), 5);
+        lastFrame = min(numFramesBefore+1+diff(AnalysisInfo.ExpStimFrames(tindex,:)), numFrames);
+        trialdFoF{sindex}(:,:,:,tindex) = mean(frames(:,:,:,1,numFramesBefore+1:lastFrame), 5);
     end
     
     fprintf('\tfinished stim %d of %d (%d trials)\n',sindex,numStims,numTrials);

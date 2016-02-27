@@ -33,6 +33,6 @@ for rindex = 1:numROIs
     end
     
     % compute vector selectivity
-    Sel(rindex) = 1 - (sqrt(sum(abs(current).^2))/max(current)-1)/(sqrt(numel(current))-1); % (sqrt(|x1|^2+|x2|^2)/max(x) - 1 / sqrt(numel(x))) - 1
+    Sel(rindex) = 1 - (sqrt(sum(abs(current).^2))/max(current)-1)/(sqrt(numel(current))-1); % 1 - (sqrt(|x1|^2+|x2|^2)/max(x) - 1) / (sqrt(numel(x)) - 1)
     
 end

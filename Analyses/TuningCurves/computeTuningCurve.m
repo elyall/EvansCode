@@ -147,7 +147,7 @@ for rindex = ROIindex
         currentTrials = currentTrials(ismember(currentTrials,TrialIndex));  % remove non-specified trials
         CaTraces = ROIdata.rois(rindex).dFoF(ismember(ROIdata.DataInfo.TrialIndex, currentTrials),:);              % pull out data for these trials
         
-        % Remove bad trials
+        % Remove bad trials (NaN exists in trace)
         badCurrent = any(isnan(CaTraces(:,StimFrames(sindex,1):StimFrames(sindex,2))), 2);
         if any(badCurrent)
             for bindex = currentTrials(badCurrent)
@@ -161,18 +161,21 @@ for rindex = ROIindex
         
         % Remove outliers
         go = false;
-        gindex = 1;
-        [~,order] = sort(abs(zscore(StimulusDFoF)),'descend'); % determine trials furthest from the mean
         while ~go
-            [~,mu,sigma] = zscore(StimulusDFoF(order(gindex+1:end))); % determine mean and std without current trial
-            if abs(StimulusDFoF(order(gindex))-mu) > outlierweight*sigma % determine if current trial is an outlier
-                gindex = gindex + 1; % current trial is an outlier -> move to next trial
+            numTrials = numel(StimulusDFoF);
+            Val = nan(numTrials,1);
+            for tindex = 1:numTrials
+                [~,mu,sigma] = zscore(StimulusDFoF(setdiff(1:numTrials,tindex)));   % determine mean and std without current trial
+                Val(tindex) = abs(StimulusDFoF(tindex)-mu)/sigma;                   % calculate zscore of current trial relative to other data
+            end
+            if any(Val > outlierweight)                                             % at least one outlier exists
+                [~,furthestIndex] = max(Val);                                       % determine largest outlier
+                StimulusDFoF(furthestIndex) = [];                                   % remove largest outlier
             else
-                go = true; % no more outliers exist
+                go = true;
             end
         end
-        StimulusDFoF = StimulusDFoF(order(gindex:end)); % remove outlier trials
-        
+                
         % Save tuning curves
         ROIdata.rois(rindex).curve(sindex) = median(StimulusDFoF); % evoked dF/F over all trials for current stimulus
         ROIdata.rois(rindex).StdError(sindex) = std(StimulusDFoF)/sqrt(length(StimulusDFoF)); % standard error for stimulus

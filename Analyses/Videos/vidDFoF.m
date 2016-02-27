@@ -11,7 +11,7 @@ CMapType = 'green';
 showStimID = true;
 showStimMarker = true;
 showColorBar = true;
-frameRate = 15.45*3;
+frameRate = 15.45*2;
 mergetype = 'pretty'; % 'quick' or 'pretty'
 Crop = false;
 % Crop = [32.51, 0, 729.98, 512];
@@ -55,6 +55,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'CMapType'
                 CMapType = varargin{index+1};
+                index = index + 2;
+            case 'StimFrameIndex'
+                StimFrameIndex = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});

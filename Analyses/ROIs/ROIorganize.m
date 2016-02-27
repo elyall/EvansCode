@@ -159,7 +159,7 @@ end
 ROIdata.DataInfo.TrialIndex = TrialIndex;
 ROIdata.DataInfo.StimID = AnalysisInfo.StimID(TrialIndex);
 ROIdata.DataInfo.numFramesBefore = numFramesBefore;
-ROIdata.DataInfo.numStimFrames = diff(AnalysisInfo.TrialStimFrames(TrialIndex,:),[],2) + 1;
+ROIdata.DataInfo.numStimFrames = diff(AnalysisInfo.ExpStimFrames(TrialIndex,:),[],2) + 1;
 ROIdata.DataInfo.numFramesAfter = numFramesAfter;
 
 % Format series variables

@@ -56,6 +56,9 @@ while index<=length(varargin)
             case 'CMapType'
                 CMapType = varargin{index+1};
                 index = index + 2;
+            case 'StimFrameIndex'
+                StimFrameIndex = varargin{index+1};
+                index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
                 index = index + 1;

@@ -6,7 +6,7 @@ saveFile = ''; % filename to save plots to
 % Items to display
 showControl = false;
 showFit = false;
-showDataPoints = false;
+showDataPoints = true;
 showStimStars = false;
 showN = false;
 showPValues = false;
@@ -203,7 +203,7 @@ for index = 1:numel(ROIindex)
     rindex = ROIindex(index);
     
     % Fix Label
-    if isempty(rois(rindex).label)
+    if ~isfield(rois, 'label') || isempty(rois(rindex).label)
         rois(rindex).label = {'none'};
     end
     
@@ -218,15 +218,17 @@ for index = 1:numel(ROIindex)
     hold on
     
     % Plot each trial's average dF/F for each stimulus
+    numStimuli = numel(rois(rindex).curve);
     if showDataPoints
-        plot(ones(rois(rindex).nTrials(1),1), rois(rindex).Raw{1}, 'k.') %plot raw data points for control position
-        for s = 2:rois(rindex).nstim
-            plot((s)*ones(rois(rindex).nTrials(s),1), rois(rindex).Raw{s}, 'k.') %plot raw data points for all stimuli
+        if showControl
+            plot(ones(rois(rindex).nTrials(1),1), rois(rindex).Raw{1}, 'k.') %plot raw data points for control position
+        end
+        for s = 2:numStimuli
+            plot((s-~showControl)*ones(rois(rindex).nTrials(s),1), rois(rindex).Raw{s}, 'k.') %plot raw data points for all stimuli
         end
     end
     
     % Plot tuning curves
-    numStimuli = numel(rois(rindex).curve);
     if showControl
         errorbar(1,rois(rindex).curve(1),rois(rindex).StdError(1),'Color',curveColor{index},'LineStyle','-','LineWidth',LineWidth,'Marker','.','MarkerSize',MarkerSize);  %plot control position
     end

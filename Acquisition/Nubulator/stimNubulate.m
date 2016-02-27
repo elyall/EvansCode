@@ -87,11 +87,10 @@ end
 % Create figure
 gd.fig = figure(...
     'NumberTitle',          'off',...
-    'Name',                 'Stimulus: Vertical Pole along Azimuth',...
+    'Name',                 'Stimulus: Nubulate',...
     'ToolBar',              'none',...
     'Units',                Display.units,...
-    'Position',             Display.position,...
-    'KeyPressFcn',          @(hObject,eventdata)KeyPressCallback(hObject, eventdata, guidata(hObject)));
+    'Position',             Display.position);
 
 % SAVING DATA
 % panel
@@ -642,10 +641,6 @@ if hObject.Value
             gd.Experiment.Stimulus = zeros(size(gd.Experiment.blankTriggers,1), 1);
             gd.Experiment.Stimulus(startTrig:endTrig) = 1;
             
-            %         %% Initialize linear motor
-            %         H_LinearStage = serial(gd.Internal.LinearStage.port, 'BaudRate', 9600);
-            %         fopen(H_LinearStage);
-            
             
             %% Initialize imaging session (scanbox only)
             ImagingType = gd.Saving.imagingType.String{gd.Saving.imagingType.Value};
@@ -801,24 +796,31 @@ end
         dx_dt = conv(x_t, d_smooth_win, 'same');    % perform convolution
         dx_dt([1:sw_len,end-sw_len+1:end]) = [];    % remove values produced by padding the data
         % dx_dt = dx_dt * 360/360;                  % convert to degrees (360 pulses per 360 degrees)
-                
+        
         % Record average running speed during stimulus period
         currentStim = downsample(BufferStim(1:numBufferScans), dsamp);
-        if max(BufferStim(numBufferScans-numScansReturned+1:numBufferScans)) > RunIndex || diff(BufferStim([numBufferScans-numScansReturned,numBufferScans])) == -RunIndex     % next stimulus is already running
-            TrialInfo.RunSpeed(RunIndex) = mean(dx_dt(currentStim==RunIndex));
+        if any(diff(BufferStim(numBufferScans-numScansReturned:numBufferScans)) == -RunIndex) % stimulus ended during current DataIn call
+            % max(BufferStim(numBufferScans-numScansReturned+1:numBufferScans)) > RunIndex || diff(BufferStim([numBufferScans-numScansReturned,numBufferScans])) == -RunIndex     % next stimulus is already running
+            TrialInfo.RunSpeed(RunIndex) = mean(dx_dt(currentStim==RunIndex));  % calculate average running speed during stimulus
             fprintf('\t\t\tT%d S%d RunSpeed= %.2f', RunIndex, TrialInfo.StimID(RunIndex), TrialInfo.RunSpeed(RunIndex));
+            
+            % Save to file
+            if saveOut
+                save(SaveFile, 'TrialInfo', '-append');
+            end
+            
             % Determine if mouse was running during previous trial
             if TrialInfo.RunSpeed(RunIndex) < SpeedThreshold
                 TrialInfo.Running(RunIndex) = false;                                        % record that trial was bad
-                % Repeate trial if mouse wasn't running
-                if RepeatBadTrials
+                if RepeatBadTrials                                                          % repeate trial
                     fprintf(' (trial to be repeated)');
-                    StimuliToRepeat = [StimuliToRepeat, TrialInfo.StimID(RunIndex)];    % add trial to be repeated
+                    StimuliToRepeat = [StimuliToRepeat, TrialInfo.StimID(RunIndex)];        % add trial to repeat queue
                 end
             else % mouse was running
                 TrialInfo.Running(RunIndex) = true;                                         % record that trial was good
             end
             RunIndex = RunIndex+1; % increment index
+            
         end
         
         % Display new data and stimulus info
@@ -850,7 +852,7 @@ end
                 DAQ.queueOutputData(BaseTriggers);
             else                                                                % current trial is not control trial
                 CurrentTriggers = BaseTriggers;
-                CurrentTriggers(:,PistonCombinations{TrialInfo.StimID(currentTrial)}) = repmat(PistonTrigger, 1, numel(PistonCombinations{TrialInfo.StimID(currentTrial)}));
+                CurrentTriggers(:,PistonCombinations{TrialInfo.StimID(currentTrial)+ControlTrial}) = repmat(PistonTrigger, 1, numel(PistonCombinations{TrialInfo.StimID(currentTrial)}+ControlTrial));
                 DAQ.queueOutputData(CurrentTriggers);
             end
             BufferStim = cat(1, BufferStim, Stimulus*currentTrial);

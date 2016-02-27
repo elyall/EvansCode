@@ -599,7 +599,7 @@ function figure1_WindowScrollWheelFcn(hObject, eventdata, handles)
 %	VerticalScrollCount: signed integer indicating direction and number of clicks
 %	VerticalScrollAmount: number of lines scrolled for each click
 % handles    structure with handles and user data (see GUIDATA)
-handles.npixels = max(10,handles.npixels - (eventdata.VerticalScrollAmount*eventdata.VerticalScrollCount)*15);
+handles.npixels = max(10,handles.npixels - (eventdata.VerticalScrollAmount*eventdata.VerticalScrollCount)*10);
 guidata(hObject,handles);
 drawfloodim(handles);
 

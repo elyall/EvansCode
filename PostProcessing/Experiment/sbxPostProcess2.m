@@ -7,6 +7,7 @@ saveOut = false;
 saveFile = '';
 saveInputData = false;
 
+numTrigsPerTrial = 2;
 
 %% Parse input arguments
 index = 1;
@@ -140,7 +141,7 @@ for findex = 1:numFiles
     
     % Determine trial parameters
     numTrials = numel(TrialInfo.StimID);
-    nTrials_imaging = numel(info.frame(info.event_id==1))/4;
+    nTrials_imaging = numel(info.frame(info.event_id==1))/numTrigsPerTrial;
     nTrialsMissed = numTrials - nTrials_imaging;
     IndexStim = 1:numTrials;
     IndexImaging = zeros(numTrials,1);

@@ -217,7 +217,7 @@ for findex = 1:numFiles;
     
     %% Sort ROI signals to be trial-wise
     if OrganizeSignals
-        [ROIdata, series] = ROIorganize(ROIdata, ExperimentFiles{findex}, [], ROIindex{findex}, 'SeriesVariables', 'RunningSpeed');
+        [ROIdata, series] = ROIorganize(ROIdata, ExperimentFiles{findex}, [], ROIindex{findex}, 'SeriesVariables', 'RunningSpeed', 'numFramesBefore', 30, 'numFramesAfter', 59);
         if saveOut
             save(saveFiles{findex}, 'series', '-mat', '-append');
         end
@@ -234,7 +234,7 @@ for findex = 1:numFiles;
     if ComputeAvgStim
         ROIdata = computeTuningCurve(ROIdata, ROIindex{findex}, TrialIndex{findex},...
             'Fit',...
-            'ControlID', 1,...
+            'ControlID', 0,...
             'outlierweight', outlierweight);
     end
     
