@@ -218,7 +218,7 @@ function im_flood_ButtonDownFcn(hObject, eventdata)
     newmask = handles.floodmap < handles.npixels;
     
     if handles.current>size(handles.mask,2)
-        handles.mask = cat(2, handles.mask, sparse(prod(handles.dim), 100));
+        handles.mask = cat(2, handles.mask, sparse(prod(handles.dim), 100)); %allocate 100 more ROIs
     end
     
     handles.mask(:,handles.current) = newmask(:);
@@ -599,7 +599,7 @@ function figure1_WindowScrollWheelFcn(hObject, eventdata, handles)
 %	VerticalScrollCount: signed integer indicating direction and number of clicks
 %	VerticalScrollAmount: number of lines scrolled for each click
 % handles    structure with handles and user data (see GUIDATA)
-handles.npixels = max(10,handles.npixels - (eventdata.VerticalScrollAmount*eventdata.VerticalScrollCount)*10);
+handles.npixels = max(10,handles.npixels - (eventdata.VerticalScrollAmount*eventdata.VerticalScrollCount)*2);
 guidata(hObject,handles);
 drawfloodim(handles);
 

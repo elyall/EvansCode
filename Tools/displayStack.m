@@ -31,14 +31,14 @@ gd.dim = size(gd.Images);
 % Determine color limits
 if ~exist('CLim', 'var') || isempty(CLim)
 %     gd.CLim = prctile(Images(linspace(1,numel(Images),512*796*100)), [1,99]);
-    gd.CLimits = [min(gd.Images(:)), max(gd.Images(:))];
+    gd.CLimits = double([min(gd.Images(:)), max(gd.Images(:))]);
 else
     gd.CLim = CLim;
 end
 
 % Determine color map
-if ~exist('CMap', 'var') || isempty(CMap)
-    gd.CMap = 'gray';
+if ~exist('CMap', 'var')
+    gd.CMap = [];
 %     gd.CMap = HiLoColormap(CLim(1), CLim(2));
 else
     gd.CMap = CMap;
@@ -51,9 +51,9 @@ gd.fig = figure;
 
 % Create axis
 if isequal(gd.class, 'logical')
-    gd.axes = axes('Parent', gd.fig, 'Units', 'normalized', 'Position', [0, 0, 1, .9]);
+    gd.axes = axes('Parent', gd.fig, 'Units', 'normalized', 'Position', [.1, .1, .8, .7]);
 else
-    gd.axes = axes('Parent', gd.fig, 'Units', 'normalized', 'Position', [0, .1, 1, .9]);
+    gd.axes = axes('Parent', gd.fig, 'Units', 'normalized', 'Position', [.1, .2, .8, .6]);
 end
 
 % Create indexing sliders
@@ -85,6 +85,30 @@ for sindex = 1:ndim
 end
 gd.Position = ones(1,3);
 
+% Create plot type dropdown
+gd.Selection = uicontrol(...
+    'Style',            'popupmenu',...
+    'Parent',           gd.fig,...
+    'String',           {'imagesc','bar3'},...
+    'Units',            'normalized',...
+    'Position',         [0,.05,.2,.05],...
+    'Callback',         @(hObject,eventdata)plotmainaxes(guidata(hObject)));
+if strcmp(gd.class,'logical')
+    gd.Selection.Enable = 'off';
+end
+
+% Create colormap dropdown
+gd.Colormap = uicontrol(...
+    'Style',            'popupmenu',...
+    'Parent',           gd.fig,...
+    'String',           {'gray','parula'},...
+    'Units',            'normalized',...
+    'Position',         [0,0,.2,.05],...
+    'Callback',         @(hObject,eventdata)plotmainaxes(guidata(hObject)));
+if ~isempty(gd.CMap)
+    gd.Colormap.String{3} = 'input';
+end
+
 % Create colorlimit sliders
 for index = 1:2
     minorstep = 1/(gd.CLimits(2)-gd.CLimits(1));
@@ -93,7 +117,7 @@ for index = 1:2
         'Style',                'slider',...
         'Parent',               gd.fig,...
         'Units',                'normalized',...
-        'Position',             [.1,yloc,.7,.1/2],...
+        'Position',             [.35,yloc,.45,.1/2],...
         'Min',                  gd.CLimits(1),...
         'Max',                  gd.CLimits(2),...
         'Value',                gd.CLimits(index),...
@@ -104,7 +128,7 @@ for index = 1:2
         'Style',                'text',...
         'Parent',               gd.fig,...
         'Units',                'normalized',...
-        'Position',             [0,yloc,.1,.1/2],...
+        'Position',             [.2,yloc,.15,.1/2],...
         'String',               sprintf('%d', gd.CLimits(index)),...
         'HorizontalAlignment',  'right');
 end
@@ -152,7 +176,7 @@ plotmainaxes(gd)
 
 function updateCLim(hObject, ~, gd)
 % update CLim
-value = round(hObject.Value);
+value = hObject.Value;
 if hObject.UserData==1
     if value >= gd.CLim(2)
         hObject.Value = hObject.Min;
@@ -189,19 +213,44 @@ plotmainaxes(gd);
 function plotmainaxes(gd)
 axes(gd.axes)
 img = gd.Images(:,:, gd.Position(1), gd.Position(2), gd.Position(3));
-if gd.histeq.Value
-    img = adapthisteq(img, 'NumTiles', [16 16], 'Distribution', 'Exponential');
+if gd.Selection.Value==1 % imagesc
+    gd.histeq.Enable = 'on';
+    if gd.histeq.Value
+        img = adapthisteq(img, 'NumTiles', [16 16], 'Distribution', 'Exponential');
+    end
+    switch gd.class
+        case 'logical'
+            imshow(img);
+        otherwise
+            if gd.CLimIndiv.Value
+                imagesc(img);
+            else
+                imagesc(img, gd.CLim);
+            end
+    end
+elseif gd.Selection.Value==2 % bar3
+    gd.histeq.Enable = 'off';
+    temp = bar3(img);
+    for index=1:numel(temp)
+        temp(index).CData = temp(index).ZData;
+        temp(index).FaceColor = 'interp';
+    end
+    if gd.CLimIndiv.Value
+        zlim([min(img(:)),max(img(:))]);
+    else
+        gd.axes.CLim = gd.CLim;
+        zlim(gd.CLimits);
+    end
 end
-switch gd.class
-    case 'logical'
-        imshow(img);
-    otherwise
-        if gd.CLimIndiv.Value
-            imagesc(img);
-        else
-            imagesc(img, gd.CLim);
-        end
+
+% Set colormap
+if gd.Colormap.Value==1
+    colormap('gray')
+elseif gd.Colormap.Value==2
+    colormap('parula')
+elseif gd.Colormap.Value==3
+    colormap(gd.CMap)
 end
-colormap(gd.CMap)
-axis off
+% axis off
 % xlabel(sprintf('Frame %d', Index));
+

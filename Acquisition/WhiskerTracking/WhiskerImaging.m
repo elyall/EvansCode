@@ -98,45 +98,68 @@ gd.gui.control.preview = uicontrol(...
     'Units',                'normalized',...
     'Position',             [0,.8,1,.2],...
     'Callback',             @(hObject,eventdata)PreviewImages(hObject, eventdata, guidata(hObject)));
-% image control
-gd.gui.control.run = uicontrol(...
-    'Style',                'togglebutton',...
-    'String',               'Capture Images?',...
-    'Parent',               gd.gui.control.panel,...
-    'Units',                'normalized',...
-    'Position',             [0,.6,1,.2],...
-    'BackgroundColor',      [0,1,0],...
-    'Callback',             @(hObject,eventdata)CaptureImages(hObject, eventdata, guidata(hObject)));
-% trigger control
-gd.gui.control.trigger = uicontrol(...
-    'Style',                'togglebutton',...
-    'String',               'Trigger: External',...
-    'Parent',               gd.gui.control.panel,...
-    'Units',                'normalized',...
-    'Position',             [0,.4,1,.2],...
-    'Callback',             @(hObject,eventdata)ChangeSource(hObject, eventdata, guidata(hObject)));
 % snap control
 gd.gui.control.snap = uicontrol(...
     'Style',                'pushbutton',...
     'String',               'Take Frame',...
     'Parent',               gd.gui.control.panel,...
     'Units',                'normalized',...
-    'Position',             [0,.2,1,.2],...
+    'Position',             [0,.6,1,.2],...
     'Callback',             @(hObject,eventdata)TakeFrame(hObject, eventdata, guidata(hObject)));
+% trigger control
+gd.gui.control.trigger = uicontrol(...
+    'Style',                'togglebutton',...
+    'String',               'Trigger: External',...
+    'Parent',               gd.gui.control.panel,...
+    'Units',                'normalized',...
+    'Position',             [0,.5,1,.1],...
+    'Callback',             @(hObject,eventdata)ChangeSource(hObject, eventdata, guidata(hObject)));
+% frames per trigger
+gd.gui.control.framesPerTrigger = uicontrol(...
+    'Style',                'edit',...
+    'String',               '1',...
+    'Parent',               gd.gui.control.panel,...
+    'Units',                'normalized',...
+    'Position',             [.8,.4,.2,.1],...
+    'Callback',             @(hObject,eventdata)ChangeFramesPerTrigger(hObject, eventdata, guidata(hObject)));
+gd.gui.control.framesPerTriggerText = uicontrol(...
+    'Style',                'text',...
+    'String',               'Frames Per Trigger:',...
+    'Parent',               gd.gui.control.panel,...
+    'Units',                'normalized',...
+    'Position',             [0,.425,.79,.05],...
+    'HorizontalAlignment',  'right');
+% new file toggle
+gd.gui.control.newFilePerTrigger = uicontrol(...
+    'Style',                'popupmenu',...
+    'String',               {'Single File','New File Per Trigger'},...
+    'Parent',               gd.gui.control.panel,...
+    'Units',                'normalized',...
+    'Position',             [0,.35,1,.05]);
 % frame rate
 gd.gui.control.frameRate = uicontrol(...
     'Style',                'edit',...
     'String',               gd.Experiment.imaging.frameRate,...
     'Parent',               gd.gui.control.panel,...
     'Units',                'normalized',...
-    'Position',             [0,0,1,.1],...
+    'Position',             [.8,.25,.2,.1],...
     'Callback',             @(hObject,eventdata)ChangeFrameRate(hObject, eventdata, guidata(hObject)));
 gd.gui.control.frameRateText = uicontrol(...
     'Style',                'text',...
-    'String',               'Frame Rate (video file)',...
+    'String',               'Frame Rate:',...
     'Parent',               gd.gui.control.panel,...
     'Units',                'normalized',...
-    'Position',             [0,.1,1,.05]);
+    'Position',             [0,.275,.79,.05],...
+    'HorizontalAlignment',  'right');
+% image control
+gd.gui.control.run = uicontrol(...
+    'Style',                'togglebutton',...
+    'String',               'Capture Images?',...
+    'Parent',               gd.gui.control.panel,...
+    'Units',                'normalized',...
+    'Position',             [0,0,1,.2],...
+    'BackgroundColor',      [0,1,0],...
+    'Callback',             @(hObject,eventdata)CaptureImages(hObject, eventdata, guidata(hObject)));
 
 % Create Axes
 % panel
@@ -176,7 +199,22 @@ gd.gui.axes.saveCounter = uicontrol(...
     'Units',                'normalized',...
     'Position',             [0,.75,.2,.1],...
     'HorizontalAlignment',  'right');
-
+% test frame rate
+gd.gui.axes.testFrameRate = uicontrol(...
+    'Style',                'pushbutton',...
+    'String',               'Test Frame Rate',...
+    'Parent',               gd.gui.axes.panel,...
+    'Units',                'normalized',...
+    'Position',             [0,.1,.2,.1],...
+    'Callback',             @(hObject,eventdata)TestFrameRate(hObject, eventdata, guidata(hObject)));
+% frame rate text
+gd.gui.axes.maxFrameRate = uicontrol(...
+    'Style',                'text',...
+    'String',               'Max frame rate: ',...
+    'Parent',               gd.gui.axes.panel,...
+    'Units',                'normalized',...
+    'Position',             [0,.025,.2,.05],...
+    'HorizontalAlignment',  'left');
 % Settings
 % panel
 gd.gui.sliders.panel = uipanel(...
@@ -340,27 +378,16 @@ gd.src.TriggerDelayMode = 'Off'; %'Off' or 'Manual'
 gd.src.Strobe2 = 'On';
 gd.src.Strobe2Polarity = 'High';
 
-% Set trigger
-gd=ChangeSource(gd.gui.control.trigger, [], gd);
-
 guidata(gd.gui.fig,gd);
 end
 
 
 %% Change settings
-function gd=ChangeSource(hObject, eventdata, gd)
+function ChangeSource(hObject, eventdata, gd)
 if hObject.Value
     set(hObject,'String','Trigger: Internal','BackgroundColor',[0,0,0],'ForegroundColor',[1,1,1]);
-    triggerconfig(gd.vid, 'immediate'); % internal
-    gd.vid.FramesPerTrigger = Inf;
 else
     set(hObject,'String','Trigger: External','BackgroundColor',[.94,.94,.94],'ForegroundColor',[0,0,0]);
-    triggerconfig(gd.vid, 'hardware', 'risingEdge', 'externalTriggerMode0-Source0'); % external
-    gd.vid.FramesPerTrigger = 1;
-    gd.vid.TriggerRepeat = Inf;
-end
-if ~isempty(eventdata)
-    guidata(hObject,gd);
 end
 end
 
@@ -368,18 +395,19 @@ function ChangeSetting(hObject, eventdata, gd)
 gd.src.(hObject.UserData) = hObject.Value;
 guidata(hObject,gd);
 gd.gui.sliders.text.(hObject.UserData).String = sprintf('%s: %.3f',hObject.UserData,hObject.Value);
+gd.gui.axes.maxFrameRate.String = 'Max frame rate: ';
 end
 
-function ToggleAuto(hObject, eventdata, gd)
-if hObject.Value
-    gd.src.(sprintf('%sMode',hObject.UserData)) = 'Auto';
-    gd.gui.sliders.(hObject.UserData).Enable = 'off';
-else
-    gd.src.(sprintf('%sMode',hObject.UserData)) = 'Manual';
-    gd.gui.sliders.(hObject.UserData).Enable = 'on';
-end
-guidata(hObject,gd);
-end
+% function ToggleAuto(hObject, eventdata, gd)
+% if hObject.Value
+%     gd.src.(sprintf('%sMode',hObject.UserData)) = 'Auto';
+%     gd.gui.sliders.(hObject.UserData).Enable = 'off';
+% else
+%     gd.src.(sprintf('%sMode',hObject.UserData)) = 'Manual';
+%     gd.gui.sliders.(hObject.UserData).Enable = 'on';
+% end
+% guidata(hObject,gd);
+% end
 
 function ChangeFrameRate(hObject, eventdata, gd)
 newValue = str2num(hObject.String);
@@ -387,10 +415,21 @@ if newValue <= 0
     newValue = .0000001;
     hObject.String = num2str(newValue);
 end
-gd.Experiment.imaging.frameRate = newValue;
 guidata(hObject,gd);
 end
 
+function gd = TestFrameRate(hObject, eventdata, gd)
+triggerconfig(gd.vid, 'immediate'); % set trigger type
+gd.vid.FramesPerTrigger = 100;      % set number of frames to capture
+gd.vid.LoggingMode = 'memory';      % set to log frames to memory
+gd.src.FrameRatePercentage = 100;   % set to max frame rate
+start(gd.vid);                      % start acquisition
+wait(gd.vid,120);                   % wait for acquisition to stop
+[f,t,m] = getdata(gd.vid);          % acquire timestamps
+gd.Internal.maxFrameRate = 1/mean(diff(t)); % calculate framerate
+guidata(hObject,gd);                % save guidata
+gd.gui.axes.maxFrameRate.String = sprintf('Max frame rate: %.2f', gd.Internal.maxFrameRate); % display frame rate
+end
 
 %% Imaging
 function TakeFrame(hObject, eventdata, gd)
@@ -427,23 +466,86 @@ end
 
 function CaptureImages(hObject, eventdata, gd)
 if hObject.Value
+    
     % Update GUI
     set(hObject,'String','Stop','BackgroundColor',[1,0,0]);
     set([gd.gui.file.dir,gd.gui.file.base,gd.gui.file.index],'Enable','off');
     set([gd.gui.control.trigger,gd.gui.control.snap,gd.gui.control.frameRate,gd.gui.axes.format],'Enable','off');
     set([gd.gui.sliders.Brightness,gd.gui.sliders.Gain,gd.gui.sliders.Shutter],'Enable','off');
     
+    % Set frame rate
+    gd = TestFrameRate(gd.gui.axes.testFrameRate, eventdata, gd);
+    desiredFrameRate = str2num(gd.gui.control.frameRate.String);
+    if desiredFrameRate > gd.Internal.maxFrameRate
+        gd.src.FrameRatePercentage = 100;
+        gd.Experiment.imaging.frameRate = gd.Internal.maxFrameRate;
+    else
+        gd.src.FrameRatePercentage = desiredFrameRate/gd.Internal.maxFrameRate*100;
+        gd.Experiment.imaging.frameRate = desiredFrameRate;
+    end
+    
+    % Set trigger properties
+    if gd.gui.control.source.Value
+        triggerconfig(gd.vid, 'immediate'); % internal
+        gd.vid.FramesPerTrigger = Inf;
+    else
+        triggerconfig(gd.vid, 'hardware', 'risingEdge', 'externalTriggerMode0-Source0'); % external
+        gd.vid.FramesPerTrigger = str2double(gd.gui.control.framesPerTrigger.String);
+        if ~gd.gui.control.newFilePerTrigger.Value
+            gd.vid.TriggerRepeat = Inf;
+        else
+            gd.vid.TriggerRepeat = 0;
+        end
+    end    
+    
     % Reset camera and frame counter
     flushdata(gd.vid);
     gd.gui.axes.acqCounter.String = 'Frames Acquired: 0';
     
     % Create file and start recording
-    gd = createFile(gd);
-    start(gd.vid);
-    while hObject.Value
-        pause(.5);
-        gd.gui.axes.acqCounter.String = sprintf('Frames Acquired: %d',gd.vid.FramesAcquired);
-        gd.gui.axes.saveCounter.String = sprintf('Frames Saved: %d',gd.vid.DiskLoggerFrameCount);
+    if gd.gui.control.newFilePerTrigger.Value == 1  % save all frames to one file
+        
+        % Start file
+        gd = createFile(gd);
+        start(gd.vid);
+        
+        % Wait for user to stop acquisition
+        while hObject.Value
+            pause(.5);
+            gd.gui.axes.acqCounter.String = sprintf('Frames Acquired: %d',gd.vid.FramesAcquired);
+            gd.gui.axes.saveCounter.String = sprintf('Frames Saved: %d',gd.vid.DiskLoggerFrameCount);
+        end
+        
+    else                                            % save invidiual triggers to different files
+        filecounter = 1;
+        while hObject.Value
+            
+            % Start file
+            gd = createFile(gd);
+            start(gd.vid);
+            
+            % Wait for all frames to be recorded to current file
+            while gd.vid.DiskLoggerFrameCount < gd.vid.FramesPerTrigger
+                % wait(gd.vid, 60); % wait until gd.vid.FramesPerTrigger are acquired or until 60s has elapsed
+                pause(.01);
+                gd.gui.axes.acqCounter.String = sprintf('Frames Acquired: %d',gd.vid.FramesAcquired);
+                gd.gui.axes.saveCounter.String = sprintf('Frames Saved: %d',gd.vid.DiskLoggerFrameCount);
+            end
+            
+            % Stop current file
+            stop(gd.vid);
+            fprintf('Finished %d: %d frames saved to: %s\n',filecounter,gd.vid.DiskLoggerFrameCount,gd.Internal.save.filename);
+            filecounter = filecounter + 1;
+            
+            % MEMORY LOGGING: Save data to file
+            % [data, time, metadata] = getdata(gd.vid); % gather frames
+            % flushdata(vid,'triggers'); % remove oldest frames
+            % save(filename, 'data', 'time', 'metadata', '-mat', '-v7.3');
+            
+            % Prepare next file
+            gd.gui.file.index.String = num2str(str2double(gd.gui.file.index.String) + 1);
+            gd = CreateFilename(gd);
+        end
     end
     
 else

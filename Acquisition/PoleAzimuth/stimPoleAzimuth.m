@@ -263,15 +263,6 @@ gd.Controls.mlMotorMove = uicontrol(...
     'UserData',             'ml',...
     'Position',             [.65,.55,.35,.1],...
     'Callback',             @(hObject,eventdata)linearMotorMove(hObject, eventdata, guidata(hObject)));
-% ml linear motor toggle
-gd.Controls.mlMotorToggle = uicontrol(...
-    'Style',                'checkbox',...
-    'String',               '2 axes?',...
-    'Parent',               gd.Controls.panel,...
-    'Units',                'normalized',...
-    'Position',             [.01,.55,.34,.1],...
-    'UserData',             {[.94,.94,.94;0,1,0],'2 axes?','2 axes stim'},...
-    'Callback',             @(hObject,eventdata)set(hObject,'BackgroundColor',hObject.UserData{1}(hObject.Value+1,:),'String',hObject.UserData{hObject.Value+2}));
 % ml linear motor text
 gd.Controls.linearMotorText = uicontrol(...
     'Style',                'text',...
@@ -335,51 +326,101 @@ gd.Stimuli.panel = uipanel(...
     'Parent',               gd.fig,...
     'Units',                'Normalized',...
     'Position',             [.35, 0, .3, .8]);
-% position table
-gd.Stimuli.positionTable = uitable(...
-    'Parent',               gd.Stimuli.panel,...
-    'Units',                'normalized',...
-    'Position',             [0,.8,1,.2],...
-    'RowName',              {'AP','ML'},...
-    'ColumnName',           {'First Pos (mm)','Last Pos (mm)','# Steps'},...
-    'ColumnEditable',       [true, true, true],...
-    'ColumnFormat',         {'numeric','numeric','numeric'},...
-    'ColumnWidth',          {100,100,100},...
-    'Data',                 [zeros(2,1),[17.5;7.5],[8;4]]);
-% create port combinations
-gd.Stimuli.generateCombinations = uicontrol(...
-    'Style',                'pushbutton',...
-    'String',               'Generate Stimuli',...
-    'Parent',               gd.Stimuli.panel,...
-    'Units',                'normalized',...
-    'Position',             [0,0,.4,.2],...
-    'Callback',             @(hObject,eventdata)GenerateStimuli(hObject, eventdata, guidata(hObject)));
-% load combinations
+% load stimuli
 gd.Stimuli.load = uicontrol(...
     'Style',                'pushbutton',...
     'String',               'Load',...
     'Parent',               gd.Stimuli.panel,...
     'Units',                'normalized',...
-    'Position',             [.4,.1,.2,.1],...
+    'Position',             [0,.9,.5,.1],...
     'Callback',             @(hObject,eventdata)LoadStimuli(hObject, eventdata, guidata(hObject)));
-% save combinations
+% save stimuli
 gd.Stimuli.save = uicontrol(...
     'Style',                'pushbutton',...
     'String',               'Save',...
     'Parent',               gd.Stimuli.panel,...
     'Units',                'normalized',...
-    'Position',             [.4,0,.2,.1],...
+    'Position',             [.5,.9,.5,.1],...
+    'Enable',               'off',...
     'Callback',             @(hObject,eventdata)SaveStimuli(hObject, eventdata, guidata(hObject)));
+% position table
+gd.Stimuli.positionTable = uitable(...
+    'Parent',               gd.Stimuli.panel,...
+    'Units',                'normalized',...
+    'Position',             [0,.7,1,.2],...
+    'RowName',              {'AP','ML'},...
+    'ColumnName',           {'Active?','First (mm)','Last (mm)','# Steps'},...
+    'ColumnEditable',       [true,true,true,true],...
+    'ColumnFormat',         {'logical','numeric','numeric','numeric'},...
+    'ColumnWidth',          {50,80,80,80},...
+    'Data',                 [{true;false},num2cell([zeros(2,1),[17.5;7.5],[8;4]])],...
+    'CellEditCallback',     @(hObject,eventdata)EditStimInputs(hObject, eventdata, guidata(hObject)));
 % stimuli list
 gd.Stimuli.list = uitable(...
     'Parent',               gd.Stimuli.panel,...
     'Units',                'Normalized',...
-    'Position',             [0,.2,.6,.6],...
+    'Position',             [0,0,.6,.7],...
     'ColumnName',           {'AP Pos','ML Pos','Delete'},...
     'ColumnFormat',         {'numeric','numeric','logical'},...
     'ColumnEditable',       [true,true,true],...
     'ColumnWidth',          {75,75,50},...
     'CellEditCallback',     @(hObject,eventdata)EditStimuli(hObject, eventdata, guidata(hObject)));
+% choose type
+gd.Stimuli.type = uicontrol(...
+    'Style',                'popupmenu',...
+    'String',               {'Grid';'Random'},...
+    'Parent',               gd.Stimuli.panel,...
+    'Units',                'normalized',...
+    'Position',             [.6,.65,.4,.05]);
+% toggle weighting
+gd.Stimuli.weightToggle = uicontrol(...
+    'Style',                'checkbox',...
+    'String',               'Weight sampling?',...
+    'Parent',               gd.Stimuli.panel,...
+    'Units',                'normalized',...
+    'Position',             [.6,.6,.4,.05],...
+    'UserData',             {'Weight sampling?','Weighting samples'},...
+    'Callback',             @(hObject,eventdata)ChangeStimuliSampling(hObject,eventdata,guidata(hObject)));
+% number of samples
+gd.Stimuli.numSamples = uicontrol(...
+    'Style',                'edit',...
+    'String',               '# Samples',...
+    'Parent',               gd.Stimuli.panel,...
+    'Units',                'normalized',...
+    'Position',             [.6,.5,.4,.1]);
+% set AP sampling weights
+gd.Stimuli.apDistWeights = uicontrol(...
+    'Style',                'edit',...
+    'String',               'AP Weights',...
+    'Parent',               gd.Stimuli.panel,...
+    'Units',                'normalized',...
+    'Enable',               'off',...
+    'Position',             [.6,.4,.4,.1]);
+% set AP sampling weights
+gd.Stimuli.mlDistWeights = uicontrol(...
+    'Style',                'edit',...
+    'String',               'ML Weights',...
+    'Parent',               gd.Stimuli.panel,...
+    'Units',                'normalized',...
+    'Enable',               'off',...
+    'Position',             [.6,.3,.4,.1]);
+% create stimuli
+gd.Stimuli.generateStimuli = uicontrol(...
+    'Style',                'pushbutton',...
+    'String',               'Generate Stimuli',...
+    'Parent',               gd.Stimuli.panel,...
+    'Units',                'normalized',...
+    'Position',             [.6,.1,.4,.2],...
+    'Callback',             @(hObject,eventdata)GenerateStimuli(hObject, eventdata, guidata(hObject)));
+% view stimuli
+gd.Stimuli.view = uicontrol(...
+    'Style',                'pushbutton',...
+    'String',               'View',...
+    'Parent',               gd.Stimuli.panel,...
+    'Units',                'normalized',...
+    'Position',             [.6,0,.4,.1],...
+    'Enable',               'off',...
+    'Callback',             @(hObject,eventdata)ViewStimuli(hObject, eventdata, guidata(hObject)));
 
 % EXPERIMENT
 % panel
@@ -586,31 +627,6 @@ end
 
 
 %% STIMULI CALLBACKS
-function GenerateStimuli(hObject, eventdata, gd)
-% Generate combinations
-temp = get(gd.Stimuli.positionTable, 'Data');
-ap = temp(1,:); ap(isnan(ap)) = [];
-if ~gd.Controls.mlMotorToggle.Value
-    stimuli = genDistribution(0,ap,'Distribution','constant');
-else
-    ml = temp(2,:); ml(isnan(ml)) = [];
-    stimuli = genDistribution(0,ap,ml,'Distribution','constant');
-end
-
-gd.Stimuli.list.Data = num2cell(stimuli); % display stimuli
-gd.Experiment.Position = stimuli; % Update registry
-guidata(hObject, gd);
-
-end
-
-function EditStimuli(hObject, eventdata, gd)
-if eventdata.Indices(2)==3
-    gd.Experiment.Position(eventdata.Indices(1),:) = []; % remove stimulus
-    guidata(hObject, gd);
-    hObject.Data(eventdata.Indices(1),:) = []; % update display
-end
-end
-
 function LoadStimuli(hObject, eventdata, gd)
 % Select and load file
 [f,p] = uigetfile({'*.stim';'*.mat'},'Select stim file to load',cd);
@@ -642,6 +658,97 @@ else
     save(fullfile(p,f), 'stimuli', '-mat', '-append');
 end
 fprintf('Stimuli saved to: %s\n', fullfile(p,f));
+end
+
+function EditStimInputs(hObject, eventdata, gd)
+val = hObject.Data{eventdata.Indices(1),eventdata.Indices(2)};
+if eventdata.Indices(2)==1
+    temp = {gd.Stimuli.apDistWeights, gd.Stimuli.mlDistWeights};
+    if val && gd.Stimuli.weightToggle.Value
+        set(temp{eventdata.Indices(1)}, 'Enable', 'on');
+    else
+        set(temp{eventdata.Indices(1)}, 'Enable', 'off');
+    end
+elseif eventdata.Indices(2)==2 && val < 0
+    hObject.Data{eventdata.Indices(1),eventdata.Indices(2)} = 0;
+elseif eventdata.Indices(2)==3 && val > 25
+    hObject.Data{eventdata.Indices(1),eventdata.Indices(2)} = 25;
+end
+end
+
+function ChangeStimuliSampling(hObject,eventdata,gd)
+objs = [gd.Stimuli.apDistWeights, gd.Stimuli.mlDistWeights];
+if hObject.Value
+    toggle = [gd.Stimuli.positionTable.Data{:,1}];
+    set(objs(toggle),'Enable','on');
+else
+    set(objs,'Enable','off');
+end
+end
+
+function GenerateStimuli(hObject, eventdata, gd)
+% Gather inputs
+toggle = [gd.Stimuli.positionTable.Data{:,1}];
+if ~any(toggle)
+    error('Need at least one active axis!');
+end
+stimParams = cell2mat(gd.Stimuli.positionTable.Data(:,2:end));
+
+% Determine # of samples
+numSamples = str2num(gd.Stimuli.numSamples.String);
+if isempty(numSamples)
+    numSamples = 0;
+end
+
+% Determine weights
+if gd.Stimuli.weightToggle.Value
+    weights = {str2num(gd.Stimuli.apDistWeights.String), str2num(gd.Stimuli.mlDistWeights.String)};
+    weights = weights(toggle);
+else
+    weights = {};
+end
+
+% Generate stimuli
+if gd.Stimuli.type.Value == 1
+    stimuli = genDistribution(numSamples,stimParams(toggle',:),'Distribution','grid','Weights',weights);
+elseif gd.Stimuli.type.Value == 2
+    stimuli = genDistribution(numSamples,stimParams(toggle',:),'Distribution','random','Weights',weights);
+end
+out = nan(size(stimuli,1),numel(toggle));
+out(:,toggle) = stimuli;
+
+gd.Experiment.Position = out; % Update registry
+guidata(hObject, gd);
+gd.Stimuli.list.Data = out; % display stimuli
+gd.Stimuli.view.Enable = 'on';
+end
+
+function ViewStimuli(hObject, eventdata, gd)
+stimuli = gd.Experiment.Position;
+if any(isnan(stimuli(:)))
+    stimuli(:,any(isnan(stimuli),1))=[];
+    numDims = 1;
+else
+    numDims=2;
+end
+nbins = 20;
+figure;
+if numDims == 1
+    subplot(1,2,1); plot(zeros(size(stimuli,1),1),stimuli,'k.'); ylabel('Value');
+    subplot(1,2,2); histogram(stimuli,nbins); xlabel('Position'); ylabel('count');
+elseif numDims == 2
+    subplot(1,3,1); plot(stimuli(:,2),stimuli(:,1),'k.'); xlabel('ML'); ylabel('AP');
+    subplot(1,3,2); histogram(stimuli(:,2),nbins); xlabel('ML Position'); ylabel('count'); 
+    subplot(1,3,3); histogram(stimuli(:,1),nbins); xlabel('AP Position'); ylabel('count'); 
+end
+end
+
+function EditStimuli(hObject, eventdata, gd)
+if eventdata.Indices(2)==3
+    gd.Experiment.Position(eventdata.Indices(1),:) = []; % remove stimulus
+    guidata(hObject, gd);
+    hObject.Data(eventdata.Indices(1),:) = []; % update display
+end
 end
 
 
@@ -744,14 +851,12 @@ if hObject.Value
         
         %% Determine stimuli
         
-        % Determine positions
-        temp = get(gd.Controls.positionTable, 'Data');
-        ap = temp(1,:); ap(isnan(ap)) = [];
-        if ~gd.Controls.mlMotorToggle.Value
-            gd.Experiment.Position = genDistribution(0,ap,'Distribution','constant');
-        else
-            ml = temp(2,:); ml(isnan(ml)) = [];
-            gd.Experiment.Position = genDistribution(0,ap,ml,'Distribution','constant');
+        % Determine axes
+        gd.Experiment.stim.activeAxes = false(1,2);
+        for aindex = 1:2
+            if ~any(isnan(gd.Experiment.Position(:,aindex)))
+                gd.Experiment.stim.activeAxes(aindex) = true;
+            end
         end
         
         % Determine stimulus IDs
@@ -761,7 +866,7 @@ if hObject.Value
         gd.Experiment.stim.control = gd.Run.control.Value;
         if gd.Experiment.stim.control
             gd.Experiment.StimID = [0, gd.Experiment.StimID];
-            gd.Experiment.Position = [nan(1,size(gd.Experiment.Position,2)); gd.Experiment.Position];
+            gd.Experiment.Position = [nan(1,2); gd.Experiment.Position];
         end
         
         % Grab UI variables
@@ -828,9 +933,12 @@ if hObject.Value
         
         
         %% Initialize stimuli and linear motors
-        H_LinearStage = serial(gd.Internal.LinearStage.APport, 'BaudRate', 9600);
-        fopen(H_LinearStage);
-        if size(gd.Experiment.Position,2) > 1
+        H_LinearStage = [];
+        if gd.Experiment.stim.activeAxes(1)
+            H_LinearStage(1) = serial(gd.Internal.LinearStage.APport, 'BaudRate', 9600);
+            fopen(H_LinearStage(1));
+        end
+        if gd.Experiment.stim.activeAxes(2)
             H_LinearStage(2) = serial(gd.Internal.LinearStage.MLport, 'BaudRate', 9600);
             fopen(H_LinearStage(2));
         end
@@ -859,11 +967,11 @@ if hObject.Value
         
         % Necessary variables
         numTrialsObj = gd.Run.numTrials;
+        ActiveAxes = find(Experiment.stim.activeAxes);
         numStimuli = numel(Experiment.StimID);
         numStimuliCurrentBlock = numStimuli;
         Triggers = Experiment.Triggers;
         Positions = Experiment.Position;
-        NumAxes = size(Positions,2);
         ControlTrial = Experiment.stim.control;
         BlockShuffle = Experiment.stim.blockShuffle;
         currentBlockOrder = Experiment.StimID;
@@ -1025,17 +1133,15 @@ end
             RunIndex = RunIndex+1; % increment index
             
             % Move motor(s) into position for next trial
-            if numel(TrialInfo.StimID)>=RunIndex        % next trial has already been queued
+            if numel(TrialInfo.StimID)>=RunIndex        % next trial has already been queued (necessary to move motors)
                 if TrialInfo.StimID(RunIndex)==0        % next trial is a control trial
-                    temp = randi(numStimuli);
-                    moveLinearMotor(Positions(temp,1), H_LinearStage(1)); %move AP motor
-                    if NumAxes==2
-                        moveLinearMotor(Positions(temp,2), H_LinearStage(2)); %move ML motor
+                    temp = randi([ControlTrial+1,numStimuli]);
+                    for index=ActiveAxes
+                        moveLinearMotor(Positions(temp,index), H_LinearStage(index)); %move motor
                     end
                 else                                    % next trial is not a control trial
-                    moveLinearMotor(Positions(TrialInfo.StimID(RunIndex)+ControlTrial,1), H_LinearStage(1)); %move AP motor
-                    if NumAxes==2
-                        moveLinearMotor(Positions(TrialInfo.StimID(RunIndex)+ControlTrial,2), H_LinearStage(2)); %move ML motor
+                    for index=ActiveAxes
+                        moveLinearMotor(Positions(TrialInfo.StimID(RunIndex)+ControlTrial,index), H_LinearStage(index)); %move motor
                     end
                 end
             end
@@ -1072,16 +1178,14 @@ end
             
             % Move motors into position for first trial
             if currentTrial == 1
-                if TrialInfo.StimID(currentTrial)==0        % next trial is a control trial
-                    temp = randi(numStimuli);
-                    moveLinearMotor(Positions(temp,1), H_LinearStage(1)); %move AP motor
-                    if NumAxes==2
-                        moveLinearMotor(Positions(temp,2), H_LinearStage(2)); %move ML motor
+                if TrialInfo.StimID(currentTrial)==0        % first trial is a control trial
+                    temp = randi([ControlTrial+1,numStimuli]);
+                    for index=ActiveAxes
+                        moveLinearMotor(Positions(temp,index), H_LinearStage(index)); %move motor
                     end
-                else                                    % next trial is not a control trial
-                    moveLinearMotor(Positions(TrialInfo.StimID(currentTrial)+ControlTrial,1), H_LinearStage(1)); %move AP motor
-                    if NumAxes==2
-                        moveLinearMotor(Positions(TrialInfo.StimID(currentTrial)+ControlTrial,2), H_LinearStage(2)); %move ML motor
+                else                                        % first trial is not a control trial
+                    for index=ActiveAxes
+                        moveLinearMotor(Positions(TrialInfo.StimID(1)+ControlTrial,index), H_LinearStage(index)); %move motor
                     end
                 end
             end

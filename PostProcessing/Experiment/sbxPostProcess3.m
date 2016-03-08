@@ -213,7 +213,7 @@ if any(ismember(InputNames, 'I_WhiskerTracker'))
         data = find(data>0);
         numFrames2 = numel(data);
         
-                if numFrames < numFrames2
+        if numFrames < numFrames2
             warning('Fuck: more WT frames registered than actually recorded');
         end
         

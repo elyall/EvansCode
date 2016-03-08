@@ -165,7 +165,8 @@ for rindex = ROIindex
             numTrials = numel(StimulusDFoF);
             Val = nan(numTrials,1);
             for tindex = 1:numTrials
-                [~,mu,sigma] = zscore(StimulusDFoF(setdiff(1:numTrials,tindex)));   % determine mean and std without current trial
+                mu = mean(StimulusDFoF(setdiff(1:numTrials,tindex)));               % determine mean without current trial
+                sigma = std(StimulusDFoF(setdiff(1:numTrials,tindex)));             % determine std without current trial
                 Val(tindex) = abs(StimulusDFoF(tindex)-mu)/sigma;                   % calculate zscore of current trial relative to other data
             end
             if any(Val > outlierweight)                                             % at least one outlier exists
@@ -177,7 +178,7 @@ for rindex = ROIindex
         end
                 
         % Save tuning curves
-        ROIdata.rois(rindex).curve(sindex) = median(StimulusDFoF); % evoked dF/F over all trials for current stimulus
+        ROIdata.rois(rindex).curve(sindex) = mean(StimulusDFoF); % evoked dF/F over all trials for current stimulus
         ROIdata.rois(rindex).StdError(sindex) = std(StimulusDFoF)/sqrt(length(StimulusDFoF)); % standard error for stimulus
         ROIdata.rois(rindex).Raw{sindex} = StimulusDFoF;
         ROIdata.rois(rindex).nTrials(sindex) = numel(StimulusDFoF);
