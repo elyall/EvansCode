@@ -1,6 +1,8 @@
-function data = readAVI(VideoFile, varargin)
+function [data, timestamps, framecounter] = readAVI(VideoFile, varargin)
 
 Frames = [1 inf];
+timestamps = 1;
+framecounter = 4; 
 
 directory = cd;
 
@@ -41,18 +43,10 @@ end
 Frames = (Frames-1)/vidObj.FrameRate; % convert to time indexing
 numFramesToLoad = numel(Frames);
 
-% % Determine number and location of seek operations due to non-contiguous frame requests (jumps)
-% seekoperations = find(diff(Frames)~=1); %find any jumps within the frames to read out (jumps requiring seeking)
-% if isempty(seekoperations) %no jumps
-%     numframesperread = numFramesToLoad; %all frames will be read in one read
-%     seekoperations = 1; %only one seek operation to first frame of FrameIndex
-% else
-%     numframesperread = diff([0,seekoperations,numFramesToLoad]); %multiple reads required with various numbers of frames per read
-%     seekoperations = [1,seekoperations+1]; %indexes the first frame of each read within FrameIndex
-% end
 
+%% Load in requested frames
 
-%% Initialize output
+% Initialize output
 if vidObj.BitsPerPixel == 8
     Precision = 'uint8';
 end
@@ -60,11 +54,9 @@ switch vidObj.VideoFormat
     case 'Grayscale'
         numChannels = 1;
 end
-
 data = zeros(vidObj.Height,vidObj.Width,numChannels,numFramesToLoad,Precision);
 
-
-%% Load in requested frames
+% Load in frames
 for findex = 1:numFramesToLoad
     if vidObj.CurrentTime ~= Frames(findex)     % video object not currently in right place
         vidObj.CurrentTime = Frames(findex);    % move to correct time
@@ -72,4 +64,41 @@ for findex = 1:numFramesToLoad
     data(:,:,:,findex) = readFrame(vidObj);     % read in current frame
 end
 
+
+%% Determine timestamps
+if timestamps
+    temp = double(squeeze([data(1,timestamps:timestamps+3,1,:)])');
+    
+    % Convert 4xuint8 to [uint7, uint13, uint12] (uint12 is uint8 for USB)
+    temp = de2bi(temp',8,'left-msb');
+    temp = reshape(temp',8*4,numFramesToLoad)';
+    temp = [bi2de(temp(:,1:7),2,'left-msb'), bi2de(temp(:,8:20),2,'left-msb'), bi2de(temp(:,21:28),2,'left-msb')];
+    
+    timestamps = [zeros(1,3);diff(temp,[],1)]; %convert to difference from cyclical
+    
+    % Fix jumps in cycle
+    bits = [7,13,8];
+    for cindex = 1:3
+        jumps = find(timestamps(:,cindex)<0);
+        for lindex = 1:numel(jumps)
+            timestamps(jumps(lindex),cindex) = temp(jumps(lindex),cindex)+2^bits(cindex)-temp(jumps(lindex)-1,cindex);
+        end
+    end
+end
+
+
+%% Determine frame counter
+if framecounter
+    temp = double(squeeze([data(1,framecounter:framecounter+3,1,:)])');
+    
+    framecounter = [zeros(1,4);diff(temp,[],1)]; %convert to difference from cyclical
+    
+    % Fix jumps in cycle
+    for cindex = 1:4
+        jumps = find(framecounter(:,cindex)<0);
+        for lindex = 1:numel(jumps)
+            framecounter(jumps(lindex),cindex) = temp(jumps(lindex),cindex)+256-temp(jumps(lindex)-1,cindex);
+        end
+    end
+end
 

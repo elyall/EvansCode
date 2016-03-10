@@ -5,8 +5,8 @@ saveFile = '';
 
 directory = cd;
 
-numFramesBefore = 30;
-numFramesAfter = 59;
+numFramesBefore = 20;
+numFramesAfter = 49;
 
 %% Parse input arguments
 index = 1;
@@ -121,9 +121,13 @@ fprintf('Calculating average trials for:\n');
 fprintf('\t%s\n', ImageFiles{:});
 
 % Initialize outputs
-AvgTrial = cell(numStims,1);
-AvgTrialdFoF = cell(numStims,1);
-trialdFoF = cell(numStims,1);
+numFrames = numFramesBefore+numFramesAfter+1;
+AvgTrial = repmat({zeros([Config(1).size(1:end-1), numFrames])},numStims,1);
+AvgTrialdFoF = repmat({zeros([Config(1).size(1:end-2), numFrames])},numStims,1);
+trialdFoF = repmat({zeros([Config(1).size(1:end-2), numFrames])},numStims,1);
+% AvgTrial = cell(numStims,1);
+% AvgTrialdFoF = cell(numStims,1);
+% trialdFoF = cell(numStims,1);
 
 % Cycle through stimuli computing averages
 for sindex = 1:numStims
@@ -133,10 +137,10 @@ for sindex = 1:numStims
     numTrials = numel(currentTrials);
     
     % Initialize outputs
-    numFrames = numFramesBefore+numFramesAfter+1;
-    AvgTrial{sindex} = zeros([Config(1).size(1:end-1), numFrames]);
-    AvgTrialdFoF{sindex} = zeros([Config(1).size(1:end-2), numFrames]);
-    trialdFoF{sindex} = zeros([Config(1).size(1:end-2), numTrials]);
+%     numFrames = numFramesBefore+numFramesAfter+1;
+%     AvgTrial{sindex} = zeros([Config(1).size(1:end-1), numFrames]);
+%     AvgTrialdFoF{sindex} = zeros([Config(1).size(1:end-2), numFrames]);
+%     trialdFoF{sindex} = zeros([Config(1).size(1:end-2), numTrials]);
     
     % Cycle through trials adding each to the average
     for tindex = 1:numel(currentTrials)
