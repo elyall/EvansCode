@@ -50,10 +50,15 @@ end
 gd.fig = figure;
 
 % Create axis
+gd.axes = axes(...
+    'Parent',           gd.fig,...
+    'Units',            'normalized',...
+    'XLimMode',         'manual',...
+    'YLimMode',         'manual');
 if isequal(gd.class, 'logical')
-    gd.axes = axes('Parent', gd.fig, 'Units', 'normalized', 'Position', [.1, .1, .8, .7]);
+    gd.axes.Position = [.1, .1, .8, .7];
 else
-    gd.axes = axes('Parent', gd.fig, 'Units', 'normalized', 'Position', [.1, .2, .8, .6]);
+    gd.axes.Position = [.1, .2, .8, .6];
 end
 
 % Create indexing sliders
@@ -111,7 +116,7 @@ end
 
 % Create colorlimit sliders
 for index = 1:2
-    minorstep = 1/(gd.CLimits(2)-gd.CLimits(1));
+    minorstep = min(1/(gd.CLimits(2)-gd.CLimits(1)),.05);
     yloc = (index-1)*.1/2;
     gd.CLimSliders(index) = uicontrol(...
         'Style',                'slider',...
@@ -212,6 +217,7 @@ plotmainaxes(gd);
 
 function plotmainaxes(gd)
 axes(gd.axes)
+% Lim = get(gca,{'XLim','YLim'});
 img = gd.Images(:,:, gd.Position(1), gd.Position(2), gd.Position(3));
 if gd.Selection.Value==1 % imagesc
     gd.histeq.Enable = 'on';
@@ -228,6 +234,7 @@ if gd.Selection.Value==1 % imagesc
                 imagesc(img, gd.CLim);
             end
     end
+    axis equal tight
 elseif gd.Selection.Value==2 % bar3
     gd.histeq.Enable = 'off';
     temp = bar3(img);
@@ -251,6 +258,7 @@ elseif gd.Colormap.Value==2
 elseif gd.Colormap.Value==3
     colormap(gd.CMap)
 end
+% set(gca, 'XLim', Lim{1}, 'YLim', Lim{2});
 % axis off
 % xlabel(sprintf('Frame %d', Index));
 

@@ -24,7 +24,7 @@ if ~exist('MCdata','var') || isempty(MCdata)
     ExperimentFile = fullfile(p,ExperimentFile);
     load(ExperimentFile, 'MCdata');
 elseif ischar(MCdata)
-    load(MCdata, 'MCdata');
+    load(MCdata, 'MCdata','-mat');
 end
 
 if ~exist('MCindex', 'var') || isempty(MCindex)

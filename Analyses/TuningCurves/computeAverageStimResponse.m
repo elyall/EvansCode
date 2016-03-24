@@ -159,7 +159,7 @@ for sindex = 1:numStims
         
         % Compute trial's dFoF
         baseline = median(frames(:,:,:,1,1:numFramesBefore),5);
-        baseline(baseline<1) = 1; % in reality this never happens
+        baseline(baseline<1) = 1; % in reality this never happens but don't want to enhance a small value
         frames = bsxfun(@rdivide, bsxfun(@minus, frames(:,:,:,1,:), baseline), baseline);
         AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex} + permute(frames, [1,2,3,5,4])/numTrials;
         

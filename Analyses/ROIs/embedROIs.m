@@ -1,5 +1,7 @@
 function img = embedROIs(Vertices, varargin)
 
+showImg = false;
+
 Color = 1;
 CMap = [];
 hA = [];
@@ -31,7 +33,10 @@ while index<=length(varargin)
                 index = index + 2;
             case {'Image','image','img'}
                 img = varargin{index+1};
-                index = index + 2;                
+                index = index + 2;
+            case 'show'
+                showImg = true;
+                index = index + 1;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
                 index = index + 1;
@@ -121,21 +126,22 @@ end
 
 
 %% Display image
-
-% Determine colormap
-if isempty(CMap)
-    CMap = b2r(min(img(:)), max(img(:)));
+if showImg
+    
+    % Determine colormap
+    if isempty(CMap)
+        CMap = b2r(min(img(:)), max(img(:)));
+    end
+    
+    % Create figure
+    if isempty(hA)
+        figure;
+        hA = gca;
+    end
+    axes(hA);
+    
+    % Display image
+    image(img);
+    colormap(CMap);
+    
 end
-
-% Create figure
-if isempty(hA)
-    figure;
-    hA = gca;
-end
-axes(hA);
-
-% Display image
-image(img);
-colormap(CMap);
-
-

@@ -296,7 +296,7 @@ function sbxalignmaster(fname)
 
     tic;
 
-    sbxcomputeci(fname); %Takes about 10 minutes, eats up a ton of RAM
+%     sbxcomputeci(fname); %Takes about 10 minutes, eats up a ton of RAM
 
     toc;
 

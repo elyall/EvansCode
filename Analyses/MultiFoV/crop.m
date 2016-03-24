@@ -15,6 +15,11 @@ if ~exist('rect', 'var') || isempty(rect)
     rect = true;
 %     rect = repmat([32.51, 0, 729.98, 512], numFiles, 1);
 end
+if isequal(rect,true);
+    UI = true;
+else
+    UI = false;
+end
 
 if ~exist('Maps', 'var') || isempty(Maps)
     Maps = [];
@@ -24,6 +29,9 @@ end
 %% Crop images
 if ~isempty(Images) 
     numFiles = numel(Images);
+    if UI
+        rect = nan(numFiles,4);
+    end
     
     % Fix input
     if ~islogical(rect) && size(rect, 1) == 1 && numFiles>1
@@ -34,7 +42,7 @@ if ~isempty(Images)
     for findex = 1:numFiles
         
         % UI-crop
-        if islogical(rect) && rect == true
+        if UI
             [~, rect(findex,:)] = imcrop(Images{findex}(:,:,1,1,1));
         end
         

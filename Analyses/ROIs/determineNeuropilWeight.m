@@ -1,4 +1,4 @@
-function [NeuropilWeight, ROIdata] = determineNeuropilWeight(ROIdata, ROIindex, varargin)
+function NeuropilWeight = determineNeuropilWeight(Data, Neuropil, ROIindex, varargin)
 
 type = 'individual'; % 'same' or 'individual'
 maxWeight = .65;
@@ -30,12 +30,12 @@ while index<=length(varargin)
     end
 end
 
-if ~exist('ROIdata','var') || isempty(ROIdata)
-    [ROIdata, p] = uigetfile({'*.rois;*.mat'},'Choose ROI file',directory);
-    if isnumeric(ROIdata)
+if ~exist('Data','var') || isempty(Data)
+    [Data, p] = uigetfile({'*.rois;*.mat'},'Choose ROI file',directory);
+    if isnumeric(Data)
         return
     end
-    ROIdata = fullfile(p,ROIdata);
+    Data = fullfile(p,Data);
 end
 
 if ~exist('ROIindex', 'var') || isempty(ROIindex)
@@ -48,15 +48,24 @@ end
 
 
 %% Load ROIs
-if ischar(ROIdata)
-    ROIFile = ROIdata;
-    load(ROIFile, 'ROIdata', '-mat');
+
+% Load in ROIdata
+if ischar(Data)
+    ROIFile = Data;
+    Data = load(ROIFile, 'ROIdata', '-mat');
+    Data = Data.ROIdata;
 end
-totalFrames = numel(ROIdata.rois(1).rawdata);
+
+% Convert ROIdata to matrices
+if isstruct(Data)
+    Neuropil = reshape([Data.rois(:).rawneuropil], numel(Data.rois(1).rawdata), numel(Data.rois));
+    Data = reshape([Data.rois(:).rawdata], numel(Data.rois(1).rawdata), numel(Data.rois));
+end
+[totalFrames, totalROIs] = size(Data);
 
 % Determine ROIs to compute weights for
 if ROIindex(end) == inf
-    ROIindex = [ROIindex(1:end-1), ROIindex(1:end-1)+1:numel(ROIdata.rois)];
+    ROIindex = [ROIindex(1:end-1), ROIindex(1:end-1)+1:totalROIs];
 end
 numROIs = numel(ROIindex);
 
@@ -69,10 +78,7 @@ end
 %% Calculate minimal Neuropil Weight
 
 % Compute ratio of fluorescence to neuropil
-Data = reshape([ROIdata.rois(ROIindex).rawdata], totalFrames, numROIs)./reshape([ROIdata.rois(ROIindex).rawneuropil], totalFrames, numROIs);
-
-% Keep only requested frames
-Data = Data(FrameIndex, :);
+Data = Data(FrameIndex,ROIindex)./Neuropil(FrameIndex,ROIindex);
 
 % Remove outliers
 Data(bsxfun(@ge, abs(bsxfun(@minus, Data, nanmean(Data))), outlierWeight * nanstd(Data))) = NaN;
