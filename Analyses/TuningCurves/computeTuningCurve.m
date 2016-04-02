@@ -5,6 +5,7 @@ FitTuningCurves = false; % gaussian fit
 ControlID = 1; % StimID of control trials, or '[]' if no control trial
 outlierweight = 3; % # of std dev to ignore
 StimFrames = [];
+indexorder = [];
 
 saveOut = false;
 saveFile = '';
@@ -24,6 +25,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'StimFrames'
                 StimFrames = varargin{index+1};
+                index = index + 2;
+            case 'indexorder'
+                indexorder = varargin{index+1};
                 index = index + 2;
             case 'outlierweight'
                 outlierweight = varargin{index+1};
@@ -102,13 +106,15 @@ StimIDs = unique(ROIdata.DataInfo.StimID(ismember(ROIdata.DataInfo.TrialIndex, T
 numStimuli = numel(StimIDs);
 
 % Determine order to cycle through stimuli (necessary for t-test to control trials)
-if ~isempty(ControlID)
-    controlindex = find(StimIDs==ControlID); %locate control 'stimulus' in structure
-    if ~isempty(controlindex)
-        indexorder = cat(1, controlindex, find(StimIDs~=ControlID)); %run through the stimuli analyzing the control trials first
-    else
-        ControlID = [];
-        indexorder = (1:numStimuli)';
+if isempty(indexorder)
+    if ~isempty(ControlID)
+        controlindex = find(StimIDs==ControlID); %locate control 'stimulus' in structure
+        if ~isempty(controlindex)
+            indexorder = cat(1, controlindex, find(StimIDs~=ControlID)); %run through the stimuli analyzing the control trials first
+        else
+            ControlID = [];
+            indexorder = (1:numStimuli)';
+        end
     end
 end
 
@@ -140,15 +146,16 @@ end
 % Calculate tuning
 badTrials = cell(numel(ROIdata.DataInfo.StimID), 1);
 for rindex = ROIindex
-    for sindex = indexorder'
+    for sindex = 1:numStimuli %indexorder'
+        ROIdata.rois(rindex).stimindex = indexorder;
         
         % Select data for current stimulus
-        currentTrials = ROIdata.DataInfo.TrialIndex(ROIdata.DataInfo.StimID==StimIDs(sindex));     % determine all trials for current stimulus
+        currentTrials = ROIdata.DataInfo.TrialIndex(ROIdata.DataInfo.StimID==StimIDs(indexorder(sindex)));     % determine all trials for current stimulus
         currentTrials = currentTrials(ismember(currentTrials,TrialIndex));  % remove non-specified trials
         CaTraces = ROIdata.rois(rindex).dFoF(ismember(ROIdata.DataInfo.TrialIndex, currentTrials),:);              % pull out data for these trials
         
         % Remove bad trials (NaN exists in trace)
-        badCurrent = any(isnan(CaTraces(:,StimFrames(sindex,1):StimFrames(sindex,2))), 2);
+        badCurrent = any(isnan(CaTraces(:,StimFrames(indexorder(sindex),1):StimFrames(indexorder(sindex),2))), 2);
         if any(badCurrent)
             for bindex = currentTrials(badCurrent)
                 badTrials{bindex} = [badTrials{bindex}, rindex];
@@ -157,11 +164,10 @@ for rindex = ROIindex
         end
         
         % Compute response for each trial during the stimulus period
-        StimulusDFoF = mean(CaTraces(:, StimFrames(sindex,1):StimFrames(sindex,2)), 2);
+        StimulusDFoF = mean(CaTraces(:, StimFrames(indexorder(sindex),1):StimFrames(indexorder(sindex),2)), 2);
         
         % Remove outliers
-        go = false;
-        while ~go
+        while true
             numTrials = numel(StimulusDFoF);
             Val = nan(numTrials,1);
             for tindex = 1:numTrials
@@ -173,7 +179,7 @@ for rindex = ROIindex
                 [~,furthestIndex] = max(Val);                                       % determine largest outlier
                 StimulusDFoF(furthestIndex) = [];                                   % remove largest outlier
             else
-                go = true;
+                break
             end
         end
                 

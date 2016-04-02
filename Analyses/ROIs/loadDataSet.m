@@ -1,4 +1,4 @@
-function [ROIFiles, ROIindex, FileIndex, PWCZ, DataSets] = loadDataSet(DictFile, MouseID)
+function [ROIFiles, ROIindex, FileIndex, DataSetIndex, DataSets] = loadDataSet(DictFile, MouseID)
 
 if ~exist('MouseID', 'var')
     MouseID = 'all';
@@ -13,30 +13,31 @@ load(DictFile, 'DataSets', '-mat');
 
 
 %% Match requests to data
+StructIndex = [];
 if numel(MouseID)==1 && strcmp(MouseID{1}, 'all')  % load in all datasets
-    MouseID = num2cell(1:numel(DataSets));
+    StructIndex = 1:numel(DataSets);
 else
-    for mindex = numel(MouseID):-1:1
+    for mindex = 1:numel(MouseID)
         temp = find(strcmp(MouseID(mindex),{DataSets(:).MouseID}));
         if ~isempty(temp)
-            MouseID{mindex} = temp;
+            StructIndex = cat(2,StructIndex,temp);
         else
-            MouseID(mindex) = [];
+            warning('Dataset ''%s'' not found...', MouseID(mindex));
         end
     end
 end
+DataSets = DataSets(StructIndex);
 
 
 %% Pull out dictionary entries
-numToLoad = numel(MouseID);
+numToLoad = numel(DataSets);
 ROIFiles = {};
 ROIindex = [];
 FileIndex = [];
-PWCZ = {};
+DataSetIndex = [];
 for mindex = 1:numToLoad
-    FileIndex = cat(1, FileIndex, numel(ROIFiles)+DataSets(MouseID{mindex}).FileIndex);
-    ROIFiles = [ROIFiles, DataSets(MouseID{mindex}).ROIFiles];
-    ROIindex = cat(1, ROIindex, DataSets(MouseID{mindex}).ROIindex);
-    PWCZ = [PWCZ; repmat({DataSets(MouseID{mindex}).PWCZ}, max(DataSets(MouseID{mindex}).FileIndex(:)), 1)];
+    FileIndex = cat(1, FileIndex, numel(ROIFiles)+DataSets(mindex).FileIndex);
+    ROIFiles = cat(2, ROIFiles, DataSets(mindex).ROIFiles);
+    ROIindex = cat(1, ROIindex, DataSets(mindex).ROIindex);
+    DataSetIndex = cat(1, DataSetIndex, repmat(mindex, max(DataSets(mindex).FileIndex(:)), 1));
 end
-

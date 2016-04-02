@@ -130,7 +130,8 @@ if showImg
     
     % Determine colormap
     if isempty(CMap)
-        CMap = b2r(min(img(:)), max(img(:)));
+        % CMap = b2r(min(img(:)), max(img(:)));
+        CMap = HiLoColormap(min(img(:)), max(img(:)));
     end
     
     % Create figure

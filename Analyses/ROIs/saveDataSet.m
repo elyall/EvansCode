@@ -20,7 +20,7 @@ end
 
 %% Append new data
 for iindex = 1:2:numel(varargin)
-    if ismember(varargin{iindex}, {'ROIFiles', 'ROIindex', 'FileIndex', 'UserData', 'PWCZ', 'insidePWC', 'TrialIndex'})
+    if ismember(varargin{iindex}, {'ROIFiles', 'ROIindex', 'FileIndex', 'UserData', 'PWCZ', 'DistBtwn', 'insidePWC', 'TrialIndex'})
         DataSets(dindex).(varargin{iindex}) = varargin{iindex+1};
     end
 end

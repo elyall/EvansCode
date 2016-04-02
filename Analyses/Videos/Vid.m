@@ -1,8 +1,8 @@
 function saveFile = Vid(saveFile,Images,varargin)
 
 % Filters
-% Afilt = false;
-Afilt = fspecial('gaussian',5,1);
+Afilt = false;
+% Afilt = fspecial('gaussian',5,1);
 Tfilt = false;
 % Tfilt = 1/100*ones(1,100);
 
@@ -40,7 +40,7 @@ while index<=length(varargin)
             case 'Channel'
                 Channel = varargin{index+1};
                 index = index + 2;
-            case 'frameRate'
+            case {'frameRate','FrameRate'}
                 frameRate = varargin{index+1};
                 index = index + 2;
             case 'StimIndex'
@@ -103,6 +103,12 @@ end
 if iscellstr(Images) || ischar(Images)
     [Images, loadObj] = load2P(Images,'Frames',Frames,'Channel',Channel);
 end
+numFrames = size(Images,5);
+
+% Motion correct images
+if ~isempty(MCdata)
+    Images = applyMotionCorrection(Images, MCdata, loadObj);
+end
 
 % Crop images
 if ~isequal(Crop,false)
@@ -112,11 +118,6 @@ end
 % Filter images in space
 if ~isequal(Afilt,false)
     Images = imfilter(Images,Afilt);
-end
-
-% Motion correct images
-if ~isempty(MCdata)
-    Images = applyMotionCorrection(Images, MCdata, loadObj);
 end
         
 % Filter images in time
@@ -171,7 +172,8 @@ hF = figure('Units', 'Pixels', 'Position', [50, 50, 1450, 950], 'Color', 'w');
 hA = axes('Parent', hF);
 
 % Save each frame to video
-for findex = 1:size(Images,5)
+parfor_progress(numFrames);
+for findex = 1:numFrames
     
     % Display Image
     imagesc(Images(:,:,:,1,findex), CLim);
@@ -202,9 +204,11 @@ for findex = 1:size(Images,5)
     frame = getframe(hF);
     writeVideo(vidObj, frame.cdata);
     
+    parfor_progress;
 end
 
 close(vidObj);
 close(hF);
+parfor_progress(0);
 
 fprintf('\tfinished\n');
