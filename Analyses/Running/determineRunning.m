@@ -98,9 +98,13 @@ RunIndex = true(numTrials, 1);
 
 % Plot initial data
 if verbose
-    hF = figure('NumberTitle','off','Name','Determining Running Speed');
-    XLim = [min(RunSpeed)',max(RunSpeed)'];
-    YLim = nan(3,2);
+    hF = figure('NumberTitle','off','Name','Determining Running Speed','Position',[50, 50, 1400, 800]);
+    StimID = AnalysisInfo.StimID;
+    StimIDs = unique(StimID);
+    numStims = numel(StimIDs);
+    Colors = lines(numStims);
+    XLim = nan(5,2);
+    YLim = nan(5,2);
     first = true;
     plotdata('All Trials');
     first = false;
@@ -163,48 +167,108 @@ if verbose; plotdata('After Thresholding Std Dev Variance'); end
 % Remove non-running trials from index
 TrialIndex(~RunIndex) = [];
 
-
     function plotdata(Title)
         figure(hF);
         set(gcf,'Name',Title);
         
-        subplot(1,3,1);
-        plot(RunData(:,RunIndex));
+        % Raw velocities for each trial
+        subplot(2,3,[1,4]);
+        plot(RunData(:,~RunIndex),'Color',[.9,.9,.9]); hold on;
+        for sindex = 1:numStims
+            goodIndex = all([RunIndex,StimID==StimIDs(sindex)],2);
+            plot(RunData(:,goodIndex),'Color',Colors(sindex,:));
+        end
+        hold off;
         ylabel('Velocity (deg/s)');
         xlabel('Frame');
         title('Trial Speeds');
         axis tight;
         if first
+            XLim(1,:) = get(gca,'XLim');
             YLim(1,:) = get(gca,'YLim');
         else
             ylim(YLim(1,:));
+            xlim(XLim(1,:));
         end
         
-        subplot(1,3,2);
-        hist(RunSpeed(RunIndex,1));
+        % Trial means
+        subplot(2,3,2);
+        histogram(RunSpeed(~RunIndex,1),'BinWidth',50); hold on;
+        histogram(RunSpeed(RunIndex,1),'BinWidth',50); hold off;
         ylabel('# of Trials');
-        xlabel('Velocity (deg/s)');
-        title('Trial Means');
+        xlabel('Mean Velocity (deg/s)');
+        title('Trial Mean Velocities');
         axis tight;
-        xlim(XLim(1,:));
         if first
+            XLim(2,:) = get(gca,'XLim');
             YLim(2,:) = get(gca,'YLim');
         else
+            xlim(XLim(2,:));
             ylim(YLim(2,:));
-        end
+        end    
         
-        subplot(1,3,3);
-        hist(RunSpeed(RunIndex,2));
+        % Trial std devs
+        subplot(2,3,3);
+        histogram(RunSpeed(~RunIndex,2),'BinWidth',20); hold on;
+        histogram(RunSpeed(RunIndex,2),'BinWidth',20); hold off;
         ylabel('# of Trials');
         xlabel('Std Dev (deg/s)');
-        title('Trial Std Dev''s');
+        title('Trial Standard Deviations');
         axis tight;
-        xlim(XLim(1,:));
         if first
+            XLim(3,:) = get(gca,'XLim');
             YLim(3,:) = get(gca,'YLim');
         else
+            xlim(XLim(3,:));
             ylim(YLim(3,:));
         end
+        
+        % Trial means over time
+        subplot(2,3,5);
+        plot(find(~RunIndex),RunSpeed(~RunIndex,1),'b.'); hold on;
+        plot(find(RunIndex),RunSpeed(RunIndex,1),'r.','MarkerSize',5);
+        plot(find(RunIndex),smooth(find(RunIndex),RunSpeed(RunIndex,1)),'g--'); 
+        coeffs = polyfit(find(RunIndex), RunSpeed(RunIndex,1), 1);
+        fittedY = polyval(coeffs, find(RunIndex));
+        plot(find(RunIndex),fittedY,'k');
+        hold off;
+        ylabel('Mean Velocity (deg/s)');
+        xlabel('Trial #');
+        title('Mean Velocity vs. Time');
+        axis tight;
+        if first
+            XLim(4,:) = get(gca,'XLim');
+            YLim(4,:) = get(gca,'YLim');
+        else
+            xlim(XLim(4,:));
+            ylim(YLim(4,:));
+        end
+        
+        % Trial means per stim
+        subplot(2,3,6);
+        temp = cell(numStims,1);
+        for sindex = 1:numStims
+            temp{sindex} = RunSpeed(all([RunIndex,StimID==StimIDs(sindex)],2),1);
+        end
+        violin(temp'); hold on;
+        for sindex = 1:numStims
+            badIndex = all([~RunIndex,StimID==StimIDs(sindex)],2);
+            plot(sindex*ones(nnz(badIndex),1),RunSpeed(badIndex,1),'b.');
+            goodIndex = all([RunIndex,StimID==StimIDs(sindex)],2);
+            plot(sindex*ones(nnz(goodIndex),1),RunSpeed(goodIndex,1),'r.');
+        end
+        hold off;
+        ylabel('Mean Velocity (deg/s)');
+        xlabel('Stimulus');
+        title('Mean Velocity vs. Stimulus');
+        axis tight;
+        if first
+            XLim(5,:) = get(gca,'XLim');
+            YLim(5,:) = get(gca,'YLim');
+        else
+            xlim(XLim(5,:));
+            ylim(YLim(5,:));
+        end     
         
         drawnow;
         pause(t);

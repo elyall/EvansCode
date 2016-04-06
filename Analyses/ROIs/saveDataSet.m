@@ -19,9 +19,16 @@ end
 
 
 %% Append new data
-for iindex = 1:2:numel(varargin)
+iindex = 1;
+while iindex < numel(varargin)
+%     if isstruct(varargin{iindex})
+%         for fn = fieldnames(varargin{iindex})'
+%             DataSets(dindex).(fn{1}) = varargin{iindex}.(fn{1});
+%         end
+%         iindex = iindex + 1;
     if ismember(varargin{iindex}, {'ROIFiles', 'ROIindex', 'FileIndex', 'UserData', 'PWCZ', 'DistBtwn', 'insidePWC', 'TrialIndex'})
         DataSets(dindex).(varargin{iindex}) = varargin{iindex+1};
+        iindex = iindex + 2;
     end
 end
 

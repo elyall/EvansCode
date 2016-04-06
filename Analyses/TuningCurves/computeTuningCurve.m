@@ -1,10 +1,9 @@
-function [ROIdata, badTrials] = computeTuningCurve(ROIdata, ROIindex, TrialIndex, varargin)
+function [ROIdata, badTrials, Curves] = computeTuningCurve(ROIdata, ROIindex, TrialIndex, varargin)
 
 
 FitTuningCurves = false; % gaussian fit
-ControlID = 1; % StimID of control trials, or '[]' if no control trial
+ControlID = 0; % StimID of control trials, or '[]' if no control trial
 outlierweight = 3; % # of std dev to ignore
-StimFrames = [];
 indexorder = [];
 
 saveOut = false;
@@ -22,9 +21,6 @@ while index<=length(varargin)
                 index = index + 1;
             case 'ControlID'
                 ControlID = varargin{index+1};
-                index = index + 2;
-            case 'StimFrames'
-                StimFrames = varargin{index+1};
                 index = index + 2;
             case 'indexorder'
                 indexorder = varargin{index+1};
@@ -66,6 +62,7 @@ elseif islogical(TrialIndex)
     TrialIndex = find(TrialIndex);
 end
 
+
 %% Load data
 if ischar(ROIdata)
     ROIFile = ROIdata;
@@ -79,19 +76,18 @@ if saveOut && isempty(saveFile)
     saveOut = false;
 end
 
-% Compute dF/F
-if ~isfield(ROIdata.rois, 'dFoF')
-    ROIdata = computeDFoF(ROIdata, 0.65);
+% Compute trial means
+if ~isfield(ROIdata.rois, 'stimMean')
+    ROIdata = computeTrialMean(ROIdata);
 end
 
 
-%% Determine trials to analyze
+%% Determine data to analyze
+
 if TrialIndex(end) == inf
     TrialIndex = cat(2, TrialIndex(1:end-1), TrialIndex(1:end-1)+1:numel(ROIdata.DataInfo.StimID));
 end
 
-
-%% Determine ROIs to analyze
 if ischar(ROIindex) && strcmp(ROIindex, 'all')
     ROIindex = [1, inf];
 elseif iscolumn(ROIindex)
@@ -100,6 +96,7 @@ end
 if ROIindex(end) == inf
     ROIindex = cat(2, ROIindex(1:end-1), ROIindex(1:end-1)+1:numel(ROIdata.rois));
 end
+
 
 %% Determine stimuli info
 StimIDs = unique(ROIdata.DataInfo.StimID(ismember(ROIdata.DataInfo.TrialIndex, TrialIndex)));
@@ -116,17 +113,6 @@ if isempty(indexorder)
             indexorder = (1:numStimuli)';
         end
     end
-end
-
-% Determine stimulus frames for each stimulus
-if isempty(StimFrames)
-    StimFrames = zeros(numStimuli, 2);
-    StimFrames(:, 1) = ROIdata.DataInfo.numFramesBefore + 1;
-    for sindex = 1:numStimuli
-        StimFrames(sindex, 2) = StimFrames(1, 1) + mode(ROIdata.DataInfo.numStimFrames(ROIdata.DataInfo.StimID==StimIDs(sindex))) - 1;
-    end
-elseif isvector(StimFrames)
-    StimFrames = repmat(StimFrames, numStimuli, 1);
 end
 
 
@@ -150,21 +136,9 @@ for rindex = ROIindex
         ROIdata.rois(rindex).stimindex = indexorder;
         
         % Select data for current stimulus
-        currentTrials = ROIdata.DataInfo.TrialIndex(ROIdata.DataInfo.StimID==StimIDs(indexorder(sindex)));     % determine all trials for current stimulus
-        currentTrials = currentTrials(ismember(currentTrials,TrialIndex));  % remove non-specified trials
-        CaTraces = ROIdata.rois(rindex).dFoF(ismember(ROIdata.DataInfo.TrialIndex, currentTrials),:);              % pull out data for these trials
-        
-        % Remove bad trials (NaN exists in trace)
-        badCurrent = any(isnan(CaTraces(:,StimFrames(indexorder(sindex),1):StimFrames(indexorder(sindex),2))), 2);
-        if any(badCurrent)
-            for bindex = currentTrials(badCurrent)
-                badTrials{bindex} = [badTrials{bindex}, rindex];
-            end
-            CaTraces(badCurrent, :) = [];
-        end
-        
-        % Compute response for each trial during the stimulus period
-        StimulusDFoF = mean(CaTraces(:, StimFrames(indexorder(sindex),1):StimFrames(indexorder(sindex),2)), 2);
+        currentTrials = ROIdata.DataInfo.TrialIndex(ROIdata.DataInfo.StimID==StimIDs(indexorder(sindex)));  % determine all trials for current stimulus
+        currentTrials = currentTrials(ismember(currentTrials,TrialIndex));                                  % remove non-specified trials
+        StimulusDFoF = ROIdata.rois(rindex).stimMean(ismember(ROIdata.DataInfo.TrialIndex, currentTrials)); % pull out data for these trials
         
         % Remove outliers
         while true
@@ -257,6 +231,12 @@ if FitTuningCurves
         
     end %ROIs
     fprintf('\tComplete\n');
+end
+
+
+%% Output curves
+if nargout > 2
+    Curves = reshape([ROIdata.rois(ROIindex).curve],numel(ROIdata.rois(1).curve),numel(ROIindex))';
 end
 
 
