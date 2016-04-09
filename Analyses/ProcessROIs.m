@@ -187,7 +187,7 @@ for findex = 1:numFiles;
     
     
     %% Determine what has already been accomplished
-    variables = whos(matfile(saveFiles{findex}));
+    % variables = whos(matfile(saveFiles{findex}));
     
     
     %% Load ROIdata
@@ -217,7 +217,7 @@ for findex = 1:numFiles;
     
     %% Sort ROI signals to be trial-wise
     if OrganizeSignals
-        [ROIdata, series] = ROIorganize(ROIdata, ExperimentFiles{findex}, [], ROIindex{findex}, 'SeriesVariables', 'RunningSpeed', 'numFramesBefore', 30, 'numFramesAfter', 59);
+        [ROIdata, series] = ROIorganize(ROIdata, ExperimentFiles{findex}, [], ROIindex{findex}, 'SeriesVariables', 'RunningSpeed', 'numFramesBefore', 22, 'numFramesAfter', 70); % [30, 59]
         if saveOut
             save(saveFiles{findex}, 'series', '-mat', '-append');
         end

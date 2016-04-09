@@ -57,13 +57,13 @@ end
 
 
 %% Distribute ROI signals
-if exist([fname,'.signals'], 'file')
-    load([fname,'.signals'], 'sig', 'pil', '-mat');
-    for rindex = 1:numel(ROIdata.rois)
-        ROIdata.rois(rindex).rawdata = sig(:,rindex)';
-        ROIdata.rois(rindex).rawneuropil = pil(:,rindex)';
-    end
-end
+% if exist([fname,'.signals'], 'file')
+%     load([fname,'.signals'], 'sig', 'pil', '-mat');
+%     for rindex = 1:numel(ROIdata.rois)
+%         ROIdata.rois(rindex).rawdata = sig(:,rindex)';
+%         ROIdata.rois(rindex).rawneuropil = pil(:,rindex)';
+%     end
+% end
 
 
 %% Save ROIdata to file
@@ -74,3 +74,4 @@ if saveOut
         save(saveFile, 'ROIdata', '-mat', '-append');
     end
 end
+

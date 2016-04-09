@@ -96,7 +96,7 @@ p(3)=signrank(diff(PreSel,[],2),diff(RealSel,[],2));
 title('Full Pad halves vs. Actual');
 xlabel('Change in Selectivity');
 ylabel('# of ROIs');
-legend({'Full Pad halves','Trimming'},'Location','Best');
+legend({'Full Pad halves','Trimming'},'Location','NorthEast');
 
 subplot(2,2,4);
 h=histogram(diff(PosSel,[],2));
@@ -106,7 +106,7 @@ p(4)=signrank(diff(PosSel,[],2),diff(RealSel,[],2));
 title('Single Whisker halves vs. Actual');
 xlabel('Change in Selectivity');
 ylabel('# of ROIs');
-legend({'Single Whisker halves','Trimming'},'Location','Best');
+legend({'Single Whisker halves','Trimming'},'Location','NorthEast');
 
 XLim = [inf,-inf];
 YLim = [inf,-inf];

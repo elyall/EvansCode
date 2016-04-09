@@ -8,10 +8,10 @@ numFramesAfter = []; % '[]' for default
 saveFile = '';
 SeriesVariables = {}; % strings of fieldnames in 'frames' struct to extract to be trial-wise
 
+directory = cd;
 
 %% Parse input arguments
 if ~exist('ROIdata','var') || isempty(ROIdata)
-    directory = CanalSettings('DataDirectory');
     [ROIdata, p] = uigetfile({'*.mat'},'Choose ROI file',directory);
     if isnumeric(ROIdata)
         return
@@ -20,7 +20,6 @@ if ~exist('ROIdata','var') || isempty(ROIdata)
 end
 
 if (~exist('AnalysisInfo','var') || isempty(AnalysisInfo)) && (~exist('frames', 'var') || isempty(frames))
-    directory = CanalSettings('ExperimentDirectory');
     [ExperimentFile, p] = uigetfile({'*.mat'},'Choose Experiment file',directory);
     if isnumeric(ExperimentFile)
         return
@@ -104,15 +103,19 @@ FrameIndex = [AnalysisInfo.ExpStimFrames(TrialIndex, 1) - numFramesBefore, Analy
 
 
 %% Determine series data to reshape
-seriesNames = fieldnames(frames);
-if ischar(SeriesVariables)
-    SeriesVariables = {SeriesVariables};
-end
-for sindex = numel(SeriesVariables):-1:1
-    if ~strcmp(SeriesVariables{sindex}, seriesNames)
-        warning('Series variable ''%s'' not found, continuing without formatting it', SeriesVariables{sindex});
-        SeriesVariables(sindex) = [];
+if ~isempty(frames)
+    seriesNames = fieldnames(frames);
+    if ischar(SeriesVariables)
+        SeriesVariables = {SeriesVariables};
     end
+    for sindex = numel(SeriesVariables):-1:1
+        if ~strcmp(SeriesVariables{sindex}, seriesNames)
+            warning('Series variable ''%s'' not found, continuing without formatting it', SeriesVariables{sindex});
+            SeriesVariables(sindex) = [];
+        end
+    end
+else
+    SeriesVariables = {};
 end
 
 
