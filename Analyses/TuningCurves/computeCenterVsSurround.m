@@ -1,4 +1,4 @@
-function [Ratio, Center, Surround] = computeCenterVsSurround(Curves, PosCenter, PosSurround)
+function [Ratio, Center, Surround] = computeCenterVsSurround(Curves,PosCenter,PosSurround,Min)
 
 
 %% Determine indexing
@@ -9,6 +9,9 @@ if size(PosCenter,1)==1
 end
 if size(PosSurround,1)==1
     PosSurround = repmat(PosSurround,numROIs,1);
+end
+if numel(Min)==1
+    Min = repmat(Min,numROIs,1);
 end
 
 
@@ -27,6 +30,13 @@ for rindex = 1:numROIs
         current = Curves(rindex,:);
     else
         current = Curves{rindex}';
+    end
+    
+    % shift bottom of curves to 0
+    if isnumeric(Min) && ~isempty(Min);
+        current = current - Min(rindex);
+    elseif islogical(Min)
+        current = current - min(current);
     end
     
     % Compute Center

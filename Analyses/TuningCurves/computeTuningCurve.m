@@ -1,10 +1,10 @@
-function [ROIdata, badTrials, Curves] = computeTuningCurve(ROIdata, ROIindex, TrialIndex, varargin)
+function [ROIdata, goodTrials, Curves] = computeTuningCurve(ROIdata, ROIindex, TrialIndex, varargin)
 
 
 FitTuningCurves = false; % gaussian fit
 ControlID = 0; % StimID of control trials, or '[]' if no control trial
 outlierweight = 3; % # of std dev to ignore
-indexorder = [];
+StimIDs = [];
 
 saveOut = false;
 saveFile = '';
@@ -22,8 +22,8 @@ while index<=length(varargin)
             case 'ControlID'
                 ControlID = varargin{index+1};
                 index = index + 2;
-            case 'indexorder'
-                indexorder = varargin{index+1};
+            case 'StimIDs'
+                StimIDs = varargin{index+1};
                 index = index + 2;
             case 'outlierweight'
                 outlierweight = varargin{index+1};
@@ -85,8 +85,12 @@ end
 %% Determine data to analyze
 
 if TrialIndex(end) == inf
-    TrialIndex = cat(2, TrialIndex(1:end-1), TrialIndex(1:end-1)+1:numel(ROIdata.DataInfo.StimID));
+    TrialIndex = cat(2, TrialIndex(1:end-1), TrialIndex(1:end-1)+1:max(ROIdata.DataInfo.TrialIndex));
 end
+TrialIndex = ismember(ROIdata.DataInfo.TrialIndex', TrialIndex);
+% if isrow(TrialIndex)
+%     TrialIndex = TrialIndex';
+% end
 
 if ischar(ROIindex) && strcmp(ROIindex, 'all')
     ROIindex = [1, inf];
@@ -99,21 +103,26 @@ end
 
 
 %% Determine stimuli info
-StimIDs = unique(ROIdata.DataInfo.StimID(ismember(ROIdata.DataInfo.TrialIndex, TrialIndex)));
+if isempty(StimIDs)
+    StimIDs = unique(ROIdata.DataInfo.StimID(TrialIndex));
+end
 numStimuli = numel(StimIDs);
 
 % Determine order to cycle through stimuli (necessary for t-test to control trials)
-if isempty(indexorder)
-    if ~isempty(ControlID)
-        controlindex = find(StimIDs==ControlID); %locate control 'stimulus' in structure
-        if ~isempty(controlindex)
-            indexorder = cat(1, controlindex, find(StimIDs~=ControlID)); %run through the stimuli analyzing the control trials first
-        else
-            ControlID = [];
-            indexorder = (1:numStimuli)';
-        end
+if ~isempty(ControlID)
+    controlindex = find(StimIDs==ControlID);                                    % locate control ID
+    if ~isempty(controlindex)
+        StimIDs = StimIDs([controlindex,setdiff(1:numStimuli,controlindex)]);   % reorder so control trials are analyzed first
     end
 end
+
+% Determine trials per stim
+Trials = repmat(ROIdata.DataInfo.StimID,1,numStimuli)==repmat(StimIDs,numel(ROIdata.DataInfo.StimID),1); % determine in what trials each stimulus occurred
+Trials = bsxfun(@and,Trials,TrialIndex); % keep only requested trials
+TrialIndex = cell(numStimuli,1);
+% for sindex=1:numStimuli
+%     TrialIndex{sindex} = find(Trials(:,sindex));
+% end
 
 
 %% Calculate average response for each stimulus
@@ -130,15 +139,13 @@ if ~isempty(ControlID)
 end
 
 % Calculate tuning
-badTrials = cell(numel(ROIdata.DataInfo.StimID), 1);
+% goodTrials = repmat(TrialIndex,1,numROIs);
 for rindex = ROIindex
-    for sindex = 1:numStimuli %indexorder'
-        ROIdata.rois(rindex).stimindex = indexorder;
-        
+    ROIdata.rois(rindex).stimindex = StimIDs;
+    for sindex = 1:numStimuli
+                
         % Select data for current stimulus
-        currentTrials = ROIdata.DataInfo.TrialIndex(ROIdata.DataInfo.StimID==StimIDs(indexorder(sindex)));  % determine all trials for current stimulus
-        currentTrials = currentTrials(ismember(currentTrials,TrialIndex));                                  % remove non-specified trials
-        StimulusDFoF = ROIdata.rois(rindex).stimMean(ismember(ROIdata.DataInfo.TrialIndex, currentTrials)); % pull out data for these trials
+        StimulusDFoF = ROIdata.rois(rindex).stimMean(Trials(:,sindex));
         
         % Remove outliers
         while true
@@ -152,38 +159,38 @@ for rindex = ROIindex
             if any(Val > outlierweight)                                             % at least one outlier exists
                 [~,furthestIndex] = max(Val);                                       % determine largest outlier
                 StimulusDFoF(furthestIndex) = [];                                   % remove largest outlier
+                % goodTrials{sindex,rindex}(furthestIndex) = [];
             else
                 break
             end
         end
+        % ROIdata.rois(rindex).stimMean(setdiff(TrialIndex{sindex},goodTrials{sindex,rindex})) = nan;
                 
         % Save tuning curves
-        ROIdata.rois(rindex).curve(sindex) = mean(StimulusDFoF); % evoked dF/F over all trials for current stimulus
-        ROIdata.rois(rindex).StdError(sindex) = std(StimulusDFoF)/sqrt(length(StimulusDFoF)); % standard error for stimulus
+        ROIdata.rois(rindex).curve(sindex) = nanmean(StimulusDFoF);                 % evoked dF/F over all trials for current stimulus
+        ROIdata.rois(rindex).StdError(sindex) = std(StimulusDFoF)/sqrt(numel(StimulusDFoF)); % standard error for stimulus
         ROIdata.rois(rindex).Raw{sindex} = StimulusDFoF;
         ROIdata.rois(rindex).nTrials(sindex) = numel(StimulusDFoF);
         
         % Perform t-test to control trials
         if ~isempty(ControlID)
-            if StimIDs(sindex) == ControlID %control trials
+            if sindex==1 %control trials
                 ControlDFoF = StimulusDFoF;
+            else
+                [~, ROIdata.rois(rindex).PValue(sindex)] = ttest2(...
+                    ControlDFoF,....
+                    StimulusDFoF);
             end
-            [~, ROIdata.rois(rindex).PValue(sindex)] = ttest2(...
-                ControlDFoF,....
-                StimulusDFoF);
         end
         
     end %stimuli
     
     % Correct for multiple comparisons
     if ~isempty(ControlID)
-        [~,~,ROIdata.rois(rindex).PValueCorrected] = fdr_bh(ROIdata.rois(rindex).PValue(2:end));
+        [~,~,ROIdata.rois(rindex).PValueCorrected] = fdr_bh(ROIdata.rois(rindex).PValue);
     end
         
 end %ROIs
-if any(~cellfun(@isempty, badTrials))
-    warning('Some trials couldn''t be included as they contained at least one NaN');
-end
 fprintf('\tComplete\n');
 
 
