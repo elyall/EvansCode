@@ -170,7 +170,7 @@ numTrialsPerStim = cumsum(numTrialsPerStim,2);
 %% Compute metrics off of permutations (w/ outliers removed)
 
 % Gather Data
-Data = [ROIs{1}.rois(:).Raw,ROIs{2}.rois(:).Raw];
+Data = [ROIs{1}.rois(ROIindex(:,1)).Raw,ROIs{2}.rois(ROIindex(:,1)).Raw];
 Data = reshape(Data,numStim,numROIs,2);
 numTrialsPerStim = cellfun(@numel,Data);
 numTrialsPerStim = cumsum(numTrialsPerStim,3);
@@ -181,13 +181,23 @@ for rindex = 1:numROIs
 end
 Data(:,:,2) = [];
 
+% Convert from cell to matrix (improves parfor)
+num = max(max(numTrialsPerStim(:,:,2)));
+temp = nan(numStim,numROIs,num);
+for rindex = 1:numROIs
+    for sindex = 1:numStim
+       temp(sindex,rindex,:) = [Data{sindex,rindex};nan(num-numTrialsPerStim(sindex,rindex,2),1)];
+    end
+end
+Data = temp;
+
 % Initialize output
 dCoM = nan(numROIs,numPerms+1);
 dSel = nan(numROIs,numPerms+1);
 
 % Cycle through permutations
 parfor_progress(numPerms+1);
-for pindex = 1:numPerms+1
+parfor pindex = 1:numPerms+1
     
     % Generate tuning curves (ignore control position)
     Curves = nan(numROIs,numStim-1,2);
@@ -198,8 +208,8 @@ for pindex = 1:numPerms+1
             else
                 TI = 1:numTrialsPerStim(sindex,rindex,2);
             end
-            Curves(rindex,sindex-1,1) = mean(Data{sindex,rindex}(TI(1:numTrialsPerStim(sindex,rindex,1))));
-            Curves(rindex,sindex-1,2) = mean(Data{sindex,rindex}(TI(numTrialsPerStim(sindex,rindex,1)+1:end)));
+            Curves(rindex,sindex-1,1) = mean(Data(sindex,rindex,TI(1:numTrialsPerStim(sindex,rindex,1))));
+            Curves(rindex,sindex-1,2) = mean(Data(sindex,rindex,TI(numTrialsPerStim(sindex,rindex,1)+1:numTrialsPerStim(sindex,rindex,2))));
         end
     end
     

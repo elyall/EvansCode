@@ -58,6 +58,7 @@ Maps = imref2d;
 for findex = 1:numFiles
     load(ExperimentFiles{findex}, 'StimResponse', '-mat');
     Images{findex} = max(StimResponse.avg,[],4);
+%     Images{findex} = StimResponse.pvalue(:,:,1,15);
     if numFiles > 1
         load(ExperimentFiles{findex}, 'Map', '-mat');
         Maps(findex) = Map;

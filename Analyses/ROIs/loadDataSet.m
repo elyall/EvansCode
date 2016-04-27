@@ -22,7 +22,7 @@ else
         if ~isempty(temp)
             StructIndex = cat(2,StructIndex,temp);
         else
-            warning('Dataset ''%s'' not found...', MouseID(mindex));
+            warning('Dataset ''%s'' not found...', MouseID{mindex});
         end
     end
 end

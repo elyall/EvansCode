@@ -117,6 +117,7 @@ for rindex = ROIindex
     if NeuropilWeight(rindex) % remove weighted Neuropil signal
         data = data - NeuropilWeight(rindex)*ROIdata.rois(rindex).neuropil;
     end
+    ROIdata.rois(rindex).neuropilWeight = NeuropilWeight(rindex);
     
     % Compute Fluorescence baseline for each trial
     baseline = nanmedian(data(:, ROIdata.DataInfo.numFramesBefore - numFramesBaseline + 1:ROIdata.DataInfo.numFramesBefore), 2);

@@ -9,19 +9,22 @@ StimIndex = [2 inf];
 
 
 %% Parse input arguments
-% index = 1;
-% while index<=length(varargin)
-%     try
-%         switch varargin{index}
-%             otherwise
-%                 warning('Argument ''%s'' not recognized',varargin{index});
-%                 index = index + 1;
-%         end
-%     catch
-%         warning('Argument %d not recognized',index);
-%         index = index + 1;
-%     end
-% end
+index = 1;
+while index<=length(varargin)
+    try
+        switch varargin{index}
+            case 'StimIndex'
+                StimIndex = varargin{index+1};
+                index = index + 2;
+            otherwise
+                warning('Argument ''%s'' not recognized',varargin{index});
+                index = index + 1;
+        end
+    catch
+        warning('Argument %d not recognized',index);
+        index = index + 1;
+    end
+end
 
 if ~exist('ROIs', 'var') || isempty(ROIs)
     [ROIs,p] = uigetfile({'*.rois;*.mat'}, 'Select ROI files:', directory, 'MultiSelect', 'on');
@@ -58,9 +61,8 @@ numROIs = size(ROIindex, 1);
 
 
 %% Determine stimuli to analyze
-numStims = length(ROIs{1}.rois(ROIindex(1,1)).curve);
 if StimIndex(end) == inf
-    StimIndex = [StimIndex(1:end-1), StimIndex(end-1)+1:numStims];
+    StimIndex = [StimIndex(1:end-1), StimIndex(end-1)+1:numel(ROIs{1}.rois(ROIindex(1,1)).curve)];
 end
 numStims = numel(StimIndex);
 

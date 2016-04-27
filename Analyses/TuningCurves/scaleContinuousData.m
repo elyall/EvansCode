@@ -36,6 +36,7 @@ if ~exist('Bounds', 'var') || isempty(Bounds)
     Bounds = nan(1,2);
 end
 
+
 %% Determine Bounds
 if isnan(Bounds(1))
     Bounds(1) = min(Data);

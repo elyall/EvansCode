@@ -8,7 +8,7 @@ showControl = false;
 showFit = false;
 showDataPoints = true;
 showStimStars = false;
-showN = false;
+showN = true;
 showPValues = false;
 PWCZ = [];
 
@@ -308,8 +308,11 @@ for index = 1:numel(ROIindex)
     % Display number of trials per average
     if showN
         Ydim = get(gca,'YLim');
-        for s = 1:numStimuli
-            text(s,Ydim(1)+(Ydim(2)-Ydim(1))/10,sprintf('n=%d',rois(rindex).nTrials(s)),'HorizontalAlignment','center');
+        if showControl
+            text(1,Ydim(1)+(Ydim(2)-Ydim(1))/10,sprintf('n=%d',rois(rindex).nTrials(s)),'HorizontalAlignment','center');
+        end
+        for s = 2:numStimuli
+            text(s-~showControl,Ydim(1)+(Ydim(2)-Ydim(1))/10,sprintf('n=%d',rois(rindex).nTrials(s)),'HorizontalAlignment','center');
         end
     end
     

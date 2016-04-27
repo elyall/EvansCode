@@ -64,24 +64,22 @@ if ~exist('Images','var') || isempty(Images)
     [Images, p] = uigetfile({'*.exp;*.mat'},'Choose Images files', directory, 'MultiSelect', 'on');
     if isnumeric(Images)
         return
-    elseif iscell(Images)
-        Images = fullfile(p,Images);
-    else
-        Images = {fullfile(p,Images)};
     end
+    Images = fullfile(p,Images);
     directory = p;
+end
+if ischar(Images)
+    Images = {Images};
 end
 
 if ~exist('Maps','var') || isempty(Maps)
     [Maps, p] = uigetfile({'*.exp;*.mat'},'Choose map files', directory, 'MultiSelect', 'on');
     if isnumeric(Maps)
         return
-    elseif iscell(Maps)
-        Maps = fullfile(p,Maps);
-    else
-        Maps = {fullfile(p,Maps)};
     end
-elseif ischar(Maps)
+    Maps = fullfile(p,Maps);
+end
+if ischar(Maps)
     Maps = {Maps};
 end
 
@@ -103,10 +101,17 @@ end
 if iscellstr(Images)
     ImageFiles = Images;
     for findex = 1:numFiles
-        load(ImageFiles{findex}, 'ImageFiles', '-mat');
-        switch imageType
-            case 'average'
-                Images{findex} = squeeze(ImageFiles.Average(:,:,1,1,:));
+        [~,~,ext] = fileparts(ImageFiles{findex});
+        switch ext
+            case '.exp'
+                load(ImageFiles{findex}, 'ImageFiles', '-mat');
+                switch imageType
+                    case 'average'
+                        Images{findex} = squeeze(ImageFiles.Average(:,:,1,1,:));
+                end
+            case '.align'
+                load(ImageFiles{findex},'m','-mat');
+                Images{findex} = m;
         end
     end
 end
@@ -124,7 +129,7 @@ if ~islogical(filt)
 end
 
 % Determine Image dimensions
-Dimensions = cell2mat(cellfun(@size, Images, 'UniformOutput', false));
+Dimensions = cell2mat(cellfun(@size, Images', 'UniformOutput', false));
 if size(Dimensions,2) == 2
     Dimensions = cat(2, Dimensions, ones(numFiles,1));
 end

@@ -60,7 +60,7 @@ end
 
 
 %% Load ROIs
-if iscellstr(Vertices)
+if iscellstr(Vertices) || iscell(Vertices) || isstruct(Vertices)
     [Vertices, FileIndex] = gatherROIdata(Vertices, 'vertices', ':', 'none');
     Vertices = cellfun(@(x) reshape(x, numel(x)/2, 2), Vertices, 'UniformOutput', false); % Reshape vertices
 end

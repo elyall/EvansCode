@@ -1,5 +1,7 @@
 function [Centroids, Vertices, ROIMasks] = mapROIs(ROIs, Maps)
 
+% ROIindex = [1 inf];
+% FileIndex = [1 inf];
 
 
 %% Parse input arguments
@@ -44,23 +46,26 @@ numROIs = cellfun(@(x) numel(x.rois), ROIs);
 % Load in maps
 if iscellstr(Maps)
     MapFiles = Maps;
-    Maps = cell(numFiles, 1);
+    Maps = imref2d();
     for findex = 1:numFiles
-        load(MapFiles{findex}, 'Map', '-mat');
-        Maps{findex} = Map;
+        temp = load(MapFiles{findex}, 'Map', '-mat');
+        if isfield(temp,'Map')
+            Maps(findex) = temp.Map;
+        end
+        clear temp;
     end
 end
 
 
 %% Determine file offsets
-[Offsets, Map, XLim, YLim] = mapFoVs(Maps); % determine amount of translation between the datasets
+[Offsets, refMap] = mapFoVs(Maps); % determine amount of translation between the datasets
 
 
 %% Translate ROI centroids
 Centroids = cell(numFiles, 1); % initialize output
 for findex = 1:numFiles
     Centroids{findex} = reshape([ROIs{findex}.rois(:).centroid], 2, numROIs(findex))';  % gather centroids
-    Centroids{findex} = bsxfun(@plus, Centroids{findex}, Offsets(findex,:));            % translate centroids
+    Centroids{findex} = bsxfun(@plus, Centroids{findex}, Offsets(findex,[1,2]));            % translate centroids
 end
 
 
@@ -70,24 +75,18 @@ if nargout > 1
     for findex = 1:numFiles
         Vertices{findex} = cell(numROIs(findex), 1); % initialize for 'deal'
         [Vertices{findex}{:}] = deal(ROIs{findex}.rois.vertices); % gather vertices
-        Vertices{findex} = cellfun(@(x) bsxfun(@plus, x, Offsets(findex,:)), Vertices{findex}, 'UniformOutput', false); % translate vertices
+        Vertices{findex} = cellfun(@(x) bsxfun(@plus, x, Offsets(findex,[1,2])), Vertices{findex}, 'UniformOutput', false); % translate vertices
     end
 end
 
 
 %% Create mFoV ROI masks
 if nargout > 2
-    
-    % Initialize reference
-    [H,W,~] = size(Map);
-    MainMap = imref2d([H,W], XLim, YLim);
-    
-    % Create new masks
     ROIMasks = cell(numFiles,1); % initialize output
     for findex = 1:numFiles
-        ROIMasks{findex} = false(H, W, numROIs(findex));
+        ROIMasks{findex} = false(refMap.ImageExtentInWorldY, refMap.ImageExtentInWorldX, numROIs(findex));
         for rindex = 1:numROIs(findex)
-            ROIMasks{findex}(:,:,rindex) = imwarp(ROIs{findex}.rois(rindex).mask, Maps{findex}, affine2d(), 'OutputView', MainMap);
+            ROIMasks{findex}(:,:,rindex) = imwarp(ROIs{findex}.rois(rindex).mask, Maps{findex}, affine2d(), 'OutputView', refMap);
         end
     end
 end

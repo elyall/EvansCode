@@ -1,9 +1,9 @@
-function [ROIdata, goodTrials, Curves] = computeTuningCurve(ROIdata, ROIindex, TrialIndex, varargin)
+function [ROIdata, Curves] = computeTuningCurve(ROIdata, ROIindex, TrialIndex, varargin)
 
 
 FitTuningCurves = false; % gaussian fit
 ControlID = 0; % StimID of control trials, or '[]' if no control trial
-outlierweight = 3; % # of std dev to ignore
+outlierweight = 4; % # of std dev to ignore
 StimIDs = [];
 
 saveOut = false;
@@ -119,10 +119,6 @@ end
 % Determine trials per stim
 Trials = repmat(ROIdata.DataInfo.StimID,1,numStimuli)==repmat(StimIDs,numel(ROIdata.DataInfo.StimID),1); % determine in what trials each stimulus occurred
 Trials = bsxfun(@and,Trials,TrialIndex); % keep only requested trials
-TrialIndex = cell(numStimuli,1);
-% for sindex=1:numStimuli
-%     TrialIndex{sindex} = find(Trials(:,sindex));
-% end
 
 
 %% Calculate average response for each stimulus
@@ -139,7 +135,6 @@ if ~isempty(ControlID)
 end
 
 % Calculate tuning
-% goodTrials = repmat(TrialIndex,1,numROIs);
 for rindex = ROIindex
     ROIdata.rois(rindex).stimindex = StimIDs;
     for sindex = 1:numStimuli
@@ -159,12 +154,10 @@ for rindex = ROIindex
             if any(Val > outlierweight)                                             % at least one outlier exists
                 [~,furthestIndex] = max(Val);                                       % determine largest outlier
                 StimulusDFoF(furthestIndex) = [];                                   % remove largest outlier
-                % goodTrials{sindex,rindex}(furthestIndex) = [];
             else
                 break
             end
         end
-        % ROIdata.rois(rindex).stimMean(setdiff(TrialIndex{sindex},goodTrials{sindex,rindex})) = nan;
                 
         % Save tuning curves
         ROIdata.rois(rindex).curve(sindex) = nanmean(StimulusDFoF);                 % evoked dF/F over all trials for current stimulus

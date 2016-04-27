@@ -2,7 +2,7 @@ function [Dim, refMap, indMap, Maps] = mapFoVs(Maps, varargin)
 % Dim - first two values are X,Y distance from top left corner. second
 % two values are width and height.
 
-type = 'blend'; % 'index' or 'mean' or 'blend'(indMap only)
+type = 'index'; % 'index' or 'mean' or 'blend'(indMap only)
 
 directory = cd;
 
@@ -45,9 +45,11 @@ if iscellstr(Maps)
     MapFiles = Maps;
     Maps = imref2d();
     for findex = 1:numFiles
-        load(MapFiles{findex}, 'Map', '-mat');
-        Maps(findex) = Map;
-        clear Map;
+        temp = load(MapFiles{findex}, 'Map', '-mat');
+        if isfield(temp,'Map')
+            Maps(findex) = temp.Map;
+        end
+        clear temp;
     end
 end
 
