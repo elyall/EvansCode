@@ -82,6 +82,7 @@ totalFrames = sum([Config(:).Frames]);
 
 %% Determine input data available
 load(ExperimentFiles{1}, 'DAQChannels', '-mat');
+OutputNames = DAQChannels(~cellfun(@isempty,strfind(DAQChannels, 'O_')));
 InputNames = DAQChannels(~cellfun(@isempty,strfind(DAQChannels, 'I_')));
 nInputChannels = numel(InputNames);
 
@@ -133,7 +134,7 @@ for findex = 1:numFiles
     [p,fn,~] = fileparts(ImageFiles{findex});
     InfoFile = fullfile(p, strcat(fn,'.mat')); %[strtok(StimFile, '.'),'_datain.bin'];
     load(InfoFile, 'info');
-    % info = fixTimeStamps(InfoFile); %for data collected w/ Scanbox v1.2
+    info = fixTimeStamps(InfoFile); %for data collected w/ Scanbox v1.2
     info.frame(info.event_id~=1) = []; %remove info from second input channel
     info.line(info.event_id~=1) = [];
     info.event_id(info.event_id~=1) = [];
@@ -141,6 +142,8 @@ for findex = 1:numFiles
     
     % Determine trial parameters
     numTrials = numel(TrialInfo.StimID);
+    temp = Experiment.Triggers(:,strcmp(OutputNames,'O_2PTrigger'),1);
+    numTrigsPerTrial = nnz((temp-[0;temp(1:end-1)])>0);
     nTrials_imaging = numel(info.frame(info.event_id==1))/numTrigsPerTrial;
     nTrialsMissed = numTrials - nTrials_imaging;
     IndexStim = 1:numTrials;

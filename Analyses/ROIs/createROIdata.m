@@ -68,7 +68,6 @@ if isempty(ROIdata)
     ROIdata.filename = ROIFile;
     ROIdata.offset = zeros(1,3);
     ROIdata.imagefiles = ImageFile;
-    ROIdata.files = ImageFile;
     offset = 0;
 else
     offset = numel(ROIdata.rois);

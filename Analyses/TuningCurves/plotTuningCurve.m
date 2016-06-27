@@ -6,9 +6,9 @@ saveFile = ''; % filename to save plots to
 % Items to display
 showControl = false;
 showFit = false;
-showDataPoints = true;
+showDataPoints = false;
 showStimStars = false;
-showN = true;
+showN = false;
 showPValues = false;
 PWCZ = [];
 

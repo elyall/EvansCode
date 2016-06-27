@@ -52,7 +52,7 @@ numROIs = numel(ROIdata.rois);
 for findex = 1:numFilesToAppend
     if numel(ROIs{findex}.rois) ~= numROIs
         error('ROI files need the same number of ROIs');
-    elseif isfield(ROIs{findexROIs{findex}.DataInfo.numFramesAfter~=ROIdata.DataInfo.numFramesAfter || ROIs{findex}.DataInfo.numFramesBefore~=ROIdata.DataInfo.numFramesBefore 
+    elseif isfield(ROIs{findex},'DataInfo') && (ROIs{findex}.DataInfo.numFramesAfter~=ROIdata.DataInfo.numFramesAfter || ROIs{findex}.DataInfo.numFramesBefore~=ROIdata.DataInfo.numFramesBefore) 
         error('ROIdata needs to be organized the same way');
     end
 end
@@ -62,10 +62,11 @@ end
 for findex = 1:numFilesToAppend
     
     % Append trial info
-    if 
-    ROIdata.DataInfo.numStimFrames = cat(1, ROIdata.DataInfo.numStimFrames, ROIs{findex}.DataInfo.numStimFrames);
-    ROIdata.DataInfo.TrialIndex = cat(2, ROIdata.DataInfo.TrialIndex, ROIs{findex}.DataInfo.TrialIndex);
-    ROIdata.DataInfo.StimID = cat(1, ROIdata.DataInfo.StimID, ROIs{findex}.DataInfo.StimID);
+    if isfield(ROIdata{findex},'DataInfo')
+        ROIdata.DataInfo.numStimFrames = cat(1, ROIdata.DataInfo.numStimFrames, ROIs{findex}.DataInfo.numStimFrames);
+        ROIdata.DataInfo.TrialIndex = cat(2, ROIdata.DataInfo.TrialIndex, ROIs{findex}.DataInfo.TrialIndex);
+        ROIdata.DataInfo.StimID = cat(1, ROIdata.DataInfo.StimID, ROIs{findex}.DataInfo.StimID);
+    end
     
     % Append individual roi data
     for rindex = 1:numROIs

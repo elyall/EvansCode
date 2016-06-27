@@ -104,7 +104,7 @@ end
 
 %% Determine stimuli info
 if isempty(StimIDs)
-    StimIDs = unique(ROIdata.DataInfo.StimID(TrialIndex));
+    StimIDs = unique(ROIdata.DataInfo.StimID(TrialIndex))';
 end
 numStimuli = numel(StimIDs);
 

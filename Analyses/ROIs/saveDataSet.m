@@ -39,3 +39,5 @@ if exist(saveFile, 'file')
 else
     save(saveFile, 'DataSets', '-mat', '-v7.3');
 end
+fprintf('Saved data to %s in %s\n', MouseID, saveFile);
+

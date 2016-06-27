@@ -62,7 +62,7 @@ numROIs = numel(ROIdata.rois);
 
 % Compute dF/F
 if ~isfield(ROIdata.rois, 'dFoF')
-    ROIdata = computeDFoF(ROIdata, 0.65);
+    ROIdata = computeDFoF(ROIdata);
 end
 numTrials = size(ROIdata.rois(1).dFoF,1);
 

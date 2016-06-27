@@ -5,8 +5,13 @@ distBetween = 1; % CoM
 StimIDs = [];
 
 ROIindex = [1,inf];
-TrialIndex = [1,inf];
+% TrialIndex = [1,inf];
 
+saveOut = false;
+saveFile = '';
+UserData = [];
+
+verbose = true;
 directory = cd;
 
 %% Parse input arguments
@@ -17,9 +22,9 @@ while index<=length(varargin)
             case {'ROIindex', 'ROIs', 'rois'}
                 ROIindex = varargin{index+1};
                 index = index + 2;
-            case {'TrialIndex', 'Trials', 'trials'}
-                TrialIndex = varargin{index+1};
-                index = index + 2;
+%             case {'TrialIndex', 'Trials', 'trials'}
+%                 TrialIndex = varargin{index+1};
+%                 index = index + 2;
             case 'numPerms'
                 numPerms = varargin{index+1};
                 index = index + 2;
@@ -28,6 +33,18 @@ while index<=length(varargin)
                 index = index + 2;
             case 'StimIDs'
                 StimIDs = varargin{index+1};
+                index = index + 2;
+            case 'verbose'
+                verbose = true;
+                index = index + 1;
+            case {'save','Save'}
+                saveOut = true;
+                index = index + 1;
+            case 'saveFile'
+                saveFile = varargin{index+1};
+                index = index + 2;
+            case {'userdata','UserData'}
+                UserData = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -55,8 +72,17 @@ end
 if iscellstr(ROIs)
     ROIFiles = ROIs;
     for findex = 1:2
-        load(ROIFiles, 'ROIdata', '-mat');
+        load(ROIFiles{findex}, 'ROIdata', '-mat');
         ROIs{findex} = ROIdata; clear ROIdata;
+    end
+end
+
+% Determine file to save to
+if saveOut && isempty(saveFile)
+    if exist('ROIFiles','var')
+        saveFile = strcat(strtok(ROIFiles{1},'.'),'.perm');
+    else
+        saveOut = false;
     end
 end
 
@@ -82,46 +108,48 @@ if ROIindex(end,1) == inf
 end
 numROIs = size(ROIindex,1);
 
-% Determine trials
-if ~iscell(TrialIndex)
-    TrialIndex = {TrialIndex};
-end
-if numel(TrialIndex) == 1
-    TrialIndex = repmat(TrialIndex,2,1);
-end
-for findex = 1:2
-    if TrialIndex{findex}(end) == inf
-        TrialIndex{findex} = cat(2, TrialIndex{findex}(1:end-1), TrialIndex{findex}(1:end-1)+1:max(ROIs{findex}.DataInfo.TrialIndex));
-    end
-    TrialIndex{findex} = ismember(ROIs{findex}.DataInfo.TrialIndex', TrialIndex{findex});
-end
+% % Determine trials
+% if ~iscell(TrialIndex)
+%     TrialIndex = {TrialIndex};
+% end
+% if numel(TrialIndex) == 1
+%     TrialIndex = repmat(TrialIndex,2,1);
+% end
+% for findex = 1:2
+%     if TrialIndex{findex}(end) == inf
+%         TrialIndex{findex} = cat(2, TrialIndex{findex}(1:end-1), TrialIndex{findex}(1:end-1)+1:max(ROIs{findex}.DataInfo.TrialIndex));
+%     end
+%     TrialIndex{findex} = ismember(ROIs{findex}.DataInfo.TrialIndex', TrialIndex{findex});
+% end
+
+fprintf('Computing %d permutations for %d ROIs...\n',numPerms,numROIs);
 
 
 %% Determine trials associated with each stimulus
 
 % Determine stimuli
-if isempty(StimIDs)
-    StimIDs = unique([ROIs{1}.DataInfo.StimID(TrialIndex{1});ROIs{2}.DataInfo.StimID(TrialIndex{2})]);
-end
+% if isempty(StimIDs)
+    StimIDs = unique([ROIs{1}.DataInfo.StimID;ROIs{2}.DataInfo.StimID]);
+% end
 numStim = numel(StimIDs);
 
-% Determine trials for each stimulus
-Trials = cell(numStim,2);
-for findex = 1:2
-    for sindex = 1:numStim
-        Trials{sindex,findex} = ROIs{findex}.DataInfo.StimID==StimIDs(sindex); % determine all trials for current stimulus
-        Trials{sindex,findex}(~TrialIndex{findex}) = false;                    % keep only requested trials
-        Trials{sindex,findex} = find(Trials{sindex,findex});
-    end
-end
-numTrialsPerStim = cellfun(@numel,Trials);
-
-% Offset and combine Trial indices
-Indices = cell(numStim,1);
-for sindex = 1:numStim
-    Indices{sindex} = [Trials{sindex,1};Trials{sindex,2}+numel(ROIs{1}.DataInfo.TrialIndex)];
-end
-numTrialsPerStim = cumsum(numTrialsPerStim,2);
+% % Determine trials for each stimulus
+% Trials = cell(numStim,2);
+% for findex = 1:2
+%     for sindex = 1:numStim
+%         Trials{sindex,findex} = ROIs{findex}.DataInfo.StimID==StimIDs(sindex); % determine all trials for current stimulus
+%         Trials{sindex,findex}(~TrialIndex{findex}) = false;                    % keep only requested trials
+%         Trials{sindex,findex} = find(Trials{sindex,findex});
+%     end
+% end
+% numTrialsPerStim = cellfun(@numel,Trials);
+% 
+% % Offset and combine Trial indices
+% Indices = cell(numStim,1);
+% for sindex = 1:numStim
+%     Indices{sindex} = [Trials{sindex,1};Trials{sindex,2}+numel(ROIs{1}.DataInfo.TrialIndex)];
+% end
+% numTrialsPerStim = cumsum(numTrialsPerStim,2);
 
 
 %% Compute metrics off of permutations (trials same for all ROIs)
@@ -139,7 +167,7 @@ numTrialsPerStim = cumsum(numTrialsPerStim,2);
 % dSel = nan(numROIs,numPerms+1);
 % 
 % % Cycle through permutations
-% parfor_progress(numPerms+1);
+% pfH = parfor_progress(numPerms+1);
 % parfor pindex = 1:numPerms+1
 %     
 %     % Generate tuning curves (ignore control position)
@@ -158,9 +186,9 @@ numTrialsPerStim = cumsum(numTrialsPerStim,2);
 %     dCoM(:,pindex) = diff([computeCenterOfMass(Curves(:,:,1),1,distBetween),computeCenterOfMass(Curves(:,:,2),1,distBetween)],[],2);
 %     dSel(:,pindex) = diff([computeVectorSelectivity(Curves(:,:,1),[],1),computeVectorSelectivity(Curves(:,:,2),[],1)],[],2);
 %     
-%     parfor_progress; % update status
+%     parfor_progress(pfH); % update status
 % end
-% parfor_progress(0);
+% parfor_progress(pfH,0);
 % 
 % Actual = [dCoM(:,1),dSel(:,1)];
 % dCoM(:,1) = [];
@@ -196,7 +224,7 @@ dCoM = nan(numROIs,numPerms+1);
 dSel = nan(numROIs,numPerms+1);
 
 % Cycle through permutations
-parfor_progress(numPerms+1);
+pfH = parfor_progress(numPerms+1);
 parfor pindex = 1:numPerms+1
     
     % Generate tuning curves (ignore control position)
@@ -217,9 +245,9 @@ parfor pindex = 1:numPerms+1
     dCoM(:,pindex) = diff([computeCenterOfMass(Curves(:,:,1),1,distBetween),computeCenterOfMass(Curves(:,:,2),1,distBetween)],[],2);
     dSel(:,pindex) = diff([computeVectorSelectivity(Curves(:,:,1),[],1),computeVectorSelectivity(Curves(:,:,2),[],1)],[],2);
     
-    parfor_progress; % update status
+    parfor_progress(pfH);
 end
-parfor_progress(0);
+parfor_progress(pfH,0);
 
 Actual = [dCoM(:,1),dSel(:,1)];
 dCoM(:,1) = [];
@@ -230,5 +258,16 @@ dSel(:,1) = [];
 p = nan(numROIs,2);
 p(:,1) = sum(bsxfun(@gt,abs(dCoM),abs(Actual(:,1))),2)/numPerms;
 p(:,2) = sum(bsxfun(@gt,abs(dSel),abs(Actual(:,2))),2)/numPerms;
+
+
+%% Save outputs
+if saveOut
+    if ~exist(saveFile,'file')
+        save(saveFile,'dCoM','dSel','p','Actual','ROIindex','-v7.3');
+    else
+        save(saveFile,'dCoM','dSel','p','Actual','ROIindex','-append');
+    end
+    fprintf('Saved permutation results to: %s\n',saveFile);
+end
 
 

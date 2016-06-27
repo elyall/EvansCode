@@ -13,6 +13,12 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
+            case 'numFramesBefore'
+                numFramesBefore = varargin{index+1};
+                index = index + 2;
+            case 'numFramesAfter'
+                numFramesAfter = varargin{index+1};
+                index = index + 2;
             case {'Save', 'save'}
                 saveOut = true;
                 index = index + 1;
@@ -120,6 +126,10 @@ Config = load2PConfig(ImageFiles);
 fprintf('Calculating average trials for:\n');
 fprintf('\t%s\n', ImageFiles{:});
 
+% Save settings to file
+StimResponse.info.numFramesBefore = numFramesBefore;
+StimResponse.info.numFramesAfter = numFramesAfter;
+
 % Initialize outputs
 numFrames = numFramesBefore+numFramesAfter+1;
 AvgTrial = repmat({zeros([Config(1).size(1:end-1), numFrames])},numStims,1);
@@ -133,7 +143,8 @@ trialdFoF = repmat({zeros([Config(1).size(1:end-2), numFrames])},numStims,1);
 for sindex = 1:numStims
     
     % Determine trials to average
-    currentTrials = TrialIndex(AnalysisInfo.StimID(TrialIndex) == StimIDs(sindex));
+    currentTrials = find(AnalysisInfo.StimID == StimIDs(sindex));
+    currentTrials(~ismember(currentTrials, TrialIndex)) = []; % remove unwanted trials
     numTrials = numel(currentTrials);
     
     % Initialize outputs
@@ -143,7 +154,7 @@ for sindex = 1:numStims
 %     trialdFoF{sindex} = zeros([Config(1).size(1:end-2), numTrials]);
     
     % Cycle through trials adding each to the average
-    for tindex = 1:numel(currentTrials)
+    for tindex = 1:numTrials
         
         % Load trial
         [frames, loadObj] = load2P(AnalysisInfo.ImgFilename{tindex},... % ImageFiles{1},...
@@ -155,18 +166,20 @@ for sindex = 1:numStims
         end
         
         % Add trial to average
-        AvgTrial{sindex} = AvgTrial{sindex} + frames/numTrials;
+        AvgTrial{sindex} = AvgTrial{sindex} + frames; % if concerned about precision clipping high values during sum add: /numTrials;
         
         % Compute trial's dFoF
         baseline = median(frames(:,:,:,1,1:numFramesBefore),5);
         baseline(baseline<1) = 1; % in reality this never happens but don't want to enhance a small value
         frames = bsxfun(@rdivide, bsxfun(@minus, frames(:,:,:,1,:), baseline), baseline);
-        AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex} + permute(frames, [1,2,3,5,4])/numTrials;
+        AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex} + permute(frames, [1,2,3,5,4]); % if concerned about precision clipping high values during sum add: /numTrials;
         
         % Save for later calculation
         lastFrame = min(numFramesBefore+1+diff(AnalysisInfo.ExpStimFrames(tindex,:)), numFrames);
         trialdFoF{sindex}(:,:,:,tindex) = mean(frames(:,:,:,1,numFramesBefore+1:lastFrame), 5);
     end
+    AvgTrial{sindex} = uint16(AvgTrial{sindex}/numTrials); % if not concerned about precision clipping high values after sum, otherwise comment out and amend above
+    AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex}/numTrials; % if not concerned about precision clipping high values after sum, otherwise comment out and amend above
     
     fprintf('\tfinished stim %d of %d (%d trials)\n',sindex,numStims,numTrials);
 end
@@ -178,11 +191,11 @@ StimResponse.se = nan([Config(1).size(1:end-2), numStims]);
 StimResponse.pvalue = ones([Config(1).size(1:end-2), numStims]);
 StimResponse.excited = false([Config(1).size(1:end-2), numStims]);
 for sindex = 1:numStims
-    StimResponse.avg(:,:,:,sindex) = mean(trialdFoF{sindex}, 4);
+    StimResponse.avg(:,:,:,sindex) = uint16(mean(trialdFoF{sindex}, 4));
     StimResponse.se(:,:,:,sindex) = std(trialdFoF{sindex},[],4)/sqrt(size(trialdFoF{sindex},4));
     if sindex ~= 1
         [~, StimResponse.pvalue(:,:,:,sindex)] = ttest2(...
-            trialdFoF{1},....
+            trialdFoF{1},...
             trialdFoF{sindex},...
             'dim', 4);
         StimResponse.excited(:,:,:,sindex) = StimResponse.avg(:,:,:,sindex) > StimResponse.avg(:,:,:,1);

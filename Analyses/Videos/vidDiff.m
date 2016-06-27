@@ -2,8 +2,8 @@ function [saveFile, CLim] = vidDiff(saveFile, ImagesA, MapsA, ImagesB, MapsB, va
 
 StimIndex = [2 inf]; % stimuli indices to save to file
 StimFrameIndex = [23, 47]; % frame indices of stimulus period for each stimulus
-ControlIndex = 1; % false if no control trial
-StimID = 0:8; % ID #'s to display (including control trial)
+ControlIndex = false; % false if no control trial
+StimID = []; % ID #'s to display (including control trial)
 
 % Display settings
 type = 'AvgTrialdFoF';
@@ -11,7 +11,7 @@ CMapType = 'HiLo';
 showStimID = true;
 showStimMarker = true;
 showColorBar = true;
-frameRate = 15.45*3;
+frameRate = 15.45;
 mergetype = 'pretty'; % 'quick' or 'pretty'
 % Crop = false;
 Crop = [32.51, 0, 729.98, 512];
@@ -58,6 +58,12 @@ while index<=length(varargin)
                 index = index + 2;
             case 'StimFrameIndex'
                 StimFrameIndex = varargin{index+1};
+                index = index + 2;
+            case 'StimIndex'
+                StimIndex = varargin{index+1};
+                index = index + 2;
+            case 'StimID'
+                StimID = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -190,9 +196,12 @@ end
 
 
 %% Determine stimuli to save
-numStims = numel(ImagesA{1});
 if StimIndex(end) == inf
-    StimIndex = [StimIndex(1:end-1), StimIndex(end-1)+1:numStims];
+    StimIndex = [StimIndex(1:end-1), StimIndex(end-1)+1:numel(ImagesA{1})];
+end
+numStims = numel(StimIndex);
+if isempty(StimID)
+    StimID = 1:numStims;
 end
 
 % Determine stimulus periods
@@ -207,14 +216,14 @@ if isempty(CLim)
     % Create A frame
     temp = cell(numA, 1);
     for index = 1:numA
-        temp{index} = ImagesA{index}{5}(:,:,1,StimFrameIndex(5,2));
+        temp{index} = double(ImagesA{index}{5}(:,:,1,StimFrameIndex(5,2)));
     end
     ImageA = createImage(temp, MapsA, 'speed', mergetype, 'OutputView', outMap, 'filter', filt, 'Map', indMapA, DimA, MapA);
     
     % Create B frame
     temp = cell(numB, 1);
     for index = 1:numB
-        temp{index} = ImagesB{index}{5}(:,:,1,StimFrameIndex(5,2));
+        temp{index} = double(ImagesB{index}{5}(:,:,1,StimFrameIndex(5,2)));
     end
     ImageB = createImage(temp, MapsB, 'speed', mergetype, 'OutputView', outMap, 'filter', filt, 'Map', indMapB, DimB, MapB);
     
@@ -259,21 +268,22 @@ open(vidObj);
 hF = figure('Units', 'Pixels', 'Position', [50, 50, 1400, 900], 'Color', 'w');
 hA = axes('Parent', hF);
 
-for sindex = StimIndex
+for index = 1:numStims
+    sindex = StimIndex(index);
     
     for findex = 1:size(ImagesA{1}{sindex},4)
         
         % Create A frame
         temp = cell(numA, 1);
-        for index = 1:numA
-            temp{index} = ImagesA{index}{sindex}(:,:,1,findex);
+        for ind = 1:numA
+            temp{ind} = double(ImagesA{ind}{sindex}(:,:,1,findex));
         end
         ImageA = createImage(temp, MapsA, 'speed', mergetype, 'OutputView', outMap, 'filter', filt, 'Map', indMapA, DimA, MapA);
         
         % Create B frame
         temp = cell(numB, 1);
-        for index = 1:numB
-            temp{index} = ImagesB{index}{sindex}(:,:,1,findex);
+        for ind = 1:numB
+            temp{ind} = double(ImagesB{ind}{sindex}(:,:,1,findex));
         end
         ImageB = createImage(temp, MapsB, 'speed', mergetype, 'OutputView', outMap, 'filter', filt, 'Map', indMapB, DimB, MapB);
         
@@ -296,7 +306,7 @@ for sindex = StimIndex
         end
         
         % Place Stimulus mark
-        if showStimMarker && sindex ~= ControlIndex && findex>=StimFrameIndex(sindex,1) && findex<=StimFrameIndex(sindex,2)
+        if showStimMarker && sindex ~= ControlIndex && findex>=StimFrameIndex(index,1) && findex<=StimFrameIndex(index,2)
             patch([W-StimW*2; W-StimW; W-StimW; W-StimW*2],...
                 [H-StimH*2; H-StimH*2; H-StimH; H-StimH],...
                 'magenta','EdgeColor','magenta');
@@ -307,7 +317,7 @@ for sindex = StimIndex
             if sindex == ControlIndex
                 text(StimH, StimW, 'control', 'FontSize', 20, 'Color', 'm', 'HorizontalAlignment', 'Left', 'VerticalAlignment', 'Top');
             else
-                text(StimH, StimW, sprintf('%d', StimID(sindex)), 'FontSize', 20, 'Color', 'm', 'HorizontalAlignment', 'Left', 'VerticalAlignment', 'Top');
+                text(StimH, StimW, sprintf('%d', StimID(index)), 'FontSize', 20, 'Color', 'm', 'HorizontalAlignment', 'Left', 'VerticalAlignment', 'Top');
             end
         end
         

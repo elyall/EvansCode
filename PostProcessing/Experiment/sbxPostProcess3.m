@@ -1,4 +1,13 @@
 function [AnalysisInfo,frames,InputNames,Config] = sbxPostProcess3(ExperimentFile, ImageFile, WTFile, varargin)
+% SBXPOSTPROCESS3 Process experiment data
+%   sbxPostProcess3(ExperimentFile, ImageFile, WhiskerTrackingFile)
+%   produces an AnalysisInfo table with the number of rows equal to the
+%   number of trials recorded in the ExperimentFile. Each row has all the
+%   relevant information for that trial.
+%
+% Update in version 3: computes frame wise information based on triggers
+% captured per frame, rather than estimating off of the triggers sent per
+% stimulus.
 
 directory = cd;
 

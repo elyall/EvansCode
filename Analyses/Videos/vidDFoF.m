@@ -3,7 +3,7 @@ function [saveFile, CLim] = vidDFoF(saveFile, Images, Maps, varargin)
 StimIndex = [2 inf]; % stimuli indices to save to file
 StimFrameIndex = [23, 47]; % frame indices of stimulus period for each stimulus
 ControlIndex = 1; % false if no control trial
-StimID = 0:8; % ID #'s to display (including control trial)
+StimID = []; % ID #'s to display (including control trial)
 
 % Display settings
 type = 'AvgTrialdFoF';
@@ -58,6 +58,12 @@ while index<=length(varargin)
                 index = index + 2;
             case 'StimFrameIndex'
                 StimFrameIndex = varargin{index+1};
+                index = index + 2;
+            case 'StimIndex'
+                StimIndex = varargin{index+1};
+                index = index + 2;
+            case 'StimID'
+                StimID = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -143,9 +149,12 @@ end
 
 
 %% Determine stimuli to save
-numStims = numel(Images{1});
 if StimIndex(end) == inf
     StimIndex = [StimIndex(1:end-1), StimIndex(end-1)+1:numStims];
+end
+numStims = numel(StimIndex);
+if isempty(StimID)
+    StimID = 1:numStims;
 end
 
 % Determine stimulus periods
@@ -159,8 +168,8 @@ if isempty(CLim)
     
     % Create A frame
     temp = cell(numFiles, 1);
-    for index = 1:numFiles
-        temp{index} = Images{index}{ceil(end/2)}(:,:,1,StimFrameIndex(5,2));
+    for ind = 1:numFiles
+        temp{ind} = Images{ind}{ceil(end/2)}(:,:,1,StimFrameIndex(5,2));
     end
     Image = createImage(temp, Maps, 'speed', mergetype, 'filter', filt, 'Map', indMap, Dim, Map);
 
@@ -197,14 +206,15 @@ open(vidObj);
 hF = figure('Units', 'Pixels', 'Position', [50, 50, 1450, 950], 'Color', 'w');
 hA = axes('Parent', hF);
 
-for sindex = StimIndex
+for index = 1:numStims
+    sindex = StimIndex(index);
     
     for findex = 1:size(Images{1}{sindex},4)
         
         % Create frame
         temp = cell(numFiles, 1);
-        for index = 1:numFiles
-            temp{index} = Images{index}{sindex}(:,:,1,findex);
+        for ind = 1:numFiles
+            temp{ind} = Images{ind}{sindex}(:,:,1,findex);
         end
         Image = createImage(temp, Maps, 'speed', mergetype, 'filter', filt, 'Map', indMap, Dim, Map);
                 
@@ -222,7 +232,7 @@ for sindex = StimIndex
         end
         
         % Place Stimulus mark
-        if showStimMarker && sindex ~= ControlIndex && findex>=StimFrameIndex(sindex,1) && findex<=StimFrameIndex(sindex,2)
+        if showStimMarker && sindex ~= ControlIndex && findex>=StimFrameIndex(index,1) && findex<=StimFrameIndex(index,2)
             patch([W-StimW*2; W-StimW; W-StimW; W-StimW*2],...
                 [H-StimH*2; H-StimH*2; H-StimH; H-StimH],...
                 'magenta','EdgeColor','magenta');
@@ -233,7 +243,7 @@ for sindex = StimIndex
             if sindex == ControlIndex
                 text(StimH, StimW, 'control', 'FontSize', 20, 'Color', 'm', 'HorizontalAlignment', 'Left', 'VerticalAlignment', 'Top');
             else
-                text(StimH, StimW, sprintf('%d', StimID(sindex)), 'FontSize', 20, 'Color', 'm', 'HorizontalAlignment', 'Left', 'VerticalAlignment', 'Top');
+                text(StimH, StimW, sprintf('%d', StimID(index)), 'FontSize', 20, 'Color', 'm', 'HorizontalAlignment', 'Left', 'VerticalAlignment', 'Top');
             end
         end
         

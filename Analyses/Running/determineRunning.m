@@ -4,6 +4,13 @@ TrialIndex = [1 inf]; %input data or data to load
 StimID = [];
 outFormat = '';
 
+% Evan Method
+% MinThresh = -inf;
+% MeanThresh = 100;
+% MeanStdDevThresh = 2;
+% StdDevStdDevThresh = 2;
+
+% Scott Method
 MinThresh = -inf;
 MeanThresh = 30;
 MeanStdDevThresh = 1.3;
@@ -11,7 +18,7 @@ StdDevStdDevThresh = .8;
 
 % Plots
 verbose = false;
-t = 1;
+t = 0;
 
 directory = cd;
 
@@ -135,38 +142,17 @@ if verbose
     first = false;
 end
 
-% Baseline min threshold
+%% Baseline min threshold
 RunIndex(any(RunData < MinThresh,2)) = false;
 if verbose; plotdata('After Thresholding Min'); end
 
-% Baseline mean threshold
+%% Baseline mean threshold
 RunIndex(Metrics(:,1) < MeanThresh) = false;
 if verbose; plotdata('After Thresholding Mean'); end
 
-% Mean threshold
-% while true
-%     numTrials = nnz(RunIndex);
-%     Indices = find(RunIndex);
-%     Val = nan(numTrials,1);
-%     for tindex = 1:numTrials
-%         mu = mean(Metrics(Indices(setdiff(1:numTrials,tindex)),1));        % determine mean without current trial
-%         sigma = std(Metrics(Indices(setdiff(1:numTrials,tindex)),1));      % determine std without current trial
-%         Val(tindex) = (Metrics(Indices(tindex),1)-mu)/sigma;               % calculate zscore of current trial relative to other data
-%     end
-%     if any(Val < -MeanStdDevThresh)                                          % at least one outlier exists
-%         [~,furthestIndex] = min(Val);                                       % determine largest outlier
-%         RunIndex(Indices(furthestIndex)) = false;                           % remove largest outlier
-%     else
-%         break
-%     end
-%     if verbose
-%         plotdata('Z-scoring Mean');
-%     end
-% end
-RunIndex(Metrics(:,1) < mean(Metrics(RunIndex,1)) - MeanStdDevThresh*std(Metrics(RunIndex,1))) = false; % scott method
-if verbose; plotdata('After Thresholding Mean Variance'); end
+%% Mean and Std (Evan)
 
-% Std dev threshold
+% % Std dev threshold
 % while true
 %     numTrials = nnz(RunIndex);
 %     Indices = find(RunIndex);
@@ -182,14 +168,43 @@ if verbose; plotdata('After Thresholding Mean Variance'); end
 %     else
 %         break
 %     end
-%     if verbose
-%         plotdata('Z-scoring Std Dev');
-%     end
+% %     if verbose
+% %         plotdata('Z-scoring Std Dev');
+% %     end
 % end
+% if verbose; plotdata('After Thresholding Std Dev Variance'); end
+% 
+% % Mean threshold
+% while true
+%     numTrials = nnz(RunIndex);
+%     Indices = find(RunIndex);
+%     Val = nan(numTrials,1);
+%     for tindex = 1:numTrials
+%         mu = mean(Metrics(Indices(setdiff(1:numTrials,tindex)),1));        % determine mean without current trial
+%         sigma = std(Metrics(Indices(setdiff(1:numTrials,tindex)),1));      % determine std without current trial
+%         Val(tindex) = abs(Metrics(Indices(tindex),1)-mu)/sigma;            % calculate zscore of current trial relative to other data
+%     end
+%     if any(Val > MeanStdDevThresh)                                         % at least one outlier exists
+%         [~,furthestIndex] = max(Val);                                      % determine largest outlier
+%         RunIndex(Indices(furthestIndex)) = false;                          % remove largest outlier
+%     else
+%         break
+%     end
+% %     if verbose
+% %         plotdata('Z-scoring Mean');
+% %     end
+% end
+% if verbose; plotdata('After Thresholding Mean Variance'); end
+
+
+%% Mean & Std (Scott)
+RunIndex(Metrics(:,1) < mean(Metrics(RunIndex,1)) - MeanStdDevThresh*std(Metrics(RunIndex,1))) = false; % scott method
+if verbose; plotdata('After Thresholding Mean Variance'); end
 RunIndex(Metrics(:,2) > mean(Metrics(RunIndex,2)) + StdDevStdDevThresh*std(Metrics(RunIndex,2))) = false; % scott method
 if verbose; plotdata('After Thresholding Std Dev Variance'); end
 
-% Remove non-running trials from index
+
+%% Remove non-running trials from index
 for findex = 1:numFiles
     TrialIndex{findex}(~RunIndex(FileIndex==findex)) = []; % remove non-running trials from input TrialIndex
 end
@@ -197,6 +212,8 @@ if strcmp(outFormat,'numeric')
     TrialIndex = [TrialIndex{:}];
 end
 
+
+%% Plot Data
     function plotdata(Title)
         figure(hF);
         set(gcf,'Name',Title);
