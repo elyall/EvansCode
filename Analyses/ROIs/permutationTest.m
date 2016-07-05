@@ -75,14 +75,8 @@ if iscellstr(ROIs)
         load(ROIFiles{findex}, 'ROIdata', '-mat');
         ROIs{findex} = ROIdata; clear ROIdata;
     end
-end
-
-% Determine file to save to
-if saveOut && isempty(saveFile)
-    if exist('ROIFiles','var')
+    if saveOut && isempty(saveFile)
         saveFile = strcat(strtok(ROIFiles{1},'.'),'.perm');
-    else
-        saveOut = false;
     end
 end
 
@@ -261,7 +255,7 @@ p(:,2) = sum(bsxfun(@gt,abs(dSel),abs(Actual(:,2))),2)/numPerms;
 
 
 %% Save outputs
-if saveOut
+if saveOut && ~isempty(saveFile)
     if ~exist(saveFile,'file')
         save(saveFile,'dCoM','dSel','p','Actual','ROIindex','-v7.3');
     else

@@ -17,7 +17,7 @@ curveColor = 'r';
 fitColor = 'g';
 fitLegendLocation = 'NorthWest'; % 'NorthWest' or 'NorthEast'
 fontSize = 12;
-labelAxes = true;
+labelAxes = false;
 
 % Constant variables
 AxesIndex = [];

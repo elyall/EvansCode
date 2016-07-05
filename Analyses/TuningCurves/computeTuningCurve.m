@@ -71,15 +71,11 @@ if ischar(ROIdata)
         saveFile = ROIFile;
     end
 end
-if saveOut && isempty(saveFile)
-    warning('Cannot save output as no file specified');
-    saveOut = false;
-end
 
 % Compute trial means
-if ~isfield(ROIdata.rois, 'stimMean')
+% if ~isfield(ROIdata.rois, 'stimMean')
     ROIdata = computeTrialMean(ROIdata);
-end
+% end
 
 
 %% Determine data to analyze
@@ -145,6 +141,9 @@ for rindex = ROIindex
         % Remove outliers
         while true
             numTrials = numel(StimulusDFoF);
+            if numTrials <= 5
+                break
+            end
             Val = nan(numTrials,1);
             for tindex = 1:numTrials
                 mu = mean(StimulusDFoF(setdiff(1:numTrials,tindex)));               % determine mean without current trial
@@ -158,7 +157,10 @@ for rindex = ROIindex
                 break
             end
         end
-                
+        
+        % Remove outliers (Scott method)
+        %         StimulusDFoF(zscore(StimulusDFoF)>3) = [];
+
         % Save tuning curves
         ROIdata.rois(rindex).curve(sindex) = nanmean(StimulusDFoF);                 % evoked dF/F over all trials for current stimulus
         ROIdata.rois(rindex).StdError(sindex) = std(StimulusDFoF)/sqrt(numel(StimulusDFoF)); % standard error for stimulus
@@ -241,7 +243,7 @@ end
 
 
 %% Save to file
-if saveOut
+if saveOut && ~isempty(saveFile)
     if ~exist(saveFile, 'file')
         save(saveFile, 'ROIdata', '-mat', '-v7.3');
     else

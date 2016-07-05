@@ -75,7 +75,9 @@ end
 if isempty(FrameIndex)
     FrameIndex = cell(numTrials,1);
     for tindex = 1:numTrials
-        FrameIndex{tindex} = ROIdata.DataInfo.numFramesBefore+1:ROIdata.DataInfo.numFramesBefore+ROIdata.DataInfo.numStimFrames(tindex);
+%         FrameIndex{tindex} = ROIdata.DataInfo.numFramesBefore+1:ROIdata.DataInfo.numFramesBefore+ROIdata.DataInfo.numStimFrames(tindex);
+        F = ROIdata.DataInfo.numFramesBefore+ROIdata.DataInfo.numStimFrames(tindex);
+        FrameIndex{tindex} = F-7:F;
     end
 elseif ~iscell(FrameIndex)
     FrameIndex = {FrameIndex};
