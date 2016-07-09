@@ -1,4 +1,4 @@
-function plotROIChange(ROIs, ROIindex, varargin)
+function plotROIChange(ROIs, ROIindex, FileIndex, varargin)
 
 % Saving
 saveOut = false;
@@ -9,7 +9,7 @@ Title = {};
 PWCZ = [];
 
 % Raster
-TrialIndex = {[1 inf],[1 inf]};
+TrialIndex = [];
 stimorder = [];
 
 % Figure properties
@@ -30,6 +30,9 @@ end
 
 if ~exist('ROIindex', 'var') || isempty(ROIindex)
     ROIindex = [];
+end
+if ~exist('FileIndex', 'var') || isempty(FileIndex)
+    FileIndex = [];
 end
 
 index = 1;
@@ -81,12 +84,19 @@ if saveOut && isempty(saveFile)
     warning('Cannot save output as no file specified');
     saveOut = false;
 end
+numFiles = numel(ROIs);
 
 
 %% Determine ROIs to analyze
 if isempty(ROIindex)
-    Min = min(numel(ROIs{1}.rois),numel(ROIs{2}.rois));
-    ROIindex = repmat((1:Min)',1,2);
+    FileIndex = [];
+    for f=1:2:numFiles
+        Min = min(cellfun(@(x) numel(x.rois),ROIs(f:f+1)));
+        ROIindex = [ROIindex;repmat((1:Min)',1,2)];
+        FileIndex = [FileIndex;repmat([f,f+1],Min,1)];
+    end
+elseif ~isequal(size(ROIindex),size(FileIndex))
+    error('ROIindex and FileIndex have to be the same size');
 end
 numROIs = size(ROIindex,1);
 
@@ -97,9 +107,10 @@ end
 
 
 %% Determine which trials to display
-for f = 1:2
-    if TrialIndex{f}(end) == inf
-        TrialIndex{f} = [TrialIndex{f}(1:end-1),TrialIndex{f}(end-1)+1:ROIs{f}.DataInfo.TrialIndex(end)];
+if isempty(TrialIndex)
+    TrialIndex = cell(numFiles,1);
+    for f = 1:numFiles
+        TrialIndex{f} = ROIs{f}.DataInfo.TrialIndex;
     end
 end
 
@@ -120,27 +131,27 @@ for r = 1:numROIs
     
     % Determine Limits
     YLim = nan(1,2);
-    YLim(1) = min([ROIs{1}.rois(ROIindex(r,1)).curve(2:end),ROIs{2}.rois(ROIindex(r,2)).curve(2:end)]);
-    YLim(2) = max([ROIs{1}.rois(ROIindex(r,1)).curve(2:end),ROIs{2}.rois(ROIindex(r,2)).curve(2:end)]);
+    YLim(1) = min([ROIs{FilesIndex(r,1)}.rois(ROIindex(r,1)).curve(2:end),ROIs{FilesIndex(r,2)}.rois(ROIindex(r,2)).curve(2:end)]);
+    YLim(2) = max([ROIs{FilesIndex(r,1)}.rois(ROIindex(r,1)).curve(2:end),ROIs{FilesIndex(r,2)}.rois(ROIindex(r,2)).curve(2:end)]);
     YLim = 1.2*YLim;
     
     % Plot curves
-    plotTuningCurve(ROIs{1}.rois, ROIindex(r,1),...
+    plotTuningCurve(ROIs{FilesIndex(r,1)}.rois, ROIindex(r,1),...
         'curveColor', 'k', 'Title', '', 'axes', subplot(y,x,s), 'AxesIndex', 1);
-    plotTuningCurve(ROIs{2}.rois, ROIindex(r,2),...
+    plotTuningCurve(ROIs{FilesIndex(r,2)}.rois, ROIindex(r,2),...
         'curveColor', 'r', 'Title', '', 'axes', subplot(y,x,s), 'AxesIndex', 1,...
         'PWCZ', PWCZ, 'YLim', YLim, 'Title', Title{r});
     
     %% Rasters
     CLim = zeros(2);
-    [~, CLim(1,:), ~] = plotIndividualRaster(ROIs{1}.rois,ROIindex(r,1),...
-        ROIs{1}.DataInfo,...
+    [~, CLim(1,:), ~] = plotIndividualRaster(ROIs{FilesIndex(r,1)}.rois,ROIindex(r,1),...
+        ROIs{FilesIndex(r,1)}.DataInfo,...
         'axes',         subplot(y,x,s+1),...
         'datatype',     'dFoF',...
         'Trials',       TrialIndex{1},...
         'stimOrder',    stimorder);
-    [~, CLim(2,:), ~] = plotIndividualRaster(ROIs{2}.rois,ROIindex(r,2),...
-        ROIs{2}.DataInfo,...
+    [~, CLim(2,:), ~] = plotIndividualRaster(ROIs{FilesIndex(r,2)}.rois,ROIindex(r,2),...
+        ROIs{FilesIndex(r,2)}.DataInfo,...
         'axes',         subplot(y,x,s+2),...
         'datatype',     'dFoF',...
         'Trials',       TrialIndex{2},...
