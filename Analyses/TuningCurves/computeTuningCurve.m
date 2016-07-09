@@ -79,7 +79,6 @@ end
 
 
 %% Determine data to analyze
-
 if TrialIndex(end) == inf
     TrialIndex = cat(2, TrialIndex(1:end-1), TrialIndex(1:end-1)+1:max(ROIdata.DataInfo.TrialIndex));
 end
@@ -88,6 +87,7 @@ TrialIndex = ismember(ROIdata.DataInfo.TrialIndex', TrialIndex);
 %     TrialIndex = TrialIndex';
 % end
 
+% Determine ROIs
 if ischar(ROIindex) && strcmp(ROIindex, 'all')
     ROIindex = [1, inf];
 elseif iscolumn(ROIindex)
@@ -95,6 +95,12 @@ elseif iscolumn(ROIindex)
 end
 if ROIindex(end) == inf
     ROIindex = cat(2, ROIindex(1:end-1), ROIindex(1:end-1)+1:numel(ROIdata.rois));
+end
+
+% Determine outliers
+outliers = false(numel(TrialIndex),numel(ROIdata.rois));
+for rindex = ROIindex
+    outliers(TrialIndex,rindex) = determineOutliers(ROIdata.rois(rindex).stimMean(TrialIndex),'GroupID',ROIdata.DataInfo.StimID(TrialIndex));
 end
 
 
@@ -136,30 +142,30 @@ for rindex = ROIindex
     for sindex = 1:numStimuli
                 
         % Select data for current stimulus
-        StimulusDFoF = ROIdata.rois(rindex).stimMean(Trials(:,sindex));
+        StimulusDFoF = ROIdata.rois(rindex).stimMean(Trials(:,sindex) & ~outliers(:,rindex));
         
-        % Remove outliers
-        while true
-            numTrials = numel(StimulusDFoF);
-            if numTrials <= 5
-                break
-            end
-            Val = nan(numTrials,1);
-            for tindex = 1:numTrials
-                mu = mean(StimulusDFoF(setdiff(1:numTrials,tindex)));               % determine mean without current trial
-                sigma = std(StimulusDFoF(setdiff(1:numTrials,tindex)));             % determine std without current trial
-                Val(tindex) = abs(StimulusDFoF(tindex)-mu)/sigma;                   % calculate zscore of current trial relative to other data
-            end
-            if any(Val > outlierweight)                                             % at least one outlier exists
-                [~,furthestIndex] = max(Val);                                       % determine largest outlier
-                StimulusDFoF(furthestIndex) = [];                                   % remove largest outlier
-            else
-                break
-            end
-        end
+%         % Remove outliers
+%         while true
+%             numTrials = numel(StimulusDFoF);
+%             if numTrials <= 5
+%                 break
+%             end
+%             Val = nan(numTrials,1);
+%             for tindex = 1:numTrials
+%                 mu = mean(StimulusDFoF(setdiff(1:numTrials,tindex)));               % determine mean without current trial
+%                 sigma = std(StimulusDFoF(setdiff(1:numTrials,tindex)));             % determine std without current trial
+%                 Val(tindex) = abs(StimulusDFoF(tindex)-mu)/sigma;                   % calculate zscore of current trial relative to other data
+%             end
+%             if any(Val > outlierweight)                                             % at least one outlier exists
+%                 [~,furthestIndex] = max(Val);                                       % determine largest outlier
+%                 StimulusDFoF(furthestIndex) = [];                                   % remove largest outlier
+%             else
+%                 break
+%             end
+%         end
         
-        % Remove outliers (Scott method)
-        %         StimulusDFoF(zscore(StimulusDFoF)>3) = [];
+%         % Remove outliers (Scott method)
+%         StimulusDFoF(zscore(StimulusDFoF)>3) = [];
 
         % Save tuning curves
         ROIdata.rois(rindex).curve(sindex) = nanmean(StimulusDFoF);                 % evoked dF/F over all trials for current stimulus
@@ -245,9 +251,9 @@ end
 %% Save to file
 if saveOut && ~isempty(saveFile)
     if ~exist(saveFile, 'file')
-        save(saveFile, 'ROIdata', '-mat', '-v7.3');
+        save(saveFile, 'ROIdata', 'outliers', '-mat', '-v7.3');
     else
-        save(saveFile, 'ROIdata', '-mat', '-append');
+        save(saveFile, 'ROIdata', 'outliers', '-mat', '-append');
     end
     fprintf('\tROIdata saved to: %s\n', saveFile);
 end

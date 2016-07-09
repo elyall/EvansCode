@@ -82,8 +82,8 @@ while index<=length(varargin)
                 fontSize = varargin{index+1};
                 index = index + 2;
             case 'labelAxes'
-                labelAxes = varargin{index+1};
-                index = index + 2;
+                labelAxes = true;
+                index = index + 1;
             case 'AxesIndex'
                 AxesIndex = varargin{index+1};
                 index = index + 2;
