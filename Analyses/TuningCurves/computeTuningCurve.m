@@ -1,4 +1,4 @@
-function [ROIdata, Curves] = computeTuningCurve(ROIdata, ROIindex, TrialIndex, varargin)
+function [ROIdata, Curves, outliers] = computeTuningCurve(ROIdata, ROIindex, TrialIndex, varargin)
 
 
 FitTuningCurves = false; % gaussian fit
@@ -73,9 +73,9 @@ if ischar(ROIdata)
 end
 
 % Compute trial means
-% if ~isfield(ROIdata.rois, 'stimMean')
+if ~isfield(ROIdata.rois, 'stimMean')
     ROIdata = computeTrialMean(ROIdata);
-% end
+end
 
 
 %% Determine data to analyze
@@ -98,10 +98,12 @@ if ROIindex(end) == inf
 end
 
 % Determine outliers
+fprintf('Determining outliers...');
 outliers = false(numel(TrialIndex),numel(ROIdata.rois));
 for rindex = ROIindex
-    outliers(TrialIndex,rindex) = determineOutliers(ROIdata.rois(rindex).stimMean(TrialIndex),'GroupID',ROIdata.DataInfo.StimID(TrialIndex));
+    outliers(TrialIndex,rindex) = determineOutliers(ROIdata.rois(rindex).stimMean(TrialIndex),'GroupID',ROIdata.DataInfo.StimID(TrialIndex),'numSTDsOutlier',outlierweight);
 end
+fprintf('\tComplete\n');
 
 
 %% Determine stimuli info

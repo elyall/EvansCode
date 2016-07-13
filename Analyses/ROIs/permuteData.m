@@ -11,7 +11,7 @@ distBetween = 1; % CoM
 
 directory = cd;
 
-%% Parse input arguments
+Parse input arguments
 index = 1;
 while index<=length(varargin)
     try
