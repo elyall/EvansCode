@@ -4,6 +4,7 @@ numSTDsOutlier = 4; % inf if no threshold
 minNumTrials = 5; % -inf if no minimum (will error when gets to 2 trials)
 GroupID = [];
 
+type = 'evan'; % 'tukey or evan'
 saveOut = false;
 saveFile = '';
 
@@ -46,7 +47,12 @@ IDs = unique(GroupID);
 %% Determine outliers
 for gindex = 1:nnz(~isnan(IDs))
     index = GroupID==IDs(gindex);
-    outliers(index) = findOutliers(data(index), minNumTrials, numSTDsOutlier);
+    switch type
+        case 'evan'
+            outliers(index) = findOutliers(data(index), minNumTrials, numSTDsOutlier);
+        case 'tukey'
+            outliers(index) = tukeyMethod(data(index));
+    end
 end
 
 
@@ -60,7 +66,16 @@ if saveOut && ~isempty(saveFile)
 end
 
 
-%% Main function
+%% Main functions
+% Tukey method
+function outliers = tukeyMethod(data)
+% [s,f] = quantile(data,[.25,.75]); % same thing
+[s,f] = prctile(data,[25,75]);
+IQR = f-s;
+edges = [s-1.5*IQR, f+1.5*IQR];
+outliers = data < edges(1) | data > edges(2);
+
+% Evan method
 function outliers = findOutliers(data, minNumTrials, numSTDsOutlier)
 N = numel(data);
 outliers = false(N,1);

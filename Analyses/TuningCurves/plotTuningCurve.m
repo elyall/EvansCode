@@ -28,6 +28,7 @@ Legend = {};
 LegendLocation = 'NorthWest';
 MarkerSize = 10; % 20
 LineWidth = 1; % 2
+showZero = false;
 
 directory = cd;
 
@@ -96,6 +97,9 @@ while index<=length(varargin)
             case 'YLim'
                 YLim = varargin{index+1};
                 index = index + 2;
+            case 'showZero'
+                showZero = true;
+                index = index + 1;
             case 'Legend'
                 Legend = varargin{index+1};
                 index = index + 2;
@@ -271,6 +275,7 @@ for index = 1:numel(ROIindex)
     % Place legend
     if ~isempty(Legend) && ismember(index, lastROI)
         legend(Legend, 'Location', LegendLocation);
+        legend boxoff
     end
     
     % Show PWCZ
@@ -292,9 +297,6 @@ for index = 1:numel(ROIindex)
     if ~isempty(Title{AxesIndex(index)})
         title(Title{AxesIndex(index)});
     end
-    
-    % Plot 0 line
-    % plot([0,numStimuli+1], [0 0], 'k--');
     
     % Plot stars for stimuli that evoked a significant response
     if showStimStars
@@ -322,6 +324,14 @@ for index = 1:numel(ROIindex)
         for s = 1:numStimuli
             text(s,Ydim(1)+(Ydim(2)-Ydim(1))/20,sprintf('p=%.3f',rois(rindex).PValue(s)),'HorizontalAlignment','center');
         end
+    end
+    
+    % Plot 0 line
+    if showZero
+        XLim = get(gca,'XLim');
+        plot(XLim, [0 0], 'k--');
+        temp = get(gca,'children');             % get ordering
+        set(gca,'children',temp([2:end,1]));    % move line to back of plot
     end
     
     hold off

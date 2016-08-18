@@ -129,7 +129,10 @@ if ~islogical(filt)
 end
 
 % Determine Image dimensions
-Dimensions = cell2mat(cellfun(@size, Images', 'UniformOutput', false));
+if isrow(Images)
+    Images = Images';
+end
+Dimensions = cell2mat(cellfun(@size, Images, 'UniformOutput', false));
 if size(Dimensions,2) == 2
     Dimensions = cat(2, Dimensions, ones(numFiles,1));
 end

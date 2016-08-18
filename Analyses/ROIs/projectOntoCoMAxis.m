@@ -129,7 +129,7 @@ invMat = pinv(whMat);                                       % determine inverse 
 
 if verbose || saveVideo
     figure('Position',[300,300,1000,400]);
-    hA = subplot(1,3,1);
+    hA = subplot(2,3,[1,4]);
     if saveVideo
         hV = VideoWriter(VideoFile); open(hV);
     end
@@ -137,12 +137,14 @@ end
 
 if verbose || saveVideo
     rsquared = nan(180,1);
+    p = nan(180,1);
     theta = 1:180;
 else
     rsquared = nan(1791,1);
+    p = nan(1791,1);
     theta = 1:0.1:180;
 end
-for tindex = 1:numel(rsquared)
+for tindex = 1:numel(theta)
         
     % Project data onto angle
     dist = ProjectOntoAngle(WhiteCentroids,theta(tindex));
@@ -153,10 +155,13 @@ for tindex = 1:numel(rsquared)
     Yfit = [ones(numel(dist),1), dist(order)]*coeff;
     rsquared(tindex) = 1 - sum((Data(order) - Yfit).^2)/sum((Data - mean(Data)).^2);
     
-    if verbose || saveVideo 
+    % Compute correlation
+    [~,p(tindex)] = corr(dist,Data);
+    
+    if (verbose && tindex==numel(theta)) || saveVideo 
         
         % Check gradient aligns with axis
-        subplot(1,3,1);
+        subplot(2,3,[1,4]);
         image(zeros(ImageSize));
         [temp,~,N] = scaleContinuousData(dist);
         CMap = parula(N);
@@ -167,7 +172,7 @@ for tindex = 1:numel(rsquared)
         hold on; plot(vector(:,1),vector(:,2),'LineWidth',2,'Color',[1,192/255,203/255]); hold off;
         
         % Plot fit
-        subplot(1,3,2);
+        subplot(2,3,[2,5]);
         plot(dist, Data, 'b.');
         hold on;
         plot(dist(order), Yfit, 'r--'); hold off;
@@ -177,12 +182,27 @@ for tindex = 1:numel(rsquared)
         text(1,1, sprintf('r^2 = %.4f', rsquared(tindex)), 'Units', 'Normalized', 'HorizontalAlignment', 'Right', 'VerticalAlignment', 'Top');
         
         % Plot rsquared
-        subplot(1,3,3); 
-        plot(theta(1:tindex),rsquared(1:tindex),'-'); 
-        ylabel('r^2'); 
-        xlabel('Angle'); 
-        xlim([1,180]); 
+        subplot(2,3,3);
+        plot(theta(1:tindex),rsquared(1:tindex),'b-');
         ylim([0,.5]);
+        ylabel('r^2');
+        xlabel('Angle');
+        xlim([1,180]);
+        subplot(2,3,6);
+        plot(theta(1:tindex),p(1:tindex),'r-');
+        ylim([0,.055]);
+        ylabel('p');
+        xlabel('Angle');
+        xlim([1,180]);
+%         yyaxis left
+%         plot(theta(1:tindex),rsquared(1:tindex),'b-'); 
+%         ylabel('r^2');
+%         ylim([0,.5]);
+%         yyaxis right
+%         plot(theta(1:tindex),p(1:tindex),'r-');
+%         ylabel('p');
+%         xlabel('Angle'); 
+%         xlim([1,180]); 
         
         % Display images
         drawnow; 

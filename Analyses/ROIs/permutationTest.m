@@ -235,9 +235,12 @@ parfor pindex = 1:numPerms+1
         end
     end
     
-    % Compute metrics
-    dCoM(:,pindex) = diff([computeCenterOfMass(Curves(:,:,1),1,distBetween),computeCenterOfMass(Curves(:,:,2),1,distBetween)],[],2);
-    dSel(:,pindex) = diff([computeVectorSelectivity(Curves(:,:,1),[],1),computeVectorSelectivity(Curves(:,:,2),[],1)],[],2);
+    % Compute center of mass change
+%     dCoM(:,pindex) = diff([computeCenterOfMass(Curves(:,:,1),1,distBetween),computeCenterOfMass(Curves(:,:,2),1,distBetween)],[],2);
+    
+    % Compute selectivity change
+    Min = min(min(Curves,[],3),[],2);
+    dSel(:,pindex) = diff([computeVectorSelectivity(Curves(:,:,1),Min,1),computeVectorSelectivity(Curves(:,:,2),Min,1)],[],2);
     
     parfor_progress(pfH);
 end

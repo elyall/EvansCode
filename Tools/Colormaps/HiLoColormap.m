@@ -1,14 +1,16 @@
-function cmap = HiLoColormap(cmin, cmax, color_input)
+function cmap = HiLoColormap(cmin, cmax, color_input, colornum)
 % assumes cmin is less than 0
 
-if ~exist('color_input', 'var')
+if ~exist('color_input', 'var') || isempty(color_input)
     top = [1 0 0]; % red
     middle= [1 1 1]; % black
     bottom = [0 0 1]; % blue
     color_input = [bottom;  middle;  top];
 end
 
-colornum = 250;
+if ~exist('colornum','var')
+    colornum = 250;
+end
 
 range = cmax - cmin;
 mid = round(colornum*(abs(cmin)/range))+1;

@@ -27,8 +27,10 @@ for rindex = 1:numROIs
     end
     
     % Keep only region requested
-    if size(positions,2)==1
+    if ~iscell(positions) && size(positions,2)==1
         current = current(positions(rindex):end);
+    elseif iscell(positions)
+        current = current(positions{rindex});
     else
         current = current(positions(rindex,:));
     end

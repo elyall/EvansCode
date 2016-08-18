@@ -19,8 +19,10 @@ frameRate = 15.45;      % frame rate of the data
 xlab='Frames';          % default x-axis label
 framelimit = 'all';     % xlim (indexes data points)
 lineWidth = .5;
-labelAxes = false;
+labelAxes = true;
 XLabels = {};
+showStimLines = false;
+verticalLines = [];
 
 % Color properties
 showColorBar = false;
@@ -92,6 +94,12 @@ while index<=length(varargin)
                 index = index + 2;
             case 'axes'
                 hA = varargin{index+1};
+                index = index + 2;
+            case 'showStimLines'
+                showStimLines = true;
+                index = index + 1;
+            case 'verticalLines'
+                verticalLines = varargin{index+1};
                 index = index + 2;
             case 'showColorBar'
                 showColorBar = true;
@@ -354,7 +362,6 @@ for rindex = 1:numROIs
     set(gca,'TickDir','out');
     hold on
     
-    
     % Display spikes
     if showSpikes
         [Rindex, Tindex] = find(spikes>=spikeThresh);
@@ -376,7 +383,17 @@ for rindex = 1:numROIs
     end
     
     % Plot stim lines
-    plot(repmat([StimFrames(:,1)-.5, StimFrames(:,2)+.5]+xshift,2,1), repmat((0.5:1:size(StimFrames,1))',2,2), 'k--','LineWidth',lineWidth);
+    if showStimLines
+        plot(repmat([StimFrames(:,1)-.5, StimFrames(:,2)+.5]+xshift,2,1), repmat((0.5:1:size(StimFrames,1))',2,2), 'k--','LineWidth',lineWidth);
+    end
+    
+    % Plot user-specified vertical lines
+    if ~isempty(verticalLines)
+        YLim = get(gca,'YLim');
+        for index = 1:numel(verticalLines)
+            plot([verticalLines(index),verticalLines(index)],YLim, 'k--','LineWidth',lineWidth);
+        end
+    end
     
     % Label y-axis
     if strcmp(sortType, 'stim')
@@ -394,6 +411,9 @@ for rindex = 1:numROIs
     if labelAxes
         xlabel(xlab);
     end
+    
+    % Remove ticks
+    set(hA(rindex), 'Ticklength', [0 0]);
     
 %     % Fix labels
 %     if isempty(rois(ROIindex(rindex)).label)

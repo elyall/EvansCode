@@ -1,21 +1,29 @@
-function [Image, hA, patchHandles] = spatialOverlay(ROIs, Maps, ROIindex, FileIndex, ColorIndex, Labels, Colors, varargin)
+function [Image, hA, patchHandles] = spatialOverlay(ROIs, Maps, ROIindex, FileIndex, ColorIndex, varargin)
 %spatialOverlay    Overlay ROI data onto an image
-% [Image, Origin, hA] = spatialOverlay(ROIs, Data, ROIindex, FileIndex, ColorIndex, Labels, Colors, Brightness)
+% [Image, Origin, hA] = spatialOverlay(ROIs, Data, ROIindex, FileIndex, ColorIndex, cbTickLabel, Colors, Brightness)
 %
-% Labels - for discrete data, labels is a cell array of N strings
+% cbTickLabel - for discrete data, labels is a cell array of N strings
 % corresponding to the <= N unique values in ColorIndex, and the N unique
 % colors.
-% Labels - for continuous data, labels is a 2x1 vector specifying the lower
+% cbTickLabel - for continuous data, labels is a 2x1 vector specifying the lower
 % and upper bounds of the colors (the same thing as CLim)
 
 % Image Properties
 mergetype = 'quick'; % 'quick' or 'pretty'
 Crop = false;
-showColorBar = false;
-colorbarLabel = '';
 Title = '';
 
+% Colobar Properties
+showColorBar = false;
+cbTitle = '';
+cbTick = [];
+cbTickLabel = {};
+FontSize_colorbarLabel = 20;
+FontSize_colorbarTicks = 20;
+flipColorbar = false;
+
 % ROI Properties
+Colors = [];
 DataType = 'continuous'; % 'discrete' or 'continuous'
 Radius = [];
 LineWidth = 1;
@@ -29,11 +37,8 @@ Image = ones(512,796);
 hA = [];
 CMap = [];
 
-% Miscellaneous (can't be changed via argument)
+% Miscellaneous
 defaultColorMap = 'parula'; % 'parula' or 'jet'
-FontSize_colorbarLabel = 20;
-FontSize_colorbarTicks = 20;
-flipColorbar = true;
 
 directory = cd;
 
@@ -50,17 +55,31 @@ while index<=length(varargin)
             case 'Crop'
                 Crop = varargin{index+1};
                 index = index + 2;
-            case 'showColorBar'
-                showColorBar = true;
-                index = index + 1;
-            case 'colorbarLabel'
-                colorbarLabel = varargin{index+1};
-                index = index + 2;
             case 'Title'
                 Title = varargin{index+1};
                 index = index + 2;
             
+            % Colorbar Properties
+            case 'showColorBar'
+                showColorBar = true;
+                index = index + 1;
+            case 'cbTitle'
+                cbTitle = varargin{index+1};
+                index = index + 2;
+            case 'cbTick'
+                cbTick = varargin{index+1};
+                index = index + 2;
+            case 'cbTickLabel'
+                cbTickLabel = varargin{index+1};
+                index = index + 2;
+            case 'cbFlip'
+                flipColorbar = true;
+                index = index + 1;
+            
             % ROI Properties
+            case 'Colors'
+                Colors = varargin{index+1};
+                index = index + 2;
             case 'DataType'
                 DataType = varargin{index+1};
                 index = index + 2;
@@ -174,7 +193,7 @@ if ~isempty(Image)
     
     % Display Image
     if ~isempty(CMap)
-        image(Image);
+        imagesc(Image);
         colormap(CMap);
     else
         imagesc(Image)
@@ -222,50 +241,26 @@ switch DataType
             end
         end
         
-        % Determine labels
-        if ~exist('Labels', 'var') || isempty(Labels)
-            Labels = cellstr(num2str(unique(ColorIndex)));
-            % Labels = cellstr(num2str((1:size(Colors,1))'));
-        end
-        
     case 'continuous'
-        
-        % Determine labels
-        if ~exist('Labels', 'var') || isempty(Labels)
-            Labels = [min(ColorIndex), max(ColorIndex)];
-        end
-        if numel(Labels)==2
-            Labels = min(Labels):range(Labels)/9:max(Labels);
-        end
-        if isnumeric(Labels)
-            if isrow(Labels)
-                Labels = Labels';
-            end
-            Labels = cellstr(num2str(Labels));
-        end
         
         % Change continuous space to discrete space
         if ~isequal(round(ColorIndex),ColorIndex)
-            [ColorIndex, Labels, numSamples] = scaleContinuousData(ColorIndex);
+            [ColorIndex, ~, numSamples, cbTick, cbTickLabel] = scaleContinuousData(ColorIndex);
         else
-            numSamples = 255;
+            ColorIndex = ColorIndex - min(ColorIndex) + 1; % shift bottom to 1
+            numSamples = max(ColorIndex);
         end
-        ColorIndex = ColorIndex - min(ColorIndex) + 1; % shift bottom to 1
         
         % Determine colors
-        switch defaultColorMap
-            case 'parula'
-                Colors = parula(numSamples);
-            case 'jet'
-                Colors = jet(numSamples);
+        if ~exist('Colors', 'var') || isempty(Colors)
+            switch defaultColorMap
+                case 'parula'
+                    Colors = parula(numSamples);
+                case 'jet'
+                    Colors = jet(numSamples);
+            end
         end
         
-end
-
-if flipColorbar
-    Labels = flip(Labels);
-    Colors = flip(Colors);
-    ColorIndex = abs(ColorIndex - max(ColorIndex) - 1);
 end
 
 
@@ -279,28 +274,39 @@ patchHandles = overlayROIs(ROIs,...
 
 %% Plot colorbar
 if showColorBar
+   
+    cbH = colorbar; % display colorbar
     
-    % Determine colorbar properties
-    cmap = colormap;                % determine colormap of image
-    cbH = colorbar;                 % place colorbar
-    YLim = get(cbH, 'Limits');      % determine colorbar limits
-    NewCMap = cat(1,cmap,Colors);   % concatenate plot colors to colormap
-    colormap(NewCMap);              % set new colormap
-    HeightNewCMapInColorbar = size(Colors,1)*(YLim(2)/size(NewCMap,1)); % determine portion of colorbar taken by colors that were added
-    NewYLim = [YLim(2)-HeightNewCMapInColorbar, YLim(2)];               % limit the colormap to this range
-    Split = range(NewYLim)/numel(Labels);                               % determine the distance on the colorbar between two colors
-    
-    % Display labels
-    switch DataType
-        case 'discrete'
-            set(cbH, 'Limits', NewYLim, 'FontSize', FontSize_colorbarTicks, 'Ticks', NewYLim(1)+Split/2:Split:NewYLim(2), 'YTickLabel', Labels);
-        case 'continuous'
-            set(cbH, 'Limits', NewYLim, 'FontSize', FontSize_colorbarTicks, 'Ticks', NewYLim(1):range(NewYLim)/(numel(Labels)-1):NewYLim(2), 'YTickLabel', Labels);
+    if flipColorbar
+        set(cbH, 'Direction', 'reverse');
+    end
+
+    % Flip colorbar
+    cmap = colormap;                                % determine colormap of image
+    NewCMap = cat(1,cmap,Colors);                   % concatenate plot colors to colormap
+    colormap(NewCMap);                              % set new colormap
+    set(gca,'CLim',[1,size(NewCMap,1)]);
+    if ~flipColorbar
+        NewYLim = [size(cmap,1)+1, size(NewCMap,1)];    % limit the colormap to this range
+    else
+        NewYLim = [1, size(Colors,1)];
     end
     
+    % Determine cbTickLabel
+    if isempty(cbTick) && strcmp(DataType,'Discrete')
+        cbTickLabel = cellstr(num2str((1:size(Colors,1))'));    % label for each index of colormap
+        Split = range(NewYLim)/numel(cbTickLabel);              % distance between two colors
+        cbTick = NewYLim(1)+Split/2:Split:NewYLim(2);           % locations of ticks
+    else
+        cbTick = cbTick + NewYLim(1)-1;
+    end
+    
+    % Display labels
+    set(cbH, 'Limits', NewYLim, 'FontSize', FontSize_colorbarTicks, 'Ticks', cbTick, 'YTickLabel', cbTickLabel);
+        
     % Display colorbar title
-    if ~isempty(colorbarLabel)
-        ylabel(cbH, colorbarLabel, 'FontSize', FontSize_colorbarLabel);
+    if ~isempty(cbTitle)
+        ylabel(cbH, cbTitle, 'FontSize', FontSize_colorbarLabel);
     end
 end
 

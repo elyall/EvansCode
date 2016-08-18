@@ -16,10 +16,12 @@ ControlID = 0; % StimID of control stimulus ('nan' means no control trial)
 zscoreby = 'none'; %'all' or 'trial' or 'none'
 avgPixelHeight = 6; % number of pixels of average plots height
 frameRate = 15.45; %frame rate of the data
-xlab='Frames'; %default x-axis label
+xlab='Times (s)'; %default x-axis label
 framelimit = 'all'; % xlim (indexes data points)
 lineWidth = .5;
 ylabels = {};
+showStimLines = false;
+verticalLines = [];
 
 % Color properties
 showColorBar = false;
@@ -74,8 +76,14 @@ while index<=length(varargin)
                 frameRate = varargin{index+1};
                 xlab = 'Time (s)';
                 index = index + 2;
+            case 'showStimLines'
+                showStimLines = true;
+                index = index + 1;
             case 'lineWidth'
                 lineWidth = varargin{index+1};
+                index = index + 2;
+            case 'verticalLines'
+                verticalLines = varargin{index+1};
                 index = index + 2;
             case 'axes'
                 hA = varargin{index+1};
@@ -109,10 +117,11 @@ end
 %% Determine trials to plot
 if TrialIndex(end)==inf
     TrialIndex = cat(2, TrialIndex(end-1), TrialIndex(end-1)+1:size(Data, 1));
-elseif islogical(TrialIndex)
-    TrialIndex = find(TrialIndex);
 end
-numTrials = numel(TrialIndex);
+if ~islogical(TrialIndex)
+    TrialIndex = ismember(DataInfo.TrialIndex,TrialIndex);
+end
+numTrials = nnz(TrialIndex);
 
 
 %% Determine stimulus of each trial
@@ -134,8 +143,8 @@ StimulusFrames(ismember(DataInfo.StimID,ControlID),:) = nan; % do not show stim 
 numTrials = size(Data,1);
 
 % Throw out unwanted trials
-Data(setdiff(1:numTrials,TrialIndex),:) = [];
-StimIndex(setdiff(1:numTrials,TrialIndex)) = [];
+Data(~TrialIndex,:) = [];
+StimIndex(~TrialIndex) = [];
 
 % Throw out unwanted stimuli
 Data(~ismember(StimIndex,StimOrder),:) = [];
@@ -269,11 +278,13 @@ if isempty(CLim)
     CLim = [nanmin(Data(:)), nanmax(Data(:))];
 end
 if isempty(CMap)
-    if ~strcmp(zscoreby, 'none') || strcmp(datatype, 'dFoF')
+%     if ~strcmp(zscoreby, 'none') || strcmp(datatype, 'dFoF')
         CMap = b2r(CLim(1),CLim(2));
-    else
-        CMap = redblue(64);
-    end
+%     else
+%         CMap = redblue(256);
+%         CMap = parula(256);
+%         CMap = hot(256);
+%     end
 end
 
 
@@ -306,8 +317,18 @@ if strcmp(sorttype, 'stim')
 end
 
 % Plot stim lines
-plot(repmat(StimFrames(:,1)-.5+xshift,2,1), repmat((0.5:1:size(StimFrames,1))',2,1), 'k--','LineWidth',lineWidth);
-plot(repmat([StimFrames(:,1)-.5, StimFrames(:,2)+.5]+xshift,2,1), repmat((0.5:1:size(StimFrames,1))',2,2), 'k--','LineWidth',lineWidth);
+if showStimLines
+    plot(repmat(StimFrames(:,1)-.5+xshift,2,1), repmat((0.5:1:size(StimFrames,1))',2,1), 'k--','LineWidth',lineWidth);
+    plot(repmat([StimFrames(:,1)-.5, StimFrames(:,2)+.5]+xshift,2,1), repmat((0.5:1:size(StimFrames,1))',2,2), 'k--','LineWidth',lineWidth);
+end
+
+% Plot user-specified vertical lines
+if ~isempty(verticalLines)
+    YLim = get(gca,'YLim');
+    for index = 1:numel(verticalLines)
+        plot([verticalLines(index),verticalLines(index)],YLim, 'k--','LineWidth',lineWidth);
+    end
+end
 
 % Label y-axis
 if strcmp(sorttype, 'stim')
