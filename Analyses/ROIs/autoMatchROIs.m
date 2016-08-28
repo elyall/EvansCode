@@ -78,7 +78,7 @@ end
 
 
 %% Load in ROIMasks
-if iscellstr(ROIMasks)
+if iscellstr(ROIMasks) % cell array of files input
     ROIFiles = ROIMasks;
     InitialROIdata = cell(numFiles, 1);
     ROIMasks = cell(numFiles, 1);
@@ -105,7 +105,7 @@ if iscellstr(ROIMasks)
                 Centroids{findex} = reshape([ROIdata.rois(:).centroid], 2, numel(ROIdata.rois))';
         end
     end
-elseif isstruct(ROIMasks{1}) % ROIs cell input
+elseif iscell(ROIMasks) && isstruct(ROIMasks{1}) % cell array of ROIdata input
     ROIFiles = strcat('file', {' '}, num2str((1:numFiles)'));
     InitialROIdata = cell(numFiles, 1);
     ROIMasks = cell(numFiles, 1);
@@ -116,7 +116,7 @@ elseif isstruct(ROIMasks{1}) % ROIs cell input
         Centroids{findex} = reshape([InitialROIdata{findex}.rois(:).centroid], 2, numel(InitialROIdata{findex}.rois))';
     end
 else
-    ROIFiles = strcat('file', {' '}, num2str((1:numFiles)'));
+    ROIFiles = strcat('file', {' '}, num2str((1:numFiles)')); % create default file name for reporting
 end
 [Height,Width,numROIs] = cellfun(@size, ROIMasks);
 
@@ -132,12 +132,11 @@ if ~exist('Centroids', 'var') || isempty(Centroids)
     end
 end
 
-fprintf('Matching ROIs between %d files', numFiles);
-if addNewROIs
-    fprintf('\t(saving missing ROIs across files)\n');
-else
-    fprintf('\t(not saving missing ROIs to files)\n');
+fprintf('Matching ROIs between %d files\t(', numFiles);
+if ~addNewROIs
+    fprintf('not');
 end
+fprintf('adding missing ROIs across files)\n');
 temp = strcat(num2str(numROIs), {' rois from '}, ROIFiles');
 fprintf('\t%s\n', temp{:});
 
@@ -297,9 +296,9 @@ if saveOut && ~isempty(saveFile)
     % Determine what files to save to
     switch saveType
         case 'all'
-            findices = 1:numFiles;
+            findices = 1:numFiles;      % save all files
         case 'new'
-            findices = find(numNew);
+            findices = find(numNew); 	% only update files that had ROIs added to them
     end
     
     % Save to each file
@@ -331,7 +330,7 @@ if saveOut && ~isempty(saveFile)
                 if isempty(InitialROIdata{findex})
                     ROIdata = createROIdata(ROIMasks{findex}); % update whole struct
                 else
-                    ROIdata = createROIdata(ROIMasks{findex}(:,:,numROIs(findex)+1:end), 'ROIdata', InitialROIdata{findex}); % only update new ROIs
+                    ROIdata = createROIdata(ROIMasks{findex}(:,:,numROIs(findex)+1:end), 'ROIdata', InitialROIdata{findex}); % only add new ROIs to end
                 end
                 
                 % Save to file

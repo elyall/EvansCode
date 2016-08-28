@@ -7,11 +7,12 @@ numPerms = 10000; % 'multiple' only
 ROIindex = [1 inf];
 TrialIndex = [1 inf];
 
-distBetween = 1; % CoM
+PWCZ = 2;           % CoM
+distBetween = 1;    % CoM
 
 directory = cd;
 
-Parse input arguments
+% Parse input arguments
 index = 1;
 while index<=length(varargin)
     try
@@ -126,7 +127,7 @@ parfor pindex = 1:numPerms
     for sindex = 1:numStim
         Curves(:,sindex) = mean(Data(Permutations{sindex}(pindex,:),:),1);
     end
-    CoM(:,pindex) = computeCenterOfMass(Curves, 2, distBetween);
+    CoM(:,pindex) = computeCenterOfMass(Curves, PWCZ, distBetween);
     Sel(:,pindex) = computeVectorSelectivity(Curves, [], 2);
     parfor_progress;
 end

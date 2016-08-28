@@ -176,7 +176,8 @@ for sindex = 1:numStims
         
         % Save for later calculation
         lastFrame = min(numFramesBefore+1+diff(AnalysisInfo.ExpStimFrames(tindex,:)), numFrames);
-        trialdFoF{sindex}(:,:,:,tindex) = mean(frames(:,:,:,1,numFramesBefore+1:lastFrame), 5);
+%         trialdFoF{sindex}(:,:,:,tindex) = mean(frames(:,:,:,1,numFramesBefore+1:lastFrame), 5);
+        trialdFoF{sindex}(:,:,:,tindex) = mean(frames(:,:,:,1,lastFrame-7:lastFrame), 5);
     end
     AvgTrial{sindex} = uint16(AvgTrial{sindex}/numTrials); % if not concerned about precision clipping high values after sum, otherwise comment out and amend above
     AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex}/numTrials; % if not concerned about precision clipping high values after sum, otherwise comment out and amend above
@@ -191,7 +192,7 @@ StimResponse.se = nan([Config(1).size(1:end-2), numStims]);
 StimResponse.pvalue = ones([Config(1).size(1:end-2), numStims]);
 StimResponse.excited = false([Config(1).size(1:end-2), numStims]);
 for sindex = 1:numStims
-    StimResponse.avg(:,:,:,sindex) = uint16(mean(trialdFoF{sindex}, 4));
+    StimResponse.avg(:,:,:,sindex) = mean(trialdFoF{sindex}, 4);
     StimResponse.se(:,:,:,sindex) = std(trialdFoF{sindex},[],4)/sqrt(size(trialdFoF{sindex},4));
     if sindex ~= 1
         [~, StimResponse.pvalue(:,:,:,sindex)] = ttest2(...
@@ -205,10 +206,11 @@ end
 
 %% Save to file
 if saveOut
-    if ~exist(saveFile, 'file')
-        save(saveFile, 'AvgTrial', 'AvgTrialdFoF', 'StimResponse', '-mat', '-v7.3');
-    else
-        save(saveFile, 'AvgTrial', 'AvgTrialdFoF', 'StimResponse', '-mat','-append');
-    end
+%     if ~exist(saveFile, 'file')
+%         save(saveFile, 'AvgTrial', 'AvgTrialdFoF', 'StimResponse', '-mat', '-v7.3');
+        save(saveFile, 'StimResponse', '-mat', '-v7.3');
+%     else
+%         save(saveFile, 'AvgTrial', 'AvgTrialdFoF', 'StimResponse', '-mat','-append');
+%     end
     fprintf('Saved average stimuli to: %s\n', saveFile);
 end

@@ -83,6 +83,13 @@ end
 ROIMasks = ROIMasks(:,:,ROIindex);
 [H,W,numROIs] = size(ROIMasks);
 
+% Report status
+fprintf('Transferring %d ROI(s) ',numROIs);
+if exist('ROIFile','var')
+    fprintf('from %s ',ROIFile);
+end
+fprintf('to new axes...\t');
+
 
 %% Load in Maps
 if ischar(MapOrig)
@@ -105,6 +112,16 @@ tform = affine2d([1,0,0;0,1,0;x,y,1]);
 for rindex = 1:numROIs
     ROIMasks(:,:,rindex) = imwarp(ROIMasks(:,:,rindex), MapOrig, tform, 'OutputView', MapOrig);
 end
+fprintf('Complete\n');
+
+
+%% Remove ROIs that don't exist on new axes
+emptyIndex = sum(reshape(ROIMasks, H*W, numROIs))==0;
+if any(emptyIndex)
+    fprintf('\t%d ROI(s) could not be transferred due to no overlap of FoVs\n',nnz(emptyIndex));
+    ROIMasks(:,:,emptyIndex) = [];
+    numROIs = numROIs - nnz(emptyIndex);
+end
 
 
 %% Save ROIs to file
@@ -118,6 +135,7 @@ if saveOut && ~isempty(saveFile)
             else
                 save(saveFile, 'mask', 'dim', '-mat', '-append');
             end
+            fprintf('\tROI mask(s) saved to: %s\n',saveFile);
         case '.rois'
             ROIdata = createROIdata(ROIMasks, 'ROIdata', saveFile);     
             if ~exist(saveFile, 'file')
@@ -125,6 +143,7 @@ if saveOut && ~isempty(saveFile)
             else
                 save(saveFile, 'ROIdata', '-mat', '-append');
             end
+            fprintf('\tROIdata generated and saved to: %s\n',saveFile);
     end
 end
 

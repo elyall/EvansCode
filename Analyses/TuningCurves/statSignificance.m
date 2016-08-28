@@ -101,7 +101,7 @@ legend({'Full Pad halves','Trimming'},'Location','NorthEast');
 subplot(2,2,4);
 h=histogram(diff(PosSel,[],2));
 hold on;
-histogram(diff(RealSel,[],2),'BinWidth',h.BinWidth);
+histogram(diff(RealSel,[],2),'BinWidth',h.BinWidth,'Normalization','probability');
 p(4)=signrank(diff(PosSel,[],2),diff(RealSel,[],2));
 title('Single Whisker halves vs. Actual');
 xlabel('Change in Selectivity');

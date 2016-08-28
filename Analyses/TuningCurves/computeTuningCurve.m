@@ -80,7 +80,7 @@ end
 
 %% Determine data to analyze
 if TrialIndex(end) == inf
-    TrialIndex = cat(2, TrialIndex(1:end-1), TrialIndex(1:end-1)+1:max(ROIdata.DataInfo.TrialIndex));
+    TrialIndex = cat(2, TrialIndex(1:end-1), TrialIndex(end-1)+1:max(ROIdata.DataInfo.TrialIndex));
 end
 TrialIndex = ismember(ROIdata.DataInfo.TrialIndex', TrialIndex);
 % if isrow(TrialIndex)

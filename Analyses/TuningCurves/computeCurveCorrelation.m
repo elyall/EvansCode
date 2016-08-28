@@ -1,28 +1,44 @@
-function Corr = computeCurveCorrelation(Curves)
+function Corr = computeCurveCorrelation(Curves,positions,DataIndex)
 
-%% Kendall's
+if ~exist('positions','var')
+    positions = [];
+end
+if ~iscell(positions)
+    positions = {positions};
+end
 
+if ~exist('DataIndex','var') || isempty(DataIndex)
+    DataIndex = ones(size(Curves,1),1);
+end
 
+IDs = unique(DataIndex);
+numMice = numel(IDs);
+
+if numel(positions)==1 && numMice>1
+    positions = repmat(positions,numMice,1);
+end
 
 %% Pearson's
-
-% Likley not necessary
-% % shift bottom of curves to 0
-% Curves = bsxfun(@minus, Curves, min(Curves, [], 2));
-
-% normalize curves
-Curves = bsxfun(@rdivide, Curves, max(Curves,[],2));
-
-% subtract off mean
-Curves = bsxfun(@minus, Curves, mean(Curves,1));
-
-% compute dot product
-numROIs = size(Curves, 1);
-Corr = nan(numROIs);
-for rindex = 1:numROIs
-    Corr(rindex,rindex+1:end) = sum(bsxfun(@times, Curves(rindex,:), Curves(rindex+1:end,:)),2);
-%     Corr(rindex,rindex+1:end) = sum(abs(bsxfun(@minus, Curves(rindex,:), Curves(rindex+1:end,:))),2);
+Corr = [];
+for Mindex = 1:numMice
+    
+    % Pull out tuning curves
+    if iscell(Curves)
+        current = cell2mat(Curves(DataIndex==IDs(Mindex))');
+    else
+        current = Curves(DataIndex==IDs(Mindex),:)';
+    end
+    
+    % Keep only requested positions
+    if ~isempty(positions{Mindex})
+        current = current(positions{Mindex},:);
+    end
+    
+    % compute pearson's r
+    temp = corrcoef(current);
+    Corr = [Corr;temp(tril(true(size(temp)),-1))];
+    
 end
 
 
-
+%% Kendall's

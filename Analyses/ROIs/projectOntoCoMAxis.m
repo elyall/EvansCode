@@ -231,7 +231,7 @@ theta = theta(temp);
 if ~isempty(insidePWC)
     PWCcenter = mean(WhiteCentroids(insidePWC,:));                          % find PWC center
 else
-    PWCcenter = [0,0];
+    PWCcenter = mean(WhiteCentroids);
 end
 [dist,Y] = ProjectOntoAngle(bsxfun(@minus,WhiteCentroids,PWCcenter),theta); % project on axis centered on PWC
 Projection = [dist,Y]*invMat;                                               % transform back to non-white axis
