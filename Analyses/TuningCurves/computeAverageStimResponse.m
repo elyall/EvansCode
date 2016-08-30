@@ -157,7 +157,7 @@ for sindex = 1:numStims
     for tindex = 1:numTrials
         
         % Load trial
-        [frames, loadObj] = load2P(AnalysisInfo.ImgFilename{tindex},... % ImageFiles{1},...
+        [frames, loadObj] = load2P(ImageFiles{1},... %AnalysisInfo.ImgFilename{tindex},...
             'Type',     'Direct',...
             'Frames',   AnalysisInfo.ExpStimFrames(currentTrials(tindex),1)-numFramesBefore:AnalysisInfo.ExpStimFrames(currentTrials(tindex),1)+numFramesAfter,...
             'Double');
@@ -206,11 +206,10 @@ end
 
 %% Save to file
 if saveOut
-%     if ~exist(saveFile, 'file')
-%         save(saveFile, 'AvgTrial', 'AvgTrialdFoF', 'StimResponse', '-mat', '-v7.3');
-        save(saveFile, 'StimResponse', '-mat', '-v7.3');
-%     else
-%         save(saveFile, 'AvgTrial', 'AvgTrialdFoF', 'StimResponse', '-mat','-append');
-%     end
+    if ~exist(saveFile, 'file')
+        save(saveFile, 'AvgTrial', 'AvgTrialdFoF', 'StimResponse', '-mat', '-v7.3');
+    else
+        save(saveFile, 'AvgTrial', 'AvgTrialdFoF', 'StimResponse', '-mat','-append');
+    end
     fprintf('Saved average stimuli to: %s\n', saveFile);
 end

@@ -1,10 +1,12 @@
 function outliers = determineOutliers(data, varargin)
 
+type = 'medianRule'; % 'tukey','evan','medianRule',
+
+% Evan's method
 numSTDsOutlier = 4; % inf if no threshold
 minNumTrials = 5; % -inf if no minimum (will error when gets to 2 trials)
 GroupID = [];
 
-type = 'evan'; % 'tukey or evan'
 saveOut = false;
 saveFile = '';
 
@@ -13,6 +15,9 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
+            case 'type'
+                type = varargin{index+1};
+                index = index + 2;
             case 'numSTDsOutlier'
                 numSTDsOutlier = varargin{index+1};
                 index = index + 2;
@@ -22,6 +27,9 @@ while index<=length(varargin)
             case 'GroupID'
                 GroupID = varargin{index+1};
                 index = index + 2;
+            otherwise
+                warning('Argument ''%s'' not recognized',varargin{index});
+                index = index + 1;
         end
     catch
         warning('Argument %d not recognized',index);
@@ -32,7 +40,7 @@ end
 
 %% Initialize output (and break)
 outliers = false(numel(data),1);
-if numSTDsOutlier == inf
+if strcmp(type,'evan') && numSTDsOutlier == inf
     return
 end
 
@@ -46,12 +54,14 @@ IDs = unique(GroupID);
 
 %% Determine outliers
 for gindex = 1:nnz(~isnan(IDs))
-    index = GroupID==IDs(gindex);
+    index = GroupID==IDs(gindex); % if nan exists, UNIQUE() places it at end
     switch type
         case 'evan'
             outliers(index) = findOutliers(data(index), minNumTrials, numSTDsOutlier);
         case 'tukey'
             outliers(index) = tukeyMethod(data(index));
+        case 'medianRule'
+            outliers(index) = medianRule(data(index));
     end
 end
 
@@ -69,10 +79,17 @@ end
 %% Main functions
 % Tukey method
 function outliers = tukeyMethod(data)
-% [s,f] = quantile(data,[.25,.75]); % same thing
-[s,f] = prctile(data,[25,75]);
-IQR = f-s;
-edges = [s-1.5*IQR, f+1.5*IQR];
+% q = quantile(data,[.25,.75]); % same thing
+q = prctile(data,[25,75]);
+IQR = diff(q);
+edges = [q(1)-1.5*IQR, q(2)+1.5*IQR];
+outliers = data < edges(1) | data > edges(2);
+
+% Median rule
+function outliers = medianRule(data)
+m = median(data);
+IQR = diff(prctile(data,[25,75]));
+edges = [m-2.3*IQR, m+2.3*IQR];
 outliers = data < edges(1) | data > edges(2);
 
 % Evan method

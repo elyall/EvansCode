@@ -3,7 +3,6 @@ function [ROIdata, Curves, outliers] = computeTuningCurve(ROIdata, ROIindex, Tri
 
 FitTuningCurves = false; % gaussian fit
 ControlID = 0; % StimID of control trials, or '[]' if no control trial
-outlierweight = 4; % # of std dev to ignore
 StimIDs = [];
 
 saveOut = false;
@@ -24,9 +23,6 @@ while index<=length(varargin)
                 index = index + 2;
             case 'StimIDs'
                 StimIDs = varargin{index+1};
-                index = index + 2;
-            case 'outlierweight'
-                outlierweight = varargin{index+1};
                 index = index + 2;
             case {'Save', 'save'}
                 saveOut = true;
@@ -97,11 +93,11 @@ if ROIindex(end) == inf
     ROIindex = cat(2, ROIindex(1:end-1), ROIindex(1:end-1)+1:numel(ROIdata.rois));
 end
 
-% Determine outliers
+% Determine outliers for running trials of each stimulus
 fprintf('Determining outliers...');
 outliers = false(numel(TrialIndex),numel(ROIdata.rois));
 for rindex = ROIindex
-    outliers(TrialIndex,rindex) = determineOutliers(ROIdata.rois(rindex).stimMean(TrialIndex),'GroupID',ROIdata.DataInfo.StimID(TrialIndex),'numSTDsOutlier',outlierweight);
+    outliers(TrialIndex,rindex) = determineOutliers(ROIdata.rois(rindex).stimMean(TrialIndex),'GroupID',ROIdata.DataInfo.StimID(TrialIndex),'type','medianRule');
 end
 fprintf('\tComplete\n');
 
@@ -118,6 +114,9 @@ if ~isempty(ControlID)
     if ~isempty(controlindex)
         StimIDs = StimIDs([controlindex,setdiff(1:numStimuli,controlindex)]);   % reorder so control trials are analyzed first
     end
+    firstStim = 2; % first index for significant tuning analysis (ANOVA)
+else
+    firstStim = 1; % first index for significant tuning analysis (ANOVA)
 end
 
 % Determine trials per stim
@@ -137,40 +136,19 @@ if ~isempty(ControlID)
     [ROIdata.rois(ROIindex).PValue] = deal(nan(1, numStimuli));
     [ROIdata.rois(ROIindex).PValueCorrected] = deal(nan(1, numStimuli-1));
 end
+[ROIdata.rois(ROIindex).TunedPValue] = deal(nan);
 
 % Calculate tuning
 for rindex = ROIindex
     ROIdata.rois(rindex).stimindex = StimIDs;
     for sindex = 1:numStimuli
                 
-        % Select data for current stimulus
+        % Select data for current stimulus (ignore outliers)
         StimulusDFoF = ROIdata.rois(rindex).stimMean(Trials(:,sindex) & ~outliers(:,rindex));
+        StimulusDFoF(isnan(StimulusDFoF)) = []; % remove nan trials (ROI didn't exist in trial either due to motion or bad merge across datasets)
         
-%         % Remove outliers
-%         while true
-%             numTrials = numel(StimulusDFoF);
-%             if numTrials <= 5
-%                 break
-%             end
-%             Val = nan(numTrials,1);
-%             for tindex = 1:numTrials
-%                 mu = mean(StimulusDFoF(setdiff(1:numTrials,tindex)));               % determine mean without current trial
-%                 sigma = std(StimulusDFoF(setdiff(1:numTrials,tindex)));             % determine std without current trial
-%                 Val(tindex) = abs(StimulusDFoF(tindex)-mu)/sigma;                   % calculate zscore of current trial relative to other data
-%             end
-%             if any(Val > outlierweight)                                             % at least one outlier exists
-%                 [~,furthestIndex] = max(Val);                                       % determine largest outlier
-%                 StimulusDFoF(furthestIndex) = [];                                   % remove largest outlier
-%             else
-%                 break
-%             end
-%         end
-        
-%         % Remove outliers (Scott method)
-%         StimulusDFoF(zscore(StimulusDFoF)>3) = [];
-
         % Save tuning curves
-        ROIdata.rois(rindex).curve(sindex) = nanmean(StimulusDFoF);                 % evoked dF/F over all trials for current stimulus
+        ROIdata.rois(rindex).curve(sindex) = mean(StimulusDFoF);                 % evoked dF/F over all trials for current stimulus
         ROIdata.rois(rindex).StdError(sindex) = std(StimulusDFoF)/sqrt(numel(StimulusDFoF)); % standard error for stimulus
         ROIdata.rois(rindex).Raw{sindex} = StimulusDFoF;
         ROIdata.rois(rindex).nTrials(sindex) = numel(StimulusDFoF);
@@ -192,6 +170,11 @@ for rindex = ROIindex
     if ~isempty(ControlID)
         [~,~,ROIdata.rois(rindex).PValueCorrected] = fdr_bh(ROIdata.rois(rindex).PValue);
     end
+    
+    % Compute whether ROI is "tuned"
+    N = cellfun(@numel, ROIdata.rois(rindex).Raw(firstStim:end));
+    dict = cellfun(@(x,y) repmat(x,y,1), num2cell(1:numel(N))', num2cell(N), 'UniformOutput',false);
+    ROIdata.rois(rindex).TunedPValue = anovan(cat(1,ROIdata.rois(rindex).Raw{firstStim:end}), cat(1,dict{:}), 'model','full','display','off');
         
 end %ROIs
 fprintf('\tComplete\n');

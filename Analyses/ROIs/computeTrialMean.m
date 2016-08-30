@@ -95,7 +95,7 @@ end
 % Compute mean for each trial
 for rindex = ROIindex
     for tindex = 1:numTrials
-        ROIdata.rois(rindex).stimMean(tindex) = nanmean(ROIdata.rois(rindex).dFoF(tindex,FrameIndex{tindex}),2);
+        ROIdata.rois(rindex).stimMean(tindex) = nanmean(ROIdata.rois(rindex).dFoF(tindex,FrameIndex{tindex}),2); % nan frames may exist due to motion artifacts
     end
 end
 fprintf('\tComplete\n');

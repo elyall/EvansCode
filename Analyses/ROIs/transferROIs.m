@@ -118,7 +118,9 @@ fprintf('Complete\n');
 %% Remove ROIs that don't exist on new axes
 emptyIndex = sum(reshape(ROIMasks, H*W, numROIs))==0;
 if any(emptyIndex)
-    fprintf('\t%d ROI(s) could not be transferred due to no overlap of FoVs\n',nnz(emptyIndex));
+    fprintf('\t%d ROI(s) could not be transferred due to no overlap of FoVs: ',nnz(emptyIndex));
+    fprintf('%d, ',find(emptyIndex));
+    fprintf('\b\b\n');
     ROIMasks(:,:,emptyIndex) = [];
     numROIs = numROIs - nnz(emptyIndex);
 end

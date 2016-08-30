@@ -14,7 +14,7 @@ if ~exist('Images','var') || isempty(Images) % Prompt for file selection
 elseif ischar(Images)
     [Images, loadObj] = load2P(Images, 'Type', 'Direct', 'Double');
 end
-[~,~, numDepth, numChannels, numFrames] = size(Images);
+[H,W, numDepth, numChannels, numFrames] = size(Images);
 
 if ~exist('MCdata','var') || isempty(MCdata)
     [ExperimentFile, p] = uigetfile({'*.mat'},'Choose Experiment file',directory);
@@ -100,26 +100,34 @@ switch MCdata(1).type
         end
         
     case 'Translation'
+        for index = 1:numel(MCdata)
+            T = MCdata(index).T;
+            T = repmat(T,1,2);
+            T(T(:,1)>0,1) = 1;
+            T(T(:,2)>0,2) = 1;
+            T(T(:,1)<0,[1,3]) = [H+T(T(:,1)<0,1)+1,repmat(H,nnz(T(:,1)<0),1)];
+            T(T(:,2)<0,[2,4]) = [W+T(T(:,2)<0,2)+1,repmat(W,nnz(T(:,2)<0),1)];
+            MCdata(index).T = T;
+        end
+        
         for iF = 1:numFrames
             for iC = 1:numChannels
-                for iD = 1:numDepth
-                    
-                    % to specify depth of image passed in
-                    if ~exist('depthIndex', 'var')
-                        Di = iD;
-                    else
-                        Di = depthIndex;
+                
+                try
+                    Images(:,:,1,iC,iF) = circshift(Images(:,:,1,iC,iF), MCdata(MCindex(iF,1)).T(MCindex(iF,2),1:2));
+                    if MCdata(MCindex(iF,1)).T(MCindex(iF,2),1)
+                        Images(MCdata(MCindex(iF,1)).T(MCindex(iF,2),1):MCdata(MCindex(iF,1)).T(MCindex(iF,2),3),:,1,iC,iF) = nan; % fill top-bottom non-sampled region with nans
                     end
-                    
-                    try
-                        Images(:,:,iD,iC,iF) = circshift(Images(:,:,iD,iC,iF), MCdata(MCindex(iF,1)).T(MCindex(iF,2),:));
-                    catch ME
-                        if MCindex(iF,2) ~= size(MCdata(MCindex(iF,1)).T,1)+1 % old bug where code doesn't motion correct last image
-                            rethrow(ME)
-                        end
-                    end        
-                    
+                    if MCdata(MCindex(iF,1)).T(MCindex(iF,2),2)
+                        Images(:,MCdata(MCindex(iF,1)).T(MCindex(iF,2),2):MCdata(MCindex(iF,1)).T(MCindex(iF,2),4),1,iC,iF) = nan; % fill left-right non-sampled region with nans
+                    end
+                    % Images(:,:,1,iC,iF) = imtranslate(Images(:,:,1,iC,iF), MCdata(MCindex(iF,1)).T(MCindex(iF,2),[2,1]), 'FillValues',nan); % very slow
+                catch ME
+                    if MCindex(iF,2) ~= size(MCdata(MCindex(iF,1)).T,1)+1 % old bug where code doesn't motion correct last image
+                        rethrow(ME)
+                    end
                 end
+                
             end
         end
 end

@@ -20,6 +20,7 @@ if exist(SaveFile,'file') % save to temporary file first, then rename it and ove
     delete(SaveFile);
     status = movefile(tempFile, SaveFile);
 else
-    save(saveFile, Vars{:}, '-mat', '-v7.3');
+    save(SaveFile, Vars{:}, '-mat', '-v7.3');
+    status = true;
 end
 
