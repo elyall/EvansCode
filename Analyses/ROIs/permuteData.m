@@ -1,18 +1,20 @@
 function [CoM, Sel, numToChoose] = permuteData(ROIdata, varargin)
 
-type = 'multiple'; % 'split' or 'multiple'
-perc = .5; % 'multiple' only
-numPerms = 10000; % 'multiple' only
-
+type = 'multiple';  % 'split' or 'multiple'
 ROIindex = [1 inf];
 TrialIndex = [1 inf];
 
-PWCZ = 2;           % CoM
-distBetween = 1;    % CoM
+% 'multiple' permutation perameters
+perc = .5;          % percent of trials to include in each permutation
+numPerms = 10000;
+
+% CoM calculation inputs
+positions = 2;
+distBetween = 1;
 
 directory = cd;
 
-% Parse input arguments
+%% Parse input arguments
 index = 1;
 while index<=length(varargin)
     try
@@ -28,6 +30,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'perc'
                 perc = varargin{index+1};
+                index = index + 2;
+            case 'positions'
+                positions = varargin{index+1};
                 index = index + 2;
             case 'DistBtwn'
                 distBetween = varargin{index+1};
@@ -83,8 +88,8 @@ numStim = numel(StimIDs);
 Trials = cell(numStim,1);
 numToChoose = nan(numStim,1);
 for sindex = 1:numStim
-    Trials{sindex} = find(ROIdata.DataInfo.StimID==StimIDs(sindex));
-    Trials{sindex}(~ismember(ROIdata.DataInfo.TrialIndex(Trials{sindex}),TrialIndex)) = [];
+    Trials{sindex} = find(ROIdata.DataInfo.StimID==StimIDs(sindex)); % find all matching trials
+    Trials{sindex}(~ismember(ROIdata.DataInfo.TrialIndex(Trials{sindex}),TrialIndex)) = []; % remove unwanted trials
     numToChoose(sindex) = round(perc*numel(Trials{sindex}));
 end
 
@@ -95,12 +100,12 @@ switch type
         
         % Only use 2 permutations: first half and second half
         numPerms = 2;
+        numToChoose = []; % for output
         for sindex = 1:numStim
             num = floor(numel(Trials{sindex})/2);
             Permutations{sindex}(1,:) = Trials{sindex}(1:num);          %first half
             Permutations{sindex}(2,:) = Trials{sindex}(end-num+1:end);  %second half
         end
-        numToChoose = [];
         
     case 'multiple'
         
@@ -119,16 +124,17 @@ end %type
 Data = [ROIdata.rois(ROIindex).stimMean];
 
 CoM = nan(numROIs,numPerms);
-Sel = nan(numROIs,numPerms);
+% Sel = nan(numROIs,numPerms);
+Sel = [];
 
 parfor_progress(numPerms);
 parfor pindex = 1:numPerms
     Curves = nan(numROIs,numStim);
     for sindex = 1:numStim
-        Curves(:,sindex) = mean(Data(Permutations{sindex}(pindex,:),:),1);
+        Curves(:,sindex) = nanmean(Data(Permutations{sindex}(pindex,:),:),1);
     end
-    CoM(:,pindex) = computeCenterOfMass(Curves, PWCZ, distBetween);
-    Sel(:,pindex) = computeVectorSelectivity(Curves, [], 2);
+    CoM(:,pindex) = computeCenterOfMass(Curves, positions, distBetween);
+%     Sel(:,pindex) = computeVectorSelectivity(Curves, [], 2);
     parfor_progress;
 end
 parfor_progress(0);

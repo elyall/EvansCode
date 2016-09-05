@@ -1,4 +1,4 @@
-function patchHandles = overlayROIs(Data, varargin)
+function Handles = overlayROIs(Data, varargin)
 % Data is a cell array of strings, cell array of vertices, or list of
 % centroids
 
@@ -8,9 +8,10 @@ ROIindex = [1 inf];
 FileIndex = [];
 
 % Display Properties
-Radius = [];
-Color = [1,0,0];
-EdgeColor = []; % defaults to 'Color'
+roiType = '';           % 'roi', 'circle', or 'arrow'
+Radius = [];            % ('circle' or 'arrow')
+FaceColor = [1,0,0];
+EdgeColor = [];         % defaults to 'Color'
 LineWidth = 1;
 FaceAlpha = 1;
 EdgeAlpha = 1;
@@ -36,11 +37,14 @@ while index<=length(varargin)
             case 'FileIndex'
                 FileIndex = varargin{index+1};
                 index = index + 2;
+            case {'roiType','type','Type'}
+                roiType = varargin{index+1};
+                index = index + 2;
             case 'Radius'
                 Radius = varargin{index+1};
                 index = index + 2;
-            case 'Color'
-                Color = varargin{index+1};
+            case {'Color','FaceColor'}
+                FaceColor = varargin{index+1};
                 index = index + 2;
             case 'EdgeColor'
                 EdgeColor = varargin{index+1};
@@ -81,34 +85,30 @@ if ischar(Data)
     Data = {Data};
 end
 
-if ~isempty(Radius)
-    loadType = 'circle';
-else
-    loadType = 'roi';
+if isempty(roiType) && ~isempty(Radius)
+    roiType = 'circle';
+elseif isempty(roiType) && isempty(Radius)
+    roiType = 'roi';
 end
 
 
 %% Load ROIs
 if iscellstr(Data) || isstruct(Data) || (iscell(Data) && isstruct(Data{1}))
-    switch loadType
+    switch roiType
         case 'roi'
             [Data, FileIndex] = gatherROIdata(Data,'vertices',':','none',ROIindex,FileIndex,'outputFormat','cell');
             Data = cellfun(@(x) reshape(x, numel(x)/2, 2), Data, 'UniformOutput', false); % Reshape vertices
-        case 'circle'
+        case {'circle','arrow'}
             [Data, FileIndex] = gatherROIdata(Data,'centroid',':','none',ROIindex,FileIndex);
     end
 end
 
 if isnumeric(Data)
-    switch loadType
-        case 'roi'
+    switch roiType
+        case 'roi' % assumes one ROI
             Data = {Data};
-        case 'circle'
-            temp = Data;
-            Data = cell(size(temp,1),1);
-            for rindex = 1:size(temp,1)
-                Data{rindex} = temp(rindex,:);
-            end
+        case {'circle','arrow'} % convert matrix to cell array
+            Data = mat2cell(Data,ones(size(Data,1),1),2);
     end
 end
 
@@ -144,11 +144,11 @@ end
 
 
 %% Determine properties
-if size(Color,1)==1
-    Color = repmat(Color,numROIs,1);
+if size(FaceColor,1)==1
+    FaceColor = repmat(FaceColor,numROIs,1);
 end
 if isempty(EdgeColor)
-    EdgeColor = Color;
+    EdgeColor = FaceColor;
 elseif size(EdgeColor,1)==1
     EdgeColor = repmat(EdgeColor,numROIs,1);
 end
@@ -168,14 +168,27 @@ if numel(EdgeBrightness)==1
     EdgeBrightness = repmat(EdgeBrightness,numROIs,1);
 end
 
-if strcmp(loadType,'circle')
-    if isempty(Radius)
-        Radius = 2*ones(numROIs,1);
-    elseif numel(Radius)==1
-        Radius = repmat(Radius,numROIs,1);
-    end
+if ismember(roiType,{'circle','arrow'}) && isempty(Radius)
+    Radius = 2*ones(numROIs,1);
+elseif ismember(roiType,{'circle','arrow'}) && numel(Radius)==1
+    Radius = repmat(Radius,numROIs,1);
+end
+
+if strcmp(roiType,'circle') % create circle from centroids
     for rindex = 1:numROIs
-        Data{rindex} = circle(Data{rindex},Radius(rindex));
+        Data{rindex} = circle(Data{rindex},Radius(rindex)); %subfunction below
+    end
+end
+
+if strcmp(roiType,'roi') % append starting point to end to complete polygon
+    Data = cellfun(@(x) x([1:end,1],:),Data,'UniformOutput',false);
+end
+
+if strcmp(roiType,'arrow') % create arrows
+    [x,y] = pol2cart(EdgeBrightness(1)*pi/180,1);
+    Radius = bsxfun(@times, repmat([x,y],numROIs,1), Radius);
+    if iscell(Data)
+        Data = cat(1,Data{:});
     end
 end
 
@@ -189,19 +202,26 @@ if isempty(axesHandle)
 end
 
 % Plot each ROI
-patchHandles = nan(numROIs,1);
-for rindex = 1:numROIs
-    patchHandles(rindex) = patch(...
-        Data{rindex}(:,1),...
-        Data{rindex}(:,2),...
-        Color(rindex,:)*FaceBrightness(rindex),...
-        'Parent',               axesHandle,...
-        'FaceAlpha',            FaceAlpha(rindex),...
-        'EdgeAlpha',            EdgeAlpha(rindex),...
-        'EdgeColor',            EdgeColor(rindex,:)*EdgeBrightness(rindex),...
-        'LineWidth',            LineWidth(rindex),...
-        'UserData',             rindex);
-    
+switch roiType
+    case {'roi','circle'}
+        Handles = nan(numROIs,1);
+        for rindex = 1:numROIs
+            Handles(rindex) = patch(...
+                Data{rindex}(:,1),...
+                Data{rindex}(:,2),...
+                FaceColor(rindex,:)*FaceBrightness(rindex),...
+                'Parent',               axesHandle,...
+                'FaceAlpha',            FaceAlpha(rindex),...
+                'EdgeAlpha',            EdgeAlpha(rindex),...
+                'EdgeColor',            EdgeColor(rindex,:)*EdgeBrightness(rindex),...
+                'LineWidth',            LineWidth(rindex),...
+                'UserData',             rindex);
+            
+        end
+    case 'arrow'
+        Handles = quiver(Data(:,1),Data(:,2),Radius(:,1),Radius(:,2),...
+            'Color',                    FaceColor(1,:)*FaceBrightness(1),...
+            'LineWidth',                LineWidth(1));
 end
 
 end

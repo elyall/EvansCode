@@ -236,7 +236,7 @@ parfor pindex = 1:numPerms+1
     end
     
     % Compute center of mass change
-%     dCoM(:,pindex) = diff([computeCenterOfMass(Curves(:,:,1),1,distBetween),computeCenterOfMass(Curves(:,:,2),1,distBetween)],[],2);
+    dCoM(:,pindex) = diff([computeCenterOfMass(Curves(:,:,1),1,distBetween),computeCenterOfMass(Curves(:,:,2),1,distBetween)],[],2);
     
     % Compute selectivity change
     Min = min(min(Curves,[],3),[],2);

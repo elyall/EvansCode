@@ -16,7 +16,7 @@ numSTDsOutlier = inf;   % 'inf' means no trials are thrown out
 zscoreby = 'none';      %'all' or 'trial' or 'none'
 avgPixelHeight = 6;     % number of pixels of average plots height
 frameRate = 15.45;      % frame rate of the data
-xlab='Frames';          % default x-axis label
+xlab='Seconds';          % default x-axis label
 framelimit = 'all';     % xlim (indexes data points)
 lineWidth = .5;
 labelAxes = true;
@@ -400,7 +400,7 @@ for rindex = 1:numROIs
         ticks = cumsum(blockLength)-diff(cumsum([0;blockLength]))/2 + 0.5;
         set(hA(rindex),'YTick',ticks, 'YTickLabel',XLabels);
         if labelAxes
-            ylabel('Stimulus');
+            ylabel('Obj. Position');
         end
     elseif labelAxes
         ylabel('Trial')

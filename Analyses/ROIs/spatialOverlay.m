@@ -23,6 +23,7 @@ FontSize_colorbarTicks = 20;
 flipColorbar = false;
 
 % ROI Properties
+roiType = 'roi';
 Colors = [];
 DataType = 'continuous'; % 'discrete' or 'continuous'
 Radius = [];
@@ -77,6 +78,9 @@ while index<=length(varargin)
                 index = index + 1;
             
             % ROI Properties
+            case {'roiType','type','Type'}
+                roiType = varargin{index+1};
+                index = index + 2;
             case 'Colors'
                 Colors = varargin{index+1};
                 index = index + 2;
@@ -198,7 +202,7 @@ if ~isempty(Image)
     else
         imagesc(Image)
     end
-    axis equal off
+    % axis equal off
     
 end
 
@@ -267,6 +271,7 @@ end
 %% Overlay ROIs
 patchHandles = overlayROIs(ROIs,...
     'axes', hA, 'Maps', Maps, 'ROIindex', ROIindex, 'FileIndex', FileIndex,...
+    'roiType', roiType,...
     'Radius', Radius, 'Color', Colors(ColorIndex,:), 'LineWidth', LineWidth,...
     'FaceAlpha', FaceAlpha, 'EdgeAlpha', EdgeAlpha, 'FaceBrightness', FaceBrightness,...
     'EdgeBrightness', EdgeBrightness);
