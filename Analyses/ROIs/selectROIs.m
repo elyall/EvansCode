@@ -68,7 +68,7 @@ if iscellstr(Data) || isstruct(Data) || (iscell(Data) && isstruct(Data{1}))
     [Data, FileIndex, ROIindex] = gatherROIdata(Data, 'centroid', ':', 'none', ROIindex, FileIndex);
 else
     if isempty(FileIndex)
-        FileIndex = (1:size(Data,1))';
+        FileIndex = ones(size(Data,1),1); % assumes all from the same file
     end
     if isempty(ROIindex)
         ROIindex = nan(numel(FileIndex),1);
