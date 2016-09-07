@@ -97,8 +97,8 @@ insidePWC = logical(inpolygon(Centroids(:,1), Centroids(:,2), PWBoundary(:,1), P
 % Check: overlay ROIs
 figure; imagesc(Image); hold on; plot(PWBoundary(:,1), PWBoundary(:,2), 'w', 'LineWidth', 2);
 hold on;
-plot(Centroids(insidePWC==1,1), Centroids(insidePWC==1,2), 'r*'); 
-plot(Centroids(insidePWC==0,1), Centroids(insidePWC==0,2), 'b*'); 
+plot(Centroids(insidePWC,1), Centroids(insidePWC,2), 'r*'); 
+plot(Centroids(~insidePWC,1), Centroids(~insidePWC,2), 'b*'); 
 plot(PWBoundary(:,1), PWBoundary(:,2), 'g', 'LineWidth', 2);
 
 

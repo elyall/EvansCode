@@ -1,6 +1,5 @@
 function [ROIdata, Curves, outliers] = computeTuningCurve(ROIdata, ROIindex, TrialIndex, varargin)
 
-
 FitTuningCurves = false; % gaussian fit
 ControlID = 0; % StimID of control trials, or '[]' if no control trial
 StimIDs = [];
