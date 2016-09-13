@@ -70,9 +70,9 @@ if FlipMap
     Data = abs(Data-1);
 end
 
-% Scale data exponentially
-Data = Data.^exponent;
-Data = (Data - min(Data))/range(Data);
+% % Scale data exponentially
+% Data = Data.^exponent;
+% Data = (Data - min(Data))/range(Data);
 
 % Scale range so 1 now becomes the number of samples available
 if ~normalized

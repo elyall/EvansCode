@@ -1,4 +1,4 @@
-function [hA, hF] = plotTuningCurve(rois, ROIindex, varargin)
+function [hA, hF, normalize] = plotTuningCurve(rois, ROIindex, varargin)
 
 saveOut = false;
 saveFile = ''; % filename to save plots to
@@ -13,6 +13,7 @@ showPValues = false;
 PWCZ = [];
 
 % Plot colors & display options
+normalize = false;
 curveColor = 'r';
 fitColor = 'g';
 fitLegendLocation = 'NorthWest'; % 'NorthWest' or 'NorthEast'
@@ -25,8 +26,8 @@ hA = [];
 Title = true;
 YLim = [];
 Legend = {};
-LegendLocation = 'NorthWest';
-MarkerSize = 10; % 20
+LegendLocation = 'NorthEast';
+MarkerSize = 1; % 20
 LineWidth = 1; % 2
 showZero = false;
 
@@ -69,6 +70,9 @@ while index<=length(varargin)
                 index = index + 1;
             case 'PWCZ'
                 PWCZ = varargin{index+1};
+                index = index + 2;
+            case 'normalize'
+                normalize = varargin{index+1};
                 index = index + 2;
             case 'curveColor'
                 curveColor = varargin{index+1};
@@ -163,6 +167,10 @@ elseif ROIindex(end) == inf;
 end
 numROIs = numel(ROIindex);
 
+if numel(normalize) == 1
+    normalize = repmat(normalize,numROIs,1);
+end
+
 
 %% Determine number of axes
 if isempty(AxesIndex)
@@ -233,10 +241,20 @@ for index = 1:numel(ROIindex)
     end
     
     % Plot tuning curves
-    if showControl
-        errorbar(1,rois(rindex).curve(1),rois(rindex).StdError(1),'Color',curveColor{index},'LineStyle','-','LineWidth',LineWidth,'Marker','.','MarkerSize',MarkerSize);  %plot control position
+    if normalize(index)
+        if isequal(normalize(index),1)
+            normalize(index) = max(abs(rois(rindex).curve(2:end)));
+        end
+        data = rois(rindex).curve/normalize(index);
+        se = rois(rindex).StdError/normalize(index);
+    else
+        data = rois(rindex).curve;
+        se = rois(rindex).StdError;
     end
-    errorbar(1+showControl:numStimuli-1+showControl,rois(rindex).curve(2:end),rois(rindex).StdError(2:end),'Color',curveColor{index},'LineStyle','-','LineWidth',LineWidth,'Marker','.','MarkerSize',MarkerSize); %plot curve
+    if showControl
+        errorbar(1,data(1),se(1),'Color',curveColor{index},'LineStyle','-','LineWidth',LineWidth,'Marker','.','MarkerSize',MarkerSize);  %plot control position
+    end
+    errorbar(1+showControl:numStimuli-1+showControl,data(2:end),se(2:end),'Color',curveColor{index},'LineStyle','-','LineWidth',LineWidth,'Marker','.','MarkerSize',MarkerSize); %plot curve
     
     % Plot fit
     if showFit && numStimuli > 1

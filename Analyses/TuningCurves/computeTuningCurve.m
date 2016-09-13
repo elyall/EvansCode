@@ -103,7 +103,7 @@ fprintf('\tComplete\n');
 
 %% Determine stimuli info
 if isempty(StimIDs)
-    StimIDs = unique(ROIdata.DataInfo.StimID(TrialIndex))';
+    StimIDs = unique(ROIdata.DataInfo.StimID)';
 end
 numStimuli = numel(StimIDs);
 
@@ -171,9 +171,13 @@ for rindex = ROIindex
     end
     
     % Compute whether ROI is "tuned"
-    N = cellfun(@numel, ROIdata.rois(rindex).Raw(firstStim:end));
-    dict = cellfun(@(x,y) repmat(x,y,1), num2cell(1:numel(N))', num2cell(N), 'UniformOutput',false);
-    ROIdata.rois(rindex).TunedPValue = anovan(cat(1,ROIdata.rois(rindex).Raw{firstStim:end}), cat(1,dict{:}), 'model','full','display','off');
+    if ~any(isnan(ROIdata.rois(rindex).curve))
+        N = cellfun(@numel, ROIdata.rois(rindex).Raw(firstStim:end));
+        dict = cellfun(@(x,y) repmat(x,y,1), num2cell(1:numel(N))', num2cell(N), 'UniformOutput',false);
+        ROIdata.rois(rindex).TunedPValue = anovan(cat(1,ROIdata.rois(rindex).Raw{firstStim:end}), cat(1,dict{:}), 'model','full','display','off');
+    else
+        ROIdata.rois(rindex).TunedPValue = nan;
+    end
         
 end %ROIs
 fprintf('\tComplete\n');
@@ -184,50 +188,50 @@ if FitTuningCurves
     fprintf('Fitting tuning curves with gaussian...');
     warning('off', 'curvefit:checkbounds:tooManyLowerBounds');
     for rindex = ROIindex
-        
-        % Ignore control trials for tuning curves
-        if ~isempty(ControlID)
-            minStimIndex = 2;
-        else
-            minStimIndex = 1;
+        if ~any(isnan(ROIdata.rois(rindex).curve))
+            % Ignore control trials for tuning curves
+            if ~isempty(ControlID)
+                minStimIndex = 2;
+            else
+                minStimIndex = 1;
+            end
+            
+            % Determine DC component
+            ROIdata.rois(rindex).min = min(ROIdata.rois(rindex).curve(minStimIndex:end));
+            ROIdata.rois(rindex).max = max(ROIdata.rois(rindex).curve(minStimIndex:end));
+            
+            % Subtract off DC component in either direction
+            upcurve = ROIdata.rois(rindex).curve(minStimIndex:end)-ROIdata.rois(rindex).min;
+            downcurve = ROIdata.rois(rindex).curve(minStimIndex:end)-ROIdata.rois(rindex).max;
+            
+            % Fit upward and downward gaussian
+            [UpFit, UpGoFit] = FitFull(upcurve);
+            [DownFit, DownGoFit] = FitFull(downcurve);
+            
+            % Save fit paraemters
+            if UpGoFit.rsquare >= DownGoFit.rsquare
+                ROIdata.rois(rindex).FitDirection = 'Up';
+                ROIdata.rois(rindex).Fit = UpFit;
+                ROIdata.rois(rindex).GoFit = UpGoFit;
+                ROIdata.rois(rindex).offset = ROIdata.rois(rindex).min;
+            else
+                ROIdata.rois(rindex).FitDirection = 'Down';
+                ROIdata.rois(rindex).Fit = DownFit;
+                ROIdata.rois(rindex).GoFit = DownGoFit;
+                ROIdata.rois(rindex).offset = ROIdata.rois(rindex).max;
+            end
+            ROIdata.rois(rindex).Coeff = coeffvalues(ROIdata.rois(rindex).Fit);
+            ROIdata.rois(rindex).ConfIntervals = confint(ROIdata.rois(rindex).Fit);
+            ROIdata.rois(rindex).FWHM = ROIdata.rois(rindex).Coeff(3)*2*sqrt(2*log(2)); % FWHM = 2*sqrt(2*ln(2))*c (c is std dev of curve)
+            ROIdata.rois(rindex).rsquare = ROIdata.rois(rindex).GoFit.rsquare;
         end
-        
-        % Determine DC component
-        ROIdata.rois(rindex).min = min(ROIdata.rois(rindex).curve(minStimIndex:end));
-        ROIdata.rois(rindex).max = max(ROIdata.rois(rindex).curve(minStimIndex:end));
-        
-        % Subtract off DC component in either direction
-        upcurve = ROIdata.rois(rindex).curve(minStimIndex:end)-ROIdata.rois(rindex).min;
-        downcurve = ROIdata.rois(rindex).curve(minStimIndex:end)-ROIdata.rois(rindex).max;
-
-        % Fit upward and downward gaussian
-        [UpFit, UpGoFit] = FitFull(upcurve);
-        [DownFit, DownGoFit] = FitFull(downcurve);
-        
-        % Save fit paraemters
-        if UpGoFit.rsquare >= DownGoFit.rsquare
-            ROIdata.rois(rindex).FitDirection = 'Up';
-            ROIdata.rois(rindex).Fit = UpFit;
-            ROIdata.rois(rindex).GoFit = UpGoFit;
-            ROIdata.rois(rindex).offset = ROIdata.rois(rindex).min;
-        else
-            ROIdata.rois(rindex).FitDirection = 'Down';
-            ROIdata.rois(rindex).Fit = DownFit;
-            ROIdata.rois(rindex).GoFit = DownGoFit;
-            ROIdata.rois(rindex).offset = ROIdata.rois(rindex).max;
-        end
-        ROIdata.rois(rindex).Coeff = coeffvalues(ROIdata.rois(rindex).Fit);
-        ROIdata.rois(rindex).ConfIntervals = confint(ROIdata.rois(rindex).Fit);
-        ROIdata.rois(rindex).FWHM = ROIdata.rois(rindex).Coeff(3)*2*sqrt(2*log(2)); % FWHM = 2*sqrt(2*ln(2))*c (c is std dev of curve)
-        ROIdata.rois(rindex).rsquare = ROIdata.rois(rindex).GoFit.rsquare;
-        
     end %ROIs
     fprintf('\tComplete\n');
 end
 
 
 %% Output curves
-if nargout > 2
+if nargout > 1
     Curves = reshape([ROIdata.rois(ROIindex).curve],numel(ROIdata.rois(1).curve),numel(ROIindex))';
 end
 

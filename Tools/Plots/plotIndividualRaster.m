@@ -1,4 +1,4 @@
-function [hA, CLim, CMap] = plotIndividualRaster(rois, ROIindex, DataInfo, varargin)
+function [hA, CLim, CMap, data] = plotIndividualRaster(rois, ROIindex, DataInfo, varargin)
 
 % Data to display
 dataType = 'dFoF';      % 'dFoF' or 'raw'
@@ -16,7 +16,7 @@ numSTDsOutlier = inf;   % 'inf' means no trials are thrown out
 zscoreby = 'none';      %'all' or 'trial' or 'none'
 avgPixelHeight = 6;     % number of pixels of average plots height
 frameRate = 15.45;      % frame rate of the data
-xlab='Seconds';          % default x-axis label
+xlab='';          % default x-axis label
 framelimit = 'all';     % xlim (indexes data points)
 lineWidth = .5;
 labelAxes = true;

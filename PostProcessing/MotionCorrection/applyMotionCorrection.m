@@ -51,12 +51,12 @@ if exist('loadObj', 'var')
     MCdataIndex = nan(numFiles, 1);
     MCFiles = {MCdata(:).FullFilename};
     for findex = 1:numFiles
-        try
-            MCdataIndex(findex) = find(strcmp(ImageFiles{findex}, MCFiles));
-        catch
-            warning('Image file not found in motion correction object. Assuming motion correction corresponds to first file input');
+%         try
+%             MCdataIndex(findex) = find(strcmp(ImageFiles{findex}, MCFiles));
+%         catch
+%             warning('Image file not found in motion correction object. Assuming motion correction corresponds to first file input');
             MCdataIndex(findex) = 1;
-        end
+%         end
     end
     
     % Create frame indices vector

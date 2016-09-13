@@ -65,7 +65,9 @@ end
 
 %% Load in data
 if iscellstr(Data) || isstruct(Data) || (iscell(Data) && isstruct(Data{1}))
-    [Data, FileIndex, ROIindex] = gatherROIdata(Data, 'centroid', ':', 'none', ROIindex, FileIndex);
+%     [Data, FileIndex, ROIindex] = gatherROIdata(Data, 'centroid', ':', 'none', ROIindex, FileIndex);
+    [Data, FileIndex, ROIindex] = gatherROIdata(Data, 'vertices', ':', 'none', ROIindex, FileIndex);
+    Data = cellfun(@(x) reshape(x,numel(x)/2,2),Data,'UniformOutput',false);
 else
     if isempty(FileIndex)
         FileIndex = ones(size(Data,1),1); % assumes all from the same file
@@ -119,7 +121,7 @@ if isempty(vertices) || isequal(vertices, true)
     end
     if ~isempty(Data)
         if isnumeric(Data)
-            plot(Data(:,1),Data(:,2),'x.');
+            plot(Data(:,1),Data(:,2),'kx');
         elseif iscell(Data)
             for rindex = 1:numel(Data)
                 patch(Data{rindex}(:,1),Data{rindex}(:,2),'k');

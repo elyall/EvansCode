@@ -17,6 +17,7 @@ FaceAlpha = 1;
 EdgeAlpha = 1;
 FaceBrightness = 1;
 EdgeBrightness = 1;
+theta = []; % arrow only
 
 directory = cd;
 
@@ -63,6 +64,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'EdgeBrightness'
                 EdgeBrightness = varargin{index+1};
+                index = index + 2;
+            case 'theta'
+                theta = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -185,7 +189,7 @@ if strcmp(roiType,'roi') % append starting point to end to complete polygon
 end
 
 if strcmp(roiType,'arrow') % create arrows
-    [x,y] = pol2cart(EdgeBrightness(1)*pi/180,1);
+    [x,y] = pol2cart(theta*pi/180,1);
     Radius = bsxfun(@times, repmat([x,y],numROIs,1), Radius);
     if iscell(Data)
         Data = cat(1,Data{:});
@@ -219,9 +223,32 @@ switch roiType
             
         end
     case 'arrow'
-        Handles = quiver(Data(:,1),Data(:,2),Radius(:,1),Radius(:,2),...
-            'Color',                    FaceColor(1,:)*FaceBrightness(1),...
-            'LineWidth',                LineWidth(1));
+        
+        % User-created method
+        Handles = nan(numROIs,1);
+        for rindex = 1:numROIs
+            Handles(rindex) = arrow(Data(rindex,:),Data(rindex,:)+Radius(rindex,:),...
+                'FaceColor',    FaceColor(rindex,:)*FaceBrightness(rindex),...
+                'EdgeColor',    EdgeColor(rindex,:)*EdgeBrightness(rindex),...
+                'Width',        LineWidth(rindex),...
+                'BaseAngle',    60,...
+                'TipAngle',     20,...
+                'Length',       6);
+        end
+        
+%         % Annotation method (slow as shit)
+%         Handles = nan(numROIs,1);
+%         for rindex = 1:numROIs
+%             Handles(rindex) = annotation('arrow',...
+%                 'Units',    'pixels',...
+%                 'x',        [Data(rindex,1),Data(rindex,1)+Radius(rindex,1)],...
+%                 'y',        [Data(rindex,2),Data(rindex,2)+Radius(rindex,2)]);
+%         end
+
+        % Quiver method
+%         Handles = quiver(Data(:,1),Data(:,2),Radius(:,1),Radius(:,2),...
+%             'Color',                    FaceColor(1,:)*FaceBrightness(1),...
+%             'LineWidth',                LineWidth(1));
 end
 
 end

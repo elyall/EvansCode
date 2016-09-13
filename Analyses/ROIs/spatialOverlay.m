@@ -250,9 +250,6 @@ switch DataType
         % Change continuous space to discrete space
         if ~isequal(round(ColorIndex),ColorIndex)
             [ColorIndex, ~, numSamples, cbTick, cbTickLabel] = scaleContinuousData(ColorIndex);
-        else
-            ColorIndex = ColorIndex - min(ColorIndex) + 1; % shift bottom to 1
-            numSamples = max(ColorIndex);
         end
         
         % Determine colors
@@ -280,7 +277,7 @@ patchHandles = overlayROIs(ROIs,...
 %% Plot colorbar
 if showColorBar
    
-    cbH = colorbar; % display colorbar
+    cbH = colorbar('westoutside'); % display colorbar
     
     if flipColorbar
         set(cbH, 'Direction', 'reverse');
