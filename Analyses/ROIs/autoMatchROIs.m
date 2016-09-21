@@ -107,11 +107,10 @@ if iscellstr(ROIMasks) % cell array of files input
     end
 elseif iscell(ROIMasks) && isstruct(ROIMasks{1}) % cell array of ROIdata input
     ROIFiles = strcat('file', {' '}, num2str((1:numFiles)'));
-    InitialROIdata = cell(numFiles, 1);
+    InitialROIdata = ROIMasks;
     ROIMasks = cell(numFiles, 1);
     Centroids = cell(numFiles, 1);
     for findex = 1:numFiles
-        InitialROIdata{findex} = ROIMasks{findex};
         ROIMasks{findex} = reshape(full([InitialROIdata{findex}.rois(:).pixels]), size(InitialROIdata{findex}.rois(1).pixels,1), size(InitialROIdata{findex}.rois(1).pixels,2), numel(InitialROIdata{findex}.rois));
         Centroids{findex} = reshape([InitialROIdata{findex}.rois(:).centroid], 2, numel(InitialROIdata{findex}.rois))';
     end
@@ -137,7 +136,7 @@ if ~addNewROIs
     fprintf('not');
 end
 fprintf('adding missing ROIs across files)\n');
-temp = strcat(num2str(numROIs), {' rois from '}, ROIFiles');
+temp = strcat(num2str(numROIs), {' rois from '}, ROIFiles);
 fprintf('\t%s\n', temp{:});
 
 

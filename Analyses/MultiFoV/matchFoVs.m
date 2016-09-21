@@ -424,7 +424,7 @@ elseif eventdata.Indices(2) == 1 || eventdata.Indices(2) == 6   % adjust filenam
     gd.DataSets(eventdata.Indices(1)).filename = fullfile(contents{eventdata.Indices(1), 6}, contents{eventdata.Indices(1), 1});
     guidata(hObject, gd);
 
-elseif eventdata.Indices(2) == 7                                % remove selected file
+elseif eventdata.Indices(2) == 7                    % remove selected file
     gd.DataSets(eventdata.Indices(1)) = [];         % remove from struct
     contents = get(hObject, 'Data');                % get table contents
     contents(eventdata.Indices(1),:) = [];          % remove from table
