@@ -6,12 +6,14 @@ speed = 'quick'; % 'quick' or 'pretty'
 % type = 'blend'; % 'mean' or 'blend' (for pretty only)
 scaling = 'Independent'; % 'Independent' or 'Joint' (for quick only)
 
-Crop = false;
+% Crop = false;
 % Crop = true; % matrix (numFiles x 4:[xmin, ymin, width, height]) or 'true' for prompting
-% Crop = repmat([32.51, 0, 729.98, 512], 1, 1);
+Crop = repmat([32.51, 0, 729.98, 512], 1, 1);
 
 filt = false;
 % filt = fspecial('gaussian', 5, 1);
+
+filler = 'mean'; % 'mean' or scalar
 
 outMap = []; % map of output view
 
@@ -173,7 +175,6 @@ if numFiles > 1
             end
             
             
-            
         case 'quick' % Build Quick Image
             %             for cindex = 1:Dimensions(1,3);
             %                 Image = Images{1}(:,:,cindex);
@@ -191,6 +192,15 @@ if numFiles > 1
             Image = double(Image);
             %             end
             %         Origin = [Map.XWorldLimits(1), Map.YWorldLimits(1)];
+            
+            [~, ~, indMap] = mapFoVs(Maps, 'type', 'index'); % for determining what holes to fill
+    end
+    
+    temp = Image(any(indMap,3));
+    if ischar(filler)
+        Image(~any(indMap,3)) = mean(temp(:));
+    else
+        Image(~any(indMap,3)) = filler;
     end
     
 else

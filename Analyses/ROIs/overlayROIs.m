@@ -1,8 +1,8 @@
-function Handles = overlayROIs(Data, varargin)
+function [Handles,hA] = overlayROIs(Data, varargin)
 % Data is a cell array of strings, cell array of vertices, or list of
 % centroids
 
-axesHandle = [];
+hA = [];
 Maps = [];
 ROIindex = [1 inf];
 FileIndex = [];
@@ -26,8 +26,8 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
-            case {'Axes', 'axes'}
-                axesHandle = varargin{index+1};
+            case {'Axes', 'axes', 'axis'}
+                hA = varargin{index+1};
                 index = index + 2;
             case 'Maps'
                 Maps = varargin{index+1};
@@ -200,9 +200,9 @@ end
 %% Plot ROIs
 
 % Create figure
-if isempty(axesHandle)
+if isempty(hA)
     figure;
-    axesHandle = gca;
+    hA = gca;
 end
 
 % Plot each ROI
@@ -214,7 +214,7 @@ switch roiType
                 Data{rindex}(:,1),...
                 Data{rindex}(:,2),...
                 FaceColor(rindex,:)*FaceBrightness(rindex),...
-                'Parent',               axesHandle,...
+                'Parent',               hA,...
                 'FaceAlpha',            FaceAlpha(rindex),...
                 'EdgeAlpha',            EdgeAlpha(rindex),...
                 'EdgeColor',            EdgeColor(rindex,:)*EdgeBrightness(rindex),...

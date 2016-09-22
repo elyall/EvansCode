@@ -1,14 +1,23 @@
-function Data = plotExperiment(Data, Neuropil, ExpStimFrames, varargin)
+function [hA,Data,NormalizeBy] = plotExperiment(Data, Neuropil, varargin)
 
-Type = 'line'; % 'line' or 'image'
+% Data
 ROIindex = [1 inf];
 FrameIndex = [1 inf];
+ExpStimFrames = [];
 
-% Neuropil
-baselinePrctile = 30;
-
-% Smoothing
+% Computations
+NeuropilWeight = true;
+baselinePrctile = 0;
+adjustment = 'normalize'; % '', 'zscore', 'normalize'
+NormalizeBy = [];
 smoothType = ''; % '', 'moving', 'lowess', 'loess', 'sgolay', 'rlowess', or 'rloess'
+
+% Display
+Type = '2Dlines'; % '2Dlines', '3Dlines', or 'image'
+spacing = 1;
+XLabel = 'Time (sec)';
+frameRate = 15.45;
+Colors = [];
 
 hA = [];
 
@@ -26,11 +35,23 @@ while index<=length(varargin)
             case 'FrameIndex'
                 FrameIndex = varargin{index+1};
                 index = index + 2;
-            case 'baselinePrctile'
-                baselinePrctile = varargin{index+1};
+            case 'ExpStimFrames'
+                ExpStimFrames = varargin{index+1};
+                index = index + 2;
+            case 'NeuropilWeight'
+                NeuropilWeight = varargin{index+1};
+                index = index + 2;
+            case {'Colors','Color'}
+                Colors = varargin{index+1};
+                index = index + 2;
+            case 'adjustment'
+                adjustment = varargin{index+1};
                 index = index + 2;
             case 'smoothType'
                 smoothType = varargin{index+1};
+                index = index + 2;
+            case 'NormalizeBy'
+                NormalizeBy = varargin{index+1};
                 index = index + 2;
             case 'hA'
                 hA = varargin{index+1};
@@ -55,27 +76,35 @@ end
 
 
 %% Load ROIs
-
-% Load in ROIdata
 if ischar(Data)
     ROIFile = Data;
-    Data = load(ROIFile, 'ROIdata', '-mat');
-    Data = Data.ROIdata;
+    load(ROIFile, 'ROIdata', '-mat');
+    Data = ROIdata;
 end
-
-% Convert ROIdata to matrices
 if isstruct(Data)
-    Neuropil = reshape([Data.rois(:).rawneuropil], numel(Data.rois(1).rawdata), numel(Data.rois));
-    Data = reshape([Data.rois(:).rawdata], numel(Data.rois(1).rawdata), numel(Data.rois));
+    totalROIs = numel(Data.rois);
+    totalFrames = numel(Data.rois(1).rawdata);
+else
+    [totalFrames,totalROIs] = size(Data);
 end
-[totalFrames, totalROIs] = size(Data);
 
-% Determine ROIs to compute weights for
+
+%% Determine data to analyze
+
+% Determine ROIs to display
 if ROIindex(end) == inf
     ROIindex = [ROIindex(1:end-1), ROIindex(1:end-1)+1:totalROIs];
 end
 numROIs = numel(ROIindex);
-Data = Data(:,ROIindex);
+
+% Convert ROIdata to matrices
+if isstruct(Data)
+    Neuropil = reshape([Data.rois(ROIindex).rawneuropil], totalFrames, numROIs);
+    Data = reshape([Data.rois(ROIindex).rawdata], totalFrames, numROIs);
+else
+    Data = Data(:,ROIindex);
+    Neuropil = Neuropil(:,ROIindex);
+end
 
 % Determine frames to pull from
 if FrameIndex(end) == inf
@@ -83,28 +112,44 @@ if FrameIndex(end) == inf
 end
 
 % Format experiment data
-if exist('ExpStimFrames','var') && ~isempty(ExpStimFrames)
+if ~isempty(ExpStimFrames)
     if isvector(ExpStimFrames)
         Stim = ExpStimFrames;
     else
-        Stim = zeros(1,numel(FrameIndex));
+        Stim = zeros(1,totalFrames);
         for tindex = 1:size(ExpStimFrames,1)
             Stim(ExpStimFrames(tindex,1):ExpStimFrames(tindex,2)) = 1;
         end
     end
     Stim = Stim(FrameIndex);
+% ExpStimFrames = ExpStimFrames - FrameIndex(1) + 1;
+% ExpStimFrames(all(ExpStimFrames<0,2),:) = [];
+% ExpStimFrames(all(ExpStimFrames>FrameIndex(end),2),:) = [];
+% if ExpStimFrames(1)<0
+%     ExpStimFrames(1) = 0;
+% end
+% if ExpStimFrames(end) > FrameIndex(end)
+%     ExpStimFrames(end) = FrameIndex(end);
+% end
+end
+
+% Determine colors of lines
+if ismember(Type,{'2Dlines','3Dlines'}) && ~isempty(Colors) && size(Colors,1) ~= numROIs
+    Colors = repmat(Colors,ceil(numROIs/size(Colors,1)),1);
 end
 
 
 %% Subtract off neuropil
-if exist('Neuropil', 'var') && ~isempty(Neuropil)
-    NeuropilWeight = determineNeuropilWeight(Data, Neuropil(:,ROIindex));
-    Data = Data - bsxfun(@times,NeuropilWeight',Neuropil(:,ROIindex));
+if NeuropilWeight
+    if isequal(NeuropilWeight,true)
+        NeuropilWeight = determineNeuropilWeight(Data, Neuropil);
+    end
+    Data = Data - bsxfun(@times,NeuropilWeight',Neuropil);
 end
 
 
 %% Compute dFoF
-if ~isempty(baselinePrctile)
+if baselinePrctile
     baseline = prctile(Data, baselinePrctile);
     Data = bsxfun(@rdivide, bsxfun(@minus, Data, baseline), baseline);
 end
@@ -116,31 +161,101 @@ if ~isempty(smoothType)
 end
 
 
+%% Adjust data
+Data = Data(FrameIndex,:);
+if ~isempty(adjustment)
+    switch adjustment
+        case 'zscore'
+            Data = zscore(Data);
+        case 'normalize'
+            Data = bsxfun(@minus, Data, min(Data));   % subtract off minimum
+            if isempty(NormalizeBy)
+                NormalizeBy = max(Data);
+                Data = bsxfun(@rdivide, Data, NormalizeBy); % normalize by maximum
+            else
+                Data = bsxfun(@rdivide, Data, NormalizeBy);
+            end
+    end
+end
+
+
 %% Plot activity
 if isempty(hA)
     figure;
     hA = axes();
+else
+    axes(hA);
 end
 
-Data = Data(FrameIndex,:);
 switch Type
     case 'image'
         imagesc(Data');
+        set(hA, 'XTick', 0.5:frameRate:range(FrameIndex)+0.5, 'XTickLabel', cellstr(num2str((0:range(FrameIndex)/frameRate)')));
+        xlabel(XLabel);
         
-    case 'line'
+    case '2Dlines'
+        
+        % Shift data
         x = Data;
-        if numROIs > 1 % scale
-            x = bsxfun(@minus, x, min(x));
-            x = bsxfun(@rdivide, x, max(x));
-            x = bsxfun(@plus, x, 0.5:numel(ROIindex)-.5); % space out lines
+        if numROIs > 1
+%             x = bsxfun(@minus, x, min(x));   % subtract off minimum
+%             x = bsxfun(@rdivide, x, max(x)); % normalize by maximum
+            x = bsxfun(@plus, x, 0.5:spacing:spacing*(numROIs-.5)); % space out lines
         end
                 
         % Plot stimuli
-        if exist('Stim','var')
-            area(any(Stim,1)*max(x(:)),'FaceColor',[.9,.9,.9],'EdgeColor',[.9,.9,.9]); hold on;
+        if ~isempty(ExpStimFrames)
+            hold on;
+%             for tindex = 1:size(ExpStimFrames)
+%                 area(ExpStimFrames(tindex,:)/frameRate,repmat(numROIs*spacing+.75,1,2),'FaceColor',[.9,.9,.9],'EdgeColor',[.9,.9,.9],...
+%                     'FaceAlpha',.5,'EdgeAlpha',.5);
+%             end
+            area(0:1/frameRate:range(FrameIndex)/frameRate,any(Stim,1)*(numROIs*spacing+.75),'FaceColor',[.9,.9,.9],'EdgeColor',[.9,.9,.9],...
+                    'FaceAlpha',.5,'EdgeAlpha',.5);
         end
         
         % Plot data
-        plot(x);
-                
+        h = plot(repmat((0:1/frameRate:range(FrameIndex)/frameRate)',1,numROIs),x);
+        if ~isempty(Colors)
+            for rindex = 1:numROIs
+                h(rindex).Color = Colors(rindex,:);
+            end
+        end
+        xlabel(XLabel);
+        ylabel('ROI');
+        axis tight
+        
+    case '3Dlines'
+        
+        % Plot data
+        [Y,X] = meshgrid(1:spacing:spacing*numROIs,0:1/frameRate:range(FrameIndex)/frameRate);
+        h=plot3(X,Y,Data);
+        hold on;
+        if ~isempty(Colors)
+            for rindex = 1:numROIs
+                h(rindex).Color = Colors(rindex,:);
+            end
+        end
+        xlabel(XLabel);
+        ylabel('ROI');
+        
+        % Plot area underneath curves
+        ZLim = get(gca,'ZLim');
+        for rindex = 1:numROIs
+            fill3(X([1:end,end,1],rindex),Y([1:end,end,1],rindex),[Data(:,rindex);ZLim(1);ZLim(1)],[1,1,1],'EdgeAlpha',0);
+        end
+        
+        % Plot stimuli
+        if exist('Stim','var')
+            hold on;
+            Stim = Stim-[0;Stim(1:end-1)];
+            temp = [find(Stim==1),find(Stim==-1)];
+            for sindex = 1:size(temp,1)
+                fill3([temp(sindex,:),fliplr(temp(sindex,:))],repmat((numROIs+1)*spacing,1,2),[ZLim,fliplr(ZLim)],[.9,.9,.9]);
+            end
+        end
+        
+        axis tight
 end
+
+
