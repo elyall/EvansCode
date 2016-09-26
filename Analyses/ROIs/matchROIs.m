@@ -90,6 +90,12 @@ if isempty(ROIindex)
 else
     gd.ROIindex = ROIindex;
 end
+numROIs = size(gd.ROIindex,1);
+
+% Generate colors
+gd.Internal.colors.file = jet(gd.Internal.numFiles);
+gd.Internal.colors.roi = jet(numROIs);
+gd.Internal.colors.roi = gd.Internal.colors.roi(randperm(numROIs),:); % shuffle
 
 
 %% Create & Populate Figure
@@ -158,9 +164,18 @@ gd.Control.display = uicontrol(...
     'String',               'Merge',...
     'Parent',               gd.Control.panel,...
     'Units',                'normalized',...
-    'Position',             [0,.875,.5,.02],...
+    'Position',             [0,.875,.25,.02],...
     'Value',                true,...
     'Callback',             @(hObject,eventdata)changePlot(hObject,eventdata,guidata(hObject)));
+% checkbox: colors
+gd.Control.color = uicontrol(...
+    'Style',                'checkbox',...
+    'String',               'Color Toggle',...
+    'Parent',               gd.Control.panel,...
+    'Units',                'normalized',...
+    'Position',             [.25,.875,.25,.02],...
+    'Value',                false,...
+    'Callback',             @(hObject,eventdata)toggleColor(hObject,eventdata,guidata(hObject)));
 % pushbutton: reset zoom
 gd.Control.display = uicontrol(...
     'Style',                'pushbutton',...
@@ -210,8 +225,8 @@ gd.Control.rois = uitable(...
     'ColumnFormat',         repmat({'char','logical'},1,gd.Internal.numFiles),...
     'ColumnWidth',          repmat({30,40},1,gd.Internal.numFiles),...
     'Enable',               'on',...
-    'CellEditCallback',     @(hObject,eventdata)ROISelection(hObject,eventdata,guidata(hObject)),...
-    'CellSelectionCallback',@(src,evnt)set(src,'UserData',evnt.Indices));
+    'CellEditCallback',     @(hObject,eventdata)ROISelection(hObject,eventdata,guidata(hObject))); %,...
+    % 'CellSelectionCallback',@(src,evnt)set(src,'UserData',evnt.Indices));
 
 % Create joint map
 [gd.Map.dim, gd.Map.map, ~] = mapFoVs(gd.Maps,'type','index');
@@ -304,26 +319,13 @@ if ~isempty(rindex) && any(plotIndex(:))
     colors = jet(gd.Internal.numFiles);
     for r = 1:numel(rindex)
         if any(plotIndex(r,:))
-            Rindex = gd.ROIindex(rindex(r),findex(r)); % index in struct
-            
-            % Translate vertices
-            vertices = bsxfun(@plus, gd.ROIs{findex(r)}.rois(Rindex).vertices, offsets(findex(r), 1:2));
-            
-            % Determine Linewidth
-            if ~isempty(gd.Internal.active) && ismember([rindex(r),findex(r),Rindex], gd.Internal.active, 'rows')
-               linewidth = gd.Internal.Settings.ROILineWidth * 2;
-            else
-                linewidth = gd.Internal.Settings.ROILineWidth;
-            end
-            
-            % Plot ROI
             if plotIndex(r,1)
                 axes(gd.Display.axes1);
-                gd.Internal.patch(rindex(r),findex(r)) = plotROI(rindex(r),findex(r),gd);
+                gd.Internal.patch(rindex(r),findex(r),1) = plotROI(rindex(r),findex(r),1,gd);
             end
             if plotIndex(r,2)
                 axes(gd.Display.axes2);
-                gd.Internal.patch(rindex(r),findex(r)) = plotROI(rindex(r),findex(r),gd);
+                gd.Internal.patch(rindex(r),findex(r),2) = plotROI(rindex(r),findex(r),2,gd);
             end
         end
     end
@@ -335,28 +337,50 @@ end
 
 guidata(gd.fig,gd); % update guidata
 
-function h = plotROI(rindex,findex,gd)
-colors = jet(gd.Internal.numFiles);
+function h = plotROI(rindex,findex,axisindex,gd)
 Rindex = gd.ROIindex(rindex,findex); % index in struct
 
 % Translate vertices
-vertices = bsxfun(@plus, gd.ROIs{findex(r)}.rois(Rindex).vertices, gd.Map.dim(findex(r),1:2));
+vertices = bsxfun(@plus, gd.ROIs{findex}.rois(Rindex).vertices, gd.Map.dim(findex,1:2));
 
 % Determine Linewidth
-if ~isempty(gd.Internal.active) && ismember([rindex(r),findex(r),Rindex], gd.Internal.active, 'rows')
+if ~isempty(gd.Internal.active) && ismember([rindex,findex], gd.Internal.active, 'rows')
     linewidth = gd.Internal.Settings.ROILineWidth*2;
 else
     linewidth = gd.Internal.Settings.ROILineWidth;
 end
 
+if axisindex==1
+    P = gd.Display.axes1;
+else
+    P = gd.Display.axes2;
+end
+if ~gd.Control.color.Value
+    color = gd.Internal.colors.file(findex,:);
+else
+    color = gd.Internal.colors.roi(rindex,:);
+end
 % Plot ROI
-h = patch(vertices(:,1),vertices(:,2),colors(findex(r),:),...
-    'Parent',               gd.Display.axes1,...
+h = patch(vertices(:,1),vertices(:,2),color,...
+    'Parent',               P,...
     'FaceAlpha',            0,...
-    'EdgeColor',            colors(findex(r),:),...
+    'EdgeColor',            color,...
     'LineWidth',            linewidth,...
-    'UserData',             [rindex(r),findex(r),Rindex],...
+    'UserData',             [rindex,findex,Rindex],...
     'ButtonDownFcn',        @(hObject,eventdata)ROIClickCallback(hObject,eventdata,guidata(hObject))); % display ROI
+
+function toggleColor(hObject,eventdata,gd)
+[rindex,findex] = find(gd.Internal.patch);
+if ~gd.Control.color.Value
+    for f = 1:gd.Internal.numFiles
+        set(gd.Internal.patch(rindex(findex==f),findex(findex==f)),'EdgeColor',gd.Internal.colors.file(f,:));
+    end
+else
+    for r = 1:numel(rindex)
+        
+        set(gd.Internal.patch(rindex(r),findex(r)),'EdgeColor',gd.Internal.colors.roi(rindex(r),:));
+    end
+end
 
 function changePlot(hObject,eventdata,gd)
 if hObject.Value
@@ -385,25 +409,26 @@ function ROISelection(hObject,eventdata,gd)
 index = [eventdata.Indices(1), eventdata.Indices(2), hObject.Data{eventdata.Indices(1),eventdata.Indices(2)-1}];
 if ~isnan(index(3)) && ~isequal(index(3),0)   % current ROI exists
     if hObject.Data{eventdata.Indices(1),eventdata.Indices(2)} % display ROI
-        gd.Internal.patch(rindex(r),findex(r)) = plotROI(rindex(r),findex(r),gd);
+        gd.Internal.patch(index(1),index(2)/2,1) = plotROI(index(1),index(2)/2,gd);
     else
-        delete(gd.Internal.patch(index(1),index(2))); % delete roi
-        gd.Internal.patch(index(1),index(2)) = 0;
+        delete(gd.Internal.patch(index(1),index(2)/2)); % delete roi
+        gd.Internal.patch(index(1),index(2)/2,1) = 0;
     end
 else
     hObject.Data{eventdata.Indices(1),eventdata.Indices(2)} = false;
 end
+guidata(hObject,gd);
 
 function ROIClickCallback(hObject,eventdata,gd)
 if eventdata.Button == 1
     switch get(hObject, 'Type')
         case 'patch'
-            index = get(hObject,'UserData');
-            set(gd.Internal.patch(index(1),index(2)),'LineWidth',2*gd.Internal.Settings.ROILineWidth);
-            gd.Internal.active = cat(1,gd.Internal.active,index);
+            [r,f] = find(gd.Internal.patch==hObject);
+            set(gd.Internal.patch(r,f,1),'LineWidth',2*gd.Internal.Settings.ROILineWidth);
+            gd.Internal.active = cat(1,gd.Internal.active,[r,f]);
         case 'image'
             for r = 1:size(gd.Internal.active,1)
-                set(gd.Internal.patch(gd.Internal.active(r,1),gd.Internal.active(r,2)),'LineWidth',gd.Internal.Settings.ROILineWidth);
+                set(gd.Internal.patch(gd.Internal.active(r,1),gd.Internal.active(r,2),1),'LineWidth',gd.Internal.Settings.ROILineWidth);
             end
             gd.Internal.active = [];
     end
@@ -415,38 +440,48 @@ gd.Display.axes1.XLim = gd.Map.map.XIntrinsicLimits;
 gd.Display.axes1.YLim = gd.Map.map.YIntrinsicLimits;
 
 function MergeROIs(hObject,eventdata,gd)
-if size(gd.Internal.active,1)>1
+numActive = size(gd.Internal.active,1);
+if numActive>1
+    if numel(unique(gd.Internal.active(:,2)))<numActive
+        error('Can''t link multiple ROIs from the same dataset!');
+    end
     Rindex = min(gd.Internal.active(:,1));
-    rindex = find(gd.Internal.active(:,1)~=Rindex);
-    for r = 1:numel(rindex)
-        index = gd.Internal.active(rindex(r),:);
-        attached = find(~isnan(gd.ROIindex(index(1),:)) & gd.ROIindex(index(1),:)~=0); % determine ROIs linked to current
+    index = setdiff(gd.Internal.active(:,1),Rindex);
+    [~,order] = sort(index,'descend');
+    for r = order'
+        attached = find(~isnan(gd.ROIindex(index(r),:)) & gd.ROIindex(index(r),:)~=0); % determine ROIs linked to current
         if any(~isnan(gd.ROIindex(Rindex,attached)) & gd.ROIindex(Rindex,attached)~=0) % make sure no ROIs are already linked in affected files
             error('Linked ROI already exists! Please unlink any already linked ROI');
         else
             
             % Update dictionary
-            gd.ROIindex(Rindex,attached) = gd.ROIindex(index(1),attached);  % update registers
-            gd.ROIindex(index(1),:) = [];                                   % remove old line from dictionary
+            gd.ROIindex(Rindex,attached) = gd.ROIindex(index(r),attached);  % update registers
+            gd.ROIindex(index(r),:) = [];                                   % remove old line from dictionary
             
             % Update display table
-            gd.Control.rois.Data{Rindex,2*attached-1} = gd.ROIindex(Rindex,attached);   % update table registers
-            gd.Control.rois.Data{Rindex,2*attached} = true;                             % update display properties
-            gd.Control.rois.Data(index(1),:) = [];                                      % remove old line from table
+            for a = 1:numel(attached)
+                gd.Control.rois.Data{Rindex,2*attached(a)-1} = gd.ROIindex(Rindex,attached(a)); % update table registers
+                gd.Control.rois.Data{Rindex,2*attached(a)} = true;                              % update display properties
+            end
+            gd.Control.rois.Data(index(r),:) = []; % remove old line from table
             
             % Update patches and active list
             for a = 1:numel(attached)
-                gd.Internal.patch(Rindex,attached(a)) = gd.Internal.patch(index(1),attached(a)); % transfer handle
-                set(gd.Internal.patch(Rindex,attached(a)),'UserData',[Rindex,attached(a),gd.ROIindex(Rindex,attached(a))]); % update userdata register
+                gd.Internal.patch(Rindex,attached(a),1) = gd.Internal.patch(index(r),attached(a),1); % transfer handle
+                set(gd.Internal.patch(Rindex,attached(a),1),'UserData',[Rindex,attached(a),gd.ROIindex(Rindex,attached(a))]); % update userdata register
+                if gd.Control.color.Value
+                    set(gd.Internal.patch(Rindex,attached(a),1),'EdgeColor',gd.Internal.colors.roi(Rindex,:)); % update color
+                end
             end
-            gd.Internal.patch(index(1),:) = [];         % remove old line from list
+            gd.Internal.patch(index(r),:,:) = []; % remove old line from list
+            gd.Internal.colors.roi(index(r),:) = [];  % remove old color
 
         end
     end
     
     % Update active list
     for a = gd.Internal.active(:,2)'
-        set(gd.Internal.patch(Rindex,a),'LineWidth',gd.Internal.Settings.ROILineWidth); % remove from active
+        set(gd.Internal.patch(Rindex,a,1),'LineWidth',gd.Internal.Settings.ROILineWidth); % remove from active
     end
     gd.Internal.active = []; % clear active list
     
@@ -476,15 +511,22 @@ for r = 2:numel(attached)
     gd.Control.rois.Data{index(1),2*attached(r)} = false;                       % update display
 
     % Update patch object
-    gd.Internal.patch(Rindex,attached(r)) = gd.Internal.patch(index(1),attached(r));  % transfer handle
-    set(gd.Internal.patch(Rindex,attached(r)),'UserData',[Rindex,attached(r),gd.ROIindex(end,attached(r))]); % update userdata register
-    gd.Internal.patch(index(1),attached(r)) = 0;                            % remove old handle
+    gd.Internal.patch(Rindex,attached(r),1) = gd.Internal.patch(index(1),attached(r),1);  % transfer handle
+    set(gd.Internal.patch(Rindex,attached(r),1),'UserData',[Rindex,attached(r),gd.ROIindex(end,attached(r))]); % update userdata register
+    gd.Internal.colors.roi(Rindex,:) = rand(1,3); % generate new color
+    set(gd.Internal.patch(Rindex,attached(r),1),'EdgeColor',gd.Internal.colors.roi(Rindex,:)); % update color
+    gd.Internal.patch(index(1),attached(r),1) = 0; % remove old handle
     
     % Update active
-    set(gd.Internal.patch(end,attached(r)),'LineWidth',gd.Internal.Settings.ROILineWidth);  % remove from active
-    gd.Internal.active = []; % clear active list
+    set(gd.Internal.patch(Rindex,attached(r),1),'LineWidth',gd.Internal.Settings.ROILineWidth);  % update linewidth
 end
+gd.Internal.active = []; % clear active list
+set(gd.Internal.patch(index(1),attached(1),1),'LineWidth',gd.Internal.Settings.ROILineWidth);  % update linewidth
 guidata(hObject, gd);
 
 
 function SaveData(hObject,eventdata,gd)
+[f,p] = uiputfile({'*.mat'},'Save ROIindex');
+ROIindex = gd.ROIindex;
+save(fullfile(p,f),'ROIindex','-mat');
+

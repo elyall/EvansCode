@@ -198,9 +198,11 @@ if numFiles > 1
     
     temp = Image(any(indMap,3));
     if ischar(filler)
-        Image(~any(indMap,3)) = mean(temp(:));
+        Image(~any(indMap,3)) = nanmean(temp(:));
+        Image(isnan(Image)) = nanmean(temp(:));
     else
         Image(~any(indMap,3)) = filler;
+        Image(isnan(Image)) = filler;
     end
     
 else
