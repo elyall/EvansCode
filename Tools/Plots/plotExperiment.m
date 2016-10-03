@@ -210,8 +210,8 @@ switch Type
 %                 area(ExpStimFrames(tindex,:)/frameRate,repmat(numROIs*spacing+.75,1,2),'FaceColor',[.9,.9,.9],'EdgeColor',[.9,.9,.9],...
 %                     'FaceAlpha',.5,'EdgeAlpha',.5);
 %             end
-            area(0:1/frameRate:range(FrameIndex)/frameRate,any(Stim,1)*(numROIs*spacing+.75),'FaceColor',[.9,.9,.9],'EdgeColor',[.9,.9,.9],...
-                    'FaceAlpha',.5,'EdgeAlpha',.5);
+            h = area(0:1/frameRate:range(FrameIndex)/frameRate,any(Stim,1)*(numROIs*spacing+.75),'FaceColor',[.9,.9,.9],'EdgeColor',[.9,.9,.9]);
+            % set(h,'FaceAlpha',.5,'EdgeAlpha',.5);
         end
         
         % Plot data
