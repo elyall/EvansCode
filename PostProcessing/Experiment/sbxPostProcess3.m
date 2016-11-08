@@ -14,6 +14,7 @@ directory = cd;
 saveOut = false;
 saveFile = '';
 
+downsample_runspeed = 1;
 
 %% Parse input arguments
 index = 1;
@@ -62,7 +63,7 @@ if saveOut && isempty(saveFile)
 end
 
 warning('off', 'MATLAB:table:RowsAddedExistingVars');
-fprintf('Post-processing experiment file: %s\n', ExperimentFile);
+fprintf('Post-processing experiment file: %s', ExperimentFile);
 
 
 %% Load in experiment data
@@ -118,9 +119,15 @@ if numTrials ~= numTrials2
 end
 
 % Prepare trial assocation data
-FrameCounter = DataIn(:,strcmp(InputNames,'I_FrameCounter'));
-FrameCounter = FrameCounter - FrameCounter([1,1:end-1]);
-FrameCounter = FrameCounter>0;
+if any(DataIn(:,strcmp(InputNames,'I_FrameCounter')))
+    FrameCounter = DataIn(:,strcmp(InputNames,'I_FrameCounter'));
+    FrameCounter = FrameCounter - FrameCounter([1,1:end-1]);
+    FrameCounter = FrameCounter>0;
+else
+    warning('Frame counter failed to record any frames -> estimating exact frame cut offs');
+    FrameCounter = nan;
+    scansPerFrame = Experiment.params.samplingFrequency/Config.FrameRate;
+end
 
 % Index through trials gathering necessary information
 lastScan = 0;
@@ -159,10 +166,20 @@ for tindex = 1:numTrials
     frames.Stimulus(AnalysisInfo.ExpStimFrames(tindex,1):AnalysisInfo.ExpStimFrames(tindex,2)) = AnalysisInfo.StimID(tindex); % define when stimulus was presented
     
     % Assign frames to individual trials
-    if tindex == 1
-        frameOffset = AnalysisInfo.ExpStimFrames(tindex,1) - sum(FrameCounter(1:AnalysisInfo.ExpStimScans(tindex,1))) - 1; %trig frame minus number of frames counted, minus 1 to account for frame that started before the experiment but ended within the experiment
+    if ~isnan(FrameCounter)
+        if tindex == 1
+            frameOffset = AnalysisInfo.ExpStimFrames(tindex,1) - sum(FrameCounter(1:AnalysisInfo.ExpStimScans(tindex,1))) - 1; %trig frame minus number of frames counted, minus 1 to account for frame that started before the experiment but ended within the experiment
+        end
+        AnalysisInfo.ExpFrames(tindex,:) = frameOffset + [sum(FrameCounter(1:AnalysisInfo.ExpScans(tindex,1))), sum(FrameCounter(1:AnalysisInfo.ExpScans(tindex,2)))]; % indices of frames for current trial relative to entire experiment
+        
+    else
+        N = round((AnalysisInfo.ExpScans(tindex,2)-AnalysisInfo.ExpStimScans(tindex,2))/scansPerFrame);
+        if tindex == 1
+            AnalysisInfo.ExpFrames(tindex,:) = [1,AnalysisInfo.ExpStimFrames(1,2)+N];
+        else
+            AnalysisInfo.ExpFrames(tindex,:) = [AnalysisInfo.ExpFrames(tindex-1,2)+1,AnalysisInfo.ExpStimFrames(tindex,2)+N];
+        end
     end
-    AnalysisInfo.ExpFrames(tindex,:) = frameOffset + [sum(FrameCounter(1:AnalysisInfo.ExpScans(tindex,1))), sum(FrameCounter(1:AnalysisInfo.ExpScans(tindex,2)))]; % indices of frames for current trial relative to entire experiment
     AnalysisInfo.nFrames(tindex) = AnalysisInfo.ExpFrames(tindex,2) - AnalysisInfo.ExpFrames(tindex,1) + 1;
     if ~isnan(frames.Trial(AnalysisInfo.ExpFrames(tindex,1))) %first frame already associated with previous trial
         frames.Trial(AnalysisInfo.ExpFrames(tindex,1)+1:AnalysisInfo.ExpFrames(tindex,2)) = tindex; %do not overwrite first frame's association (because stimuli occur at end of trial)
@@ -174,38 +191,51 @@ end %trials
 
 
 %% Determine alignment of 2P frames to scans
-data = DataIn(:,strcmp(InputNames,'I_FrameCounter'));
-data = data - data([1,1:end-1]);
 frames.StartScan = nan(Config.Frames,1);
-if data(1)==1
-    data = find(data>0);
-    frames.StartScan(AnalysisInfo.ExpFrames(1,1):AnalysisInfo.ExpFrames(1,1)+numel(data)-1) = data;
-else
-    data = find(data>0);
-    frames.StartScan(AnalysisInfo.ExpFrames(1,1)+1:AnalysisInfo.ExpFrames(1,1)+numel(data)) = data;
+if any(ismember(InputNames,'I_FrameCounter')) && any(DataIn(:,strcmp(InputNames,'I_FrameCounter')))
+    data = DataIn(:,strcmp(InputNames,'I_FrameCounter'));
+    data = data - data([1,1:end-1]);
+    if data(1)==1
+        data = find(data>0);
+        frames.StartScan(AnalysisInfo.ExpFrames(1,1):AnalysisInfo.ExpFrames(1,1)+numel(data)-1) = data;
+    else
+        data = find(data>0);
+        frames.StartScan(AnalysisInfo.ExpFrames(1,1)+1:AnalysisInfo.ExpFrames(1,1)+numel(data)) = data;
+    end
+    % currentFrame = AnalysisInfo.ExpFrames(1,1);
+    % for findex=1:numel(ScanIndex)
+    %     frames.ScanIndex(currentFrame) = ScanIndex(findex);
+    %     currentFrame = currentFrame + 1;
+    % end
 end
-% currentFrame = AnalysisInfo.ExpFrames(1,1);
-% for findex=1:numel(ScanIndex)
-%     frames.ScanIndex(currentFrame) = ScanIndex(findex);
-%     currentFrame = currentFrame + 1;
-% end
 
 
 %% Compute running speed
-
-% Compute running speed at acquired sampling frequency
-data = DataIn(:,strcmp(InputNames, 'I_RunWheelB'));
-dataB = DataIn(:,strcmp(InputNames, 'I_RunWheelA'));
-data = (data - [0; data(1:end-1)]);
-data = data>0;
-data(all([data,dataB],2))=-1; %set backwards steps to be backwards
-data = calcRunningSpeed(data, Experiment.params.samplingFrequency, 1, date);
-
-% Set running speed per frame to be mean during that frame
 frames.RunningSpeed = nan(Config.Frames,1);
-frames.RunningSpeed(AnalysisInfo.ExpFrames(1,1)) = mean(data(1:frames.StartScan(AnalysisInfo.ExpFrames(1,1)+1)-1));
-for frameNumber = AnalysisInfo.ExpFrames(1,1)+1:find(~isnan(frames.StartScan),1,'last')-1
-    frames.RunningSpeed(frameNumber) = mean(data(frames.StartScan(frameNumber):frames.StartScan(frameNumber+1)-1));
+if any(ismember(InputNames,'I_RunWheelB')) && any(DataIn(:,strcmp(InputNames,'I_RunWheelB')))
+    
+    % Compute running speed at acquired sampling frequency
+    data = DataIn(:,strcmp(InputNames, 'I_RunWheelB'));
+    dataB = DataIn(:,strcmp(InputNames, 'I_RunWheelA'));
+    data = (data - [0; data(1:end-1)]);
+    data = data>0;
+    data(all([data,dataB],2))=-1; %set backwards steps to be backwards
+    data = calcRunningSpeed(data, Experiment.params.samplingFrequency, downsample_runspeed, date);
+    
+    % Determine mean running speed per frame
+    if ~all(isnan(frames.StartScan)) % exact scans for each frame are known
+        frames.RunningSpeed(AnalysisInfo.ExpFrames(1,1)) = mean(data(1:frames.StartScan(AnalysisInfo.ExpFrames(1,1)+1)-1));
+        for frameNumber = AnalysisInfo.ExpFrames(1,1)+1:find(~isnan(frames.StartScan),1,'last')-1
+            frames.RunningSpeed(frameNumber) = mean(data(frames.StartScan(frameNumber):frames.StartScan(frameNumber+1)-1));
+        end
+    else % FrameCounter didn't exist or was empty -> assume sampling to be constant
+        for tindex = 1:numTrials
+            temp = data(max(1,round(AnalysisInfo.ExpScans(tindex,1)/downsample_runspeed)):round(AnalysisInfo.ExpScans(tindex,2)/downsample_runspeed));
+            N = floor(numel(temp)/AnalysisInfo.nFrames(tindex));
+            temp = reshape(temp(1:N*AnalysisInfo.nFrames(tindex)),N,AnalysisInfo.nFrames(tindex));
+            frames.RunningSpeed(AnalysisInfo.ExpFrames(tindex,1):AnalysisInfo.ExpFrames(tindex,2)) = mean(temp);
+        end
+    end
 end
 
 
@@ -216,7 +246,7 @@ if any(ismember(InputNames, 'I_WhiskerTracker'))
         temp = VideoReader(WTFile);
         numFrames = temp.Duration*temp.FrameRate;
         
-        % Determine number of frames captured
+        % Determine number of frames registered
         data = DataIn(:,strcmp(InputNames, 'I_WhiskerTracker'));
         data = data - [0;data(1:end-1)];
         data = find(data>0);
@@ -238,6 +268,7 @@ if any(ismember(InputNames, 'I_WhiskerTracker'))
         warning('Whisker Images file not found, will not include WT data');
     end
 end
+fprintf('\tComplete.\n');
 
 
 %% Save output
@@ -247,6 +278,6 @@ if saveOut
     else
         save(saveFile, 'AnalysisInfo', 'frames', 'InputNames', '-mat', '-append');
     end
-    fprintf('AnalysisInfo saved to: %s\n', saveFile);
+    fprintf('\tAnalysisInfo saved to: %s\n', saveFile);
 end
 

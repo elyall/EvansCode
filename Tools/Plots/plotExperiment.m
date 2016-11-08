@@ -6,9 +6,9 @@ FrameIndex = [1 inf];
 ExpStimFrames = [];
 
 % Computations
-NeuropilWeight = true;
+NeuropilWeight = false;
 baselinePrctile = 0;
-adjustment = 'normalize'; % '', 'zscore', 'normalize'
+adjustment = ''; % '', 'zscore', 'normalize'
 NormalizeBy = [];
 smoothType = ''; % '', 'moving', 'lowess', 'loess', 'sgolay', 'rlowess', or 'rloess'
 
@@ -103,7 +103,9 @@ if isstruct(Data)
     Data = reshape([Data.rois(ROIindex).rawdata], totalFrames, numROIs);
 else
     Data = Data(:,ROIindex);
-    Neuropil = Neuropil(:,ROIindex);
+    if ~isempty(Neuropil)
+        Neuropil = Neuropil(:,ROIindex);
+    end
 end
 
 % Determine frames to pull from
@@ -205,13 +207,12 @@ switch Type
                 
         % Plot stimuli
         if ~isempty(ExpStimFrames)
+            ExpStimFrames = bsxfun(@plus,ExpStimFrames,[-.5,.5]);
             hold on;
-%             for tindex = 1:size(ExpStimFrames)
-%                 area(ExpStimFrames(tindex,:)/frameRate,repmat(numROIs*spacing+.75,1,2),'FaceColor',[.9,.9,.9],'EdgeColor',[.9,.9,.9],...
-%                     'FaceAlpha',.5,'EdgeAlpha',.5);
-%             end
-            h = area(0:1/frameRate:range(FrameIndex)/frameRate,any(Stim,1)*(numROIs*spacing+.75),'FaceColor',[.9,.9,.9],'EdgeColor',[.9,.9,.9]);
-            % set(h,'FaceAlpha',.5,'EdgeAlpha',.5);
+            YLim = [min(x(:)),max(x(:))]+[-.02,.02]*range(x(:));
+            for tindex = 1:size(ExpStimFrames,1)
+                patch(ExpStimFrames(tindex,[1,1,2,2])/frameRate,YLim([1,2,2,1]),[.9,.9,.9],'EdgeColor',[.9,.9,.9]);
+            end
         end
         
         % Plot data

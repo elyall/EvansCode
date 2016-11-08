@@ -90,7 +90,7 @@ function loadbtn_Callback(hObject, eventdata, handles)
     plist = {};
     h = [];
     
-    [fn,pathname] = uigetfile('*.align','Choose ''.align'' file', '/home/elyall/Documents/Data');
+    [fn,pathname] = uigetfile('*.align','Choose ''.align'' file', '/media/elyall/Data'); %/home/elyall/Documents/Data
     fn = [pathname fn];
     
     text(0.5,0.5,'loading...');

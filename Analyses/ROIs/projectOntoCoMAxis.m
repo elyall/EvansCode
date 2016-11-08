@@ -158,7 +158,7 @@ for tindex = 1:numel(theta)
     % Compute correlation
     [~,p(tindex)] = corr(dist,Data);
     
-    if (verbose && tindex==numel(theta)) || saveVideo 
+    if (verbose) || saveVideo  % && tindex==numel(theta)
         
         % Check gradient aligns with axis
         subplot(2,3,[1,4]);
@@ -211,6 +211,8 @@ for tindex = 1:numel(theta)
         if saveVideo
             img = getframe(gcf); 
             writeVideo(hV,img);
+        else
+%             pause(.1);
         end
         
     end %verbose
