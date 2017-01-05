@@ -160,16 +160,16 @@ for tindex = 1:numel(theta)
     
     if (verbose) || saveVideo  % && tindex==numel(theta)
         
-        % Check gradient aligns with axis
-        subplot(2,3,[1,4]);
-        image(zeros(ImageSize));
-        [temp,~,N] = scaleContinuousData(dist);
-        CMap = parula(N);
-        overlayROIs(Centroids, 'axes', hA, 'Radius', 10, 'Color', CMap(temp,:));
-        [x,y] = pol2cart(theta(tindex)*2*pi/360,0.5);
-        vector = [x,y;-x,-y];
-        vector = bsxfun(@plus,vector*invMat,Mean);
-        hold on; plot(vector(:,1),vector(:,2),'LineWidth',2,'Color',[1,192/255,203/255]); hold off;
+%         % Check gradient aligns with axis
+%         subplot(2,3,[1,4]);
+%         image(zeros(ImageSize));
+%         [temp,~,N] = scaleContinuousData(dist);
+%         CMap = parula(N);
+%         overlayROIs(Centroids, 'axes', hA, 'Radius', 10, 'Color', CMap(temp,:));
+%         [x,y] = pol2cart(theta(tindex)*2*pi/360,0.5);
+%         vector = [x,y;-x,-y];
+%         vector = bsxfun(@plus,vector*invMat,Mean);
+%         hold on; plot(vector(:,1),vector(:,2),'LineWidth',2,'Color',[1,192/255,203/255]); hold off;
         
         % Plot fit
         subplot(2,3,[2,5]);
@@ -178,7 +178,7 @@ for tindex = 1:numel(theta)
         plot(dist(order), Yfit, 'r--'); hold off;
         xlim([-3,3]); ylim([4,20]);
         xlabel('Distance along axis');
-        ylabel('Change in preferred pole position');
+        ylabel('Preferred pole position');
         text(1,1, sprintf('r^2 = %.4f', rsquared(tindex)), 'Units', 'Normalized', 'HorizontalAlignment', 'Right', 'VerticalAlignment', 'Top');
         
         % Plot rsquared
