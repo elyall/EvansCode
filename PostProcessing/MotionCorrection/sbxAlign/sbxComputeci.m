@@ -8,7 +8,7 @@ function [] = sbxComputeci(fname,Depth)
     Config = load2PConfig([fname,'.sbx']);
     numDepths = Config.Depth;
     if numDepths>1
-        str = sprints('_depth%d',Depth);
+        str = sprintf('_depth%d',Depth);
     else
         str = '';
     end

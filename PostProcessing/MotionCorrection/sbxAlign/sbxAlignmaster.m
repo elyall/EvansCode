@@ -7,6 +7,7 @@ function sbxAlignmaster(fname,Depth)
 %     sbxpacksignals(fname); %Takes about 10 minutes
 
     global info
+    fprintf('Starting sbxAlignmaster: %s\n',[fname,'.sbx']);
 
     %% Edit to load and analyze single depth
     if ~exist('Depth','var') || isempty(Depth)
@@ -15,7 +16,7 @@ function sbxAlignmaster(fname,Depth)
     Config = load2PConfig([fname,'.sbx']);
     numDepths = Config.Depth;
     if numDepths>1
-        str = sprints('_depth%d',Depth);
+        str = sprintf('_depth%d',Depth);
     else
         str = '';
     end
