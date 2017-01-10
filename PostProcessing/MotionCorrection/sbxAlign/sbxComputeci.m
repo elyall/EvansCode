@@ -13,15 +13,13 @@ function [] = sbxComputeci(fname,Depth)
         str = '';
     end
     
-    Frames = idDepth([fname,'.sbx'],'Depth',Depth)';    
+    Frames = idDepth([fname,'.sbx'],'Depth',Depth);    
     if Depth==1
         Frames(1) = []; % throw out very first frame as it's incomplete and not at the right depth
     end
-    numFrames = numel(Frames);
-    Frames = [Frames;1:numFrames];
     
     %%
-    vals = load([fname '.align'],'-mat','T','v','Q','thestd');
+    vals = load([fname,str,'.align'],'-mat','T','v','Q','thestd');
 
     T = vals.T;
 

@@ -320,7 +320,7 @@ function sbxAlignmaster(fname,Depth)
 
     tic;
 
-    sbxComputeci(fname,Frames); %Takes about 10 minutes, eats up a ton of RAM
+    sbxComputeci(fname,Depth); %Takes about 10 minutes, eats up a ton of RAM
 
     toc;
 
