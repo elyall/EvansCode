@@ -1,4 +1,4 @@
-function sbxalignmaster(fname,Depth)
+function sbxAlignmaster(fname,Depth)
 
 
 
@@ -22,7 +22,7 @@ function sbxalignmaster(fname,Depth)
     
     Frames = idDepth([fname,'.sbx'],'Depth',Depth)';    
     if Depth==1
-        Frames(1) = []; % throw out very first frame as it's wrong
+        Frames(1) = []; % throw out very first frame as it's wrong (blank row in T added in at end)
     end
     numFrames = numel(Frames);
     Frames = [Frames;1:numFrames];
@@ -301,6 +301,10 @@ function sbxalignmaster(fname,Depth)
 
     
 
+    if Depth==1
+        T = cat(1,zeros(1,2),T); % add back values for first frame that was ignored
+    end
+    
     try
 
         save([fname,str,'.align'],'m','v','thestd','sm','k','T','Q','-append');
