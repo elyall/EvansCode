@@ -33,6 +33,10 @@ while index<=length(varargin)
     end
 end
 
+if saveOut && isempty(saveFile)
+    saveFile = [fname,'.rois'];
+end
+
 
 %% Create MCdata variable
 if exist([fname,'.align'], 'file')

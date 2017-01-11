@@ -94,10 +94,17 @@ info.line = info.line + 1;      % change 0 indexing to 1 indexing
 
 %% Initialize outputs
 
-AnalysisInfo = table(zeros(1,1),zeros(1,1),  cell(1,1),    cell(1,1),   zeros(1,1),zeros(1,2),zeros(1,2),   zeros(1,1), cell(1,1),   zeros(1,1),zeros(1,2),zeros(1,2),     zeros(1,2),       zeros(1,1),...
-    'VariableNames', {'StimID','TrialIndex','ExpFilename','DataFilename','nScans','ExpScans','ExpStimScans','ImgIndex','ImgFilename','nFrames','ExpFrames','ExpStimFrames','StimFrameLines','onlineRunSpeed'});
+AnalysisInfo = table(zeros(1,1),zeros(1,1),  cell(1,1),    cell(1,1),   zeros(1,1),zeros(1,2),zeros(1,2),   zeros(1,1), cell(1,1),   zeros(1,1),zeros(1,2),zeros(1,2),     zeros(1,2),...
+    'VariableNames', {'StimID','TrialIndex','ExpFilename','DataFilename','nScans','ExpScans','ExpStimScans','ImgIndex','ImgFilename','nFrames','ExpFrames','ExpStimFrames','StimFrameLines'});
 
 frames = struct('Stimulus',nan(Config.Frames,1), 'Trial',nan(Config.Frames,1));
+
+if any(ismember(InputNames,'I_RunWheelB'))
+    runspeed = true;
+    AnalysisInfo = [AnalysisInfo, table(zeros(1,1),'VariableNames',{'onlineRunSpeed'})];
+else
+    runspeed = false;
+end
 
 if isfield(TrialInfo, 'numRandomScansPost')
     toggleRandomTime = true;
@@ -125,7 +132,7 @@ if any(DataIn(:,strcmp(InputNames,'I_FrameCounter')))
     FrameCounter = FrameCounter>0;
 else
     warning('Frame counter failed to record any frames -> estimating exact frame cut offs');
-    FrameCounter = nan;
+    FrameCounter = false;
     scansPerFrame = Experiment.params.samplingFrequency/Config.FrameRate;
 end
 
@@ -134,11 +141,13 @@ lastScan = 0;
 for tindex = 1:numTrials
     
     % Assign trial info
-    AnalysisInfo.StimID(tindex,1) = TrialInfo.StimID(tindex);             % ID # of stimulus presented
+    AnalysisInfo.StimID(tindex,1) = TrialInfo.StimID(tindex);           % ID # of stimulus presented
     AnalysisInfo.TrialIndex(tindex) = tindex;                           % index of trial from current '.exp' file
     AnalysisInfo.ExpFilename{tindex} = ExperimentFile;                  % name of '.exp' file current trial is found in
     AnalysisInfo.DataFilename{tindex} = DataInFile;                     % name of '.bin' file current input data is found in
-    AnalysisInfo.onlineRunSpeed(tindex,1) = TrialInfo.RunSpeed(tindex);   % running speed calculated online
+    if runspeed
+        AnalysisInfo.onlineRunSpeed(tindex,1) = TrialInfo.RunSpeed(tindex); % running speed calculated online
+    end
     if toggleRandomTime
         AnalysisInfo.numRandomScansPost(tindex,1) = TrialInfo.numRandomScansPost(tindex); % number of blank scans presented after current trial
     end
@@ -166,9 +175,9 @@ for tindex = 1:numTrials
     frames.Stimulus(AnalysisInfo.ExpStimFrames(tindex,1):AnalysisInfo.ExpStimFrames(tindex,2)) = AnalysisInfo.StimID(tindex); % define when stimulus was presented
     
     % Assign frames to individual trials
-    if ~isnan(FrameCounter)
+    if ~isequal(FrameCounter,false)
         if tindex == 1
-            frameOffset = AnalysisInfo.ExpStimFrames(tindex,1) - sum(FrameCounter(1:AnalysisInfo.ExpStimScans(tindex,1))) - 1; %trig frame minus number of frames counted, minus 1 to account for frame that started before the experiment but ended within the experiment
+            frameOffset = AnalysisInfo.ExpStimFrames(tindex,1) - sum(FrameCounter(1:AnalysisInfo.ExpStimScans(tindex,1))); %trig frame minus number of full frames recorded during the experiment
         end
         AnalysisInfo.ExpFrames(tindex,:) = frameOffset + [sum(FrameCounter(1:AnalysisInfo.ExpScans(tindex,1))), sum(FrameCounter(1:AnalysisInfo.ExpScans(tindex,2)))]; % indices of frames for current trial relative to entire experiment
         
@@ -211,29 +220,31 @@ end
 
 
 %% Compute running speed
-frames.RunningSpeed = nan(Config.Frames,1);
-if any(ismember(InputNames,'I_RunWheelB')) && any(DataIn(:,strcmp(InputNames,'I_RunWheelB')))
-    
-    % Compute running speed at acquired sampling frequency
-    data = DataIn(:,strcmp(InputNames, 'I_RunWheelB'));
-    dataB = DataIn(:,strcmp(InputNames, 'I_RunWheelA'));
-    data = (data - [0; data(1:end-1)]);
-    data = data>0;
-    data(all([data,dataB],2))=-1; %set backwards steps to be backwards
-    data = calcRunningSpeed(data, Experiment.params.samplingFrequency, downsample_runspeed, date);
-    
-    % Determine mean running speed per frame
-    if ~all(isnan(frames.StartScan)) % exact scans for each frame are known
-        frames.RunningSpeed(AnalysisInfo.ExpFrames(1,1)) = mean(data(1:frames.StartScan(AnalysisInfo.ExpFrames(1,1)+1)-1));
-        for frameNumber = AnalysisInfo.ExpFrames(1,1)+1:find(~isnan(frames.StartScan),1,'last')-1
-            frames.RunningSpeed(frameNumber) = mean(data(frames.StartScan(frameNumber):frames.StartScan(frameNumber+1)-1));
-        end
-    else % FrameCounter didn't exist or was empty -> assume sampling to be constant
-        for tindex = 1:numTrials
-            temp = data(max(1,round(AnalysisInfo.ExpScans(tindex,1)/downsample_runspeed)):round(AnalysisInfo.ExpScans(tindex,2)/downsample_runspeed));
-            N = floor(numel(temp)/AnalysisInfo.nFrames(tindex));
-            temp = reshape(temp(1:N*AnalysisInfo.nFrames(tindex)),N,AnalysisInfo.nFrames(tindex));
-            frames.RunningSpeed(AnalysisInfo.ExpFrames(tindex,1):AnalysisInfo.ExpFrames(tindex,2)) = mean(temp);
+if runspeed
+    frames.RunningSpeed = nan(Config.Frames,1);
+    if any(DataIn(:,strcmp(InputNames,'I_RunWheelB'))) % cable was plugged in properly
+        
+        % Compute running speed at acquired sampling frequency
+        data = DataIn(:,strcmp(InputNames, 'I_RunWheelB'));
+        dataB = DataIn(:,strcmp(InputNames, 'I_RunWheelA'));
+        data = (data - [0; data(1:end-1)]);
+        data = data>0;
+        data(all([data,dataB],2))=-1; %set backwards steps to be backwards
+        data = calcRunningSpeed(data, Experiment.params.samplingFrequency, downsample_runspeed, date);
+        
+        % Determine mean running speed per frame
+        if ~all(isnan(frames.StartScan)) % exact scans for each frame are known
+            frames.RunningSpeed(AnalysisInfo.ExpFrames(1,1)) = mean(data(1:frames.StartScan(AnalysisInfo.ExpFrames(1,1)+1)-1));
+            for frameNumber = AnalysisInfo.ExpFrames(1,1)+1:find(~isnan(frames.StartScan),1,'last')-1
+                frames.RunningSpeed(frameNumber) = mean(data(frames.StartScan(frameNumber):frames.StartScan(frameNumber+1)-1));
+            end
+        else % FrameCounter didn't exist or was empty -> assume sampling to be constant
+            for tindex = 1:numTrials
+                temp = data(max(1,round(AnalysisInfo.ExpScans(tindex,1)/downsample_runspeed)):round(AnalysisInfo.ExpScans(tindex,2)/downsample_runspeed));
+                N = floor(numel(temp)/AnalysisInfo.nFrames(tindex));
+                temp = reshape(temp(1:N*AnalysisInfo.nFrames(tindex)),N,AnalysisInfo.nFrames(tindex));
+                frames.RunningSpeed(AnalysisInfo.ExpFrames(tindex,1):AnalysisInfo.ExpFrames(tindex,2)) = mean(temp);
+            end
         end
     end
 end

@@ -1,7 +1,9 @@
 function [T, Avg, Q] = sbxAlign(Images, varargin)
 
 
-FrameIndex = [1 inf];
+Frames = [1 inf];
+Channel = 1;
+Depth = 1;
 
 saveOut = false;
 saveFile = '';
@@ -13,8 +15,14 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
-            case 'FrameIndex'
-                FrameIndex = varargin{index+1};
+            case {'Frame','Frames'}
+                Frames = varargin{index+1};
+                index = index + 2;
+            case 'Channel'
+                Channel = varargin{index+1};
+                index = index + 2;
+            case 'Depth'
+                Depth = varargin{index+1};
                 index = index + 2;
             case {'Save', 'save'}
                 saveOut = true;
@@ -65,15 +73,15 @@ else
     totalFrames = size(Images, 5);
 end
 
-if FrameIndex(end) == inf
-    FrameIndex = [FrameIndex(1:end-1), FrameIndex(1:end-1)+1:totalFrames];
+if Frames(end) == inf
+    Frames = [Frames(1:end-1), Frames(1:end-1)+1:totalFrames];
 end
-numFrames = numel(FrameIndex);
+numFrames = numel(Frames);
 
 
 %% Get first-order stats
 if loadImages
-    Images = load2P(ImageFiles, 'Frames', FrameIndex(1));
+    Images = load2P(ImageFiles, 'Frames', Frames(1));
 end
 [H, W, D, C, ~] = size(Images);
 
@@ -83,7 +91,7 @@ X = [ones(numFrames,1),linspace(-1,1,numFrames)'];
 X = bsxfun(@times,X,1./sqrt(sum(X.^2)));
 parfor jj = 1:numFrames
     if loadImages
-        img = load2P(ImageFiles, 'Frames', FrameIndex(jj), 'Channel', 1, 'Depth', 1, 'Double');
+        img = load2P(ImageFiles, 'Frames', Frames(jj), 'Channel', Channel, 'Depth', Depth, 'Double');
     else
         img = Images(:,:,1,1,jj);
     end
@@ -97,7 +105,7 @@ l = reshape(ms(:,2),[H,W]);
 
 
 %% Alignment first pass
-[Avg,~,T] = sbxalignpar(fname,thestd,gl,l); %Takes about 2.5 minutes
+[Avg,~,T] = sbxAlignpar(fname,thestd,gl,l); %Takes about 2.5 minutes
 
 %% Alignment second pass
 rgx = (1:size(Avg,2))+45;
@@ -105,7 +113,7 @@ rgy = 32 + (1:size(Avg,1));
 T0 = T;
 for nn = 1:10
     fprintf('Refining alignment... pass %d\n',nn);
-    [Avg,~,T] = sbxaligniterative(fname,Avg,rgy,rgx,thestd(rgy,rgx),gl,l);
+    [Avg,~,T] = sbxAligniterative(fname,Avg,rgy,rgx,thestd(rgy,rgx),gl,l);
     dT = sqrt(mean(sum((T0-T).^2,2)));
     T0 = T;
     

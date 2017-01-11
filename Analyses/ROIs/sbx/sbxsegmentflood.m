@@ -89,6 +89,7 @@ function loadbtn_Callback(hObject, eventdata, handles)
 
     plist = {};
     h = [];
+    xray = [];
     
     [fn,pathname] = uigetfile('*.align','Choose ''.align'' file', '/media/elyall/Data'); %/home/elyall/Documents/Data
     fn = [pathname fn];
