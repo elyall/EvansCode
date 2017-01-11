@@ -1,9 +1,12 @@
-function [ROIdata,Means] = computeTrialMean(ROIdata, varargin)
+function CoM = computeTCOverTime(ROIdata, duration, shift, varargin)
+
+fn = '~/Documents/AdesnikLab/Data/2481_179_000_final.rois';
 
 saveOut = false;
 saveFile = '';
 
 ROIindex = [1 inf];
+TrialIndex = [1 inf];
 FrameIndex = [];
 
 directory = cd;
@@ -14,6 +17,9 @@ while index<=length(varargin)
     try
         switch varargin{index}
             case 'ROIindex'
+                ROIindex = varargin{index+1};
+                index = index + 2;
+            case 'TrialIndex'
                 ROIindex = varargin{index+1};
                 index = index + 2;
             case 'FrameIndex'
@@ -43,7 +49,15 @@ if ~exist('ROIdata','var') || isempty(ROIdata)
     ROIdata = fullfile(p,ROIdata);
 end
 
-fprintf('Calculating mean activity per trial...');
+if ~exist('duration','var') || isempty(duration)
+    duration = .5; % seconds
+end
+
+if ~exist('shift','var') || isempty(shift)
+    shift = .1; % seconds
+end
+
+fprintf('Calculating CoM with sliding window over stimulus...');
 
 
 %% Load ROI data
@@ -71,6 +85,10 @@ if ROIindex(end) == inf
     ROIindex = [ROIindex(1:end-1), ROIindex(end-1)+1:numel(ROIdata.rois)];
 end
 
+if TrialIndex(end) == inf
+    TrialIndex = [TrialIndex(1:end-1), TrialIndex(end-1)+1:numTrials];
+end
+
 if isempty(FrameIndex)
     FrameIndex = cell(numTrials,1);
     for tindex = 1:numTrials
@@ -86,32 +104,22 @@ if numel(FrameIndex) == 1
 end
 
 
-%% Calculate mean per trial
+%% Calculate via sliding window
+ControlID = [];
+StimIDs = [];
+positions = [];
+distBetween = [];
 
-% Initialize output
-[ROIdata.rois(ROIindex).stimMean] = deal(nan(numTrials,1));
+FrameIndex = ROIdata.DataInfo.numFramesBefore+1:ROIdata.DataInfo.numFramesBefore+round(frameRate*duration); % initial window of frames
+numFrames = mode(ROIdata.DataInfo.numStimFrames(tindex));
+Offset = round(0:1/frameRate:numFrames/frameRate);
+[~,Offset] = min(abs(bsxfun(@minus, Offset, 0:.1:numFrames)));
 
-% Compute mean for each trial
-for rindex = ROIindex
-    for tindex = 1:numTrials
-        ROIdata.rois(rindex).stimMean(tindex) = nanmean(ROIdata.rois(rindex).dFoF(tindex,FrameIndex{tindex}),2); % nan frames may exist due to motion artifacts
-    end
+CoM = nan(numROIs, N);
+for tindex = 1:N
+    currentFrames = FrameIndex+Offset(tindex);
+    ROIdata = computeTrialMean(ROIdata, 'ROIindex', ROIindex, 'FrameIndex', currentFrames);
+    [~, Curves, ~] = computeTuningCurve(ROIdata, ROIindex, TrialIndex, 'ControlID', ControlID, 'StimIDs', StimIDs);
+    CoM(:,N) = computeCenterOfMass(Curves, positions, distBetween);
 end
-fprintf('\tComplete\n');
 
-
-%% Output means
-if nargout > 1
-    Means = reshape([ROIdata.rois(ROIindex).stimMean],numTrials,numel(ROIindex))';
-end
-
-
-%% Save to file
-if saveOut
-    if ~exist(saveFile, 'file')
-        save(saveFile, 'ROIdata', '-mat', '-v7.3');
-    else
-        save(saveFile, 'ROIdata', '-mat', '-append');
-    end
-    fprintf('\tROIdata saved to: %s\n', saveFile);
-end
