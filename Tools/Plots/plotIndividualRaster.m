@@ -358,7 +358,7 @@ for rindex = 1:numROIs
     % Display Data
     axes(hA(rindex)); % set axes as current axes
     imagesc(data, CLim(rindex,:));
-    colormap(hA(rindex), CMap{rindex});
+%     colormap(hA(rindex), CMap{rindex});
     set(gca,'TickDir','out');
     hold on
     
