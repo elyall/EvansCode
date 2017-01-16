@@ -1,12 +1,14 @@
-function sbxAlignmaster(fname,Depth)
-
-
-
-%     global info
-% 
-%     sbxpacksignals(fname); %Takes about 10 minutes
+function sbxAlignmaster(fname,Depth,rect)
 
     global info
+    
+    if ~exist('rect','var') || isempty(rect)
+        rect = false;
+    end
+    if isequal(rect,true)
+        [~, ~, rect] = crop(sbxreadpacked(fname,0,1), rect);
+    end
+
     fprintf('Starting sbxAlignmaster: %s\n',[fname,'.sbx']);
 
     %% Edit to load and analyze single depth
@@ -31,7 +33,10 @@ function sbxAlignmaster(fname,Depth)
     %%
 
     z = sbxreadpacked(fname,0,1);
-
+    if ~isequal(rect,false)
+        z = crop(z,rect);
+    end
+    
     szz = size(z);
 
     
@@ -57,7 +62,9 @@ function sbxAlignmaster(fname,Depth)
     parfor jj = 1:numFrames
 
         z = double(sbxreadpacked(fname,Frames(1,jj)-1,1));
-
+        if ~isequal(rect,false)
+            z = crop(z,rect);
+        end
 
 
         ms = ms + z(:)*X(jj,:);
@@ -69,8 +76,9 @@ function sbxAlignmaster(fname,Depth)
     
 
     s = reshape(sqrt(1/numFrames*(vs - sum(ms.^2,2))),szz);
-
-    thestd = medfilt2(s,[31,31],'symmetric');
+    s = real(s); % occurs when constant 0 is acquired at some pixel on the frame; imaginary number caused by sqrt of negative number above (added by Evan)
+    
+    thestd = medfilt2(s,[31,31],'symmetric'); % 
 
     
 
@@ -88,7 +96,7 @@ function sbxAlignmaster(fname,Depth)
 
     
 
-    [m,~,T] = sbxAlignpar(fname,thestd,gl,l,Frames,numDepths); %Takes about 2.5 minutes
+    [m,~,T] = sbxAlignpar(fname,thestd,gl,l,Frames,numDepths,rect); %Takes about 2.5 minutes
 
 
 
@@ -104,7 +112,7 @@ function sbxAlignmaster(fname,Depth)
 
         fprintf('Refining alignment... pass %d\n',nn);
 
-        [m,~,T] = sbxAligniterative(fname,m,rgy,rgx,thestd(rgy,rgx),gl,l,Frames);
+        [m,~,T] = sbxAligniterative(fname,m,rgy,rgx,thestd(rgy,rgx),gl,l,Frames,rect);
 
         dT = sqrt(mean(sum((T0-T).^2,2)));
 
@@ -151,7 +159,10 @@ function sbxAlignmaster(fname,Depth)
     parfor jj = 1:numFrames
 
         z = single(sbxreadpacked(fname,Frames(1,jj)-1,1));
-
+        if ~isequal(rect,false)
+            z = crop(z,rect);
+        end
+        
         z = z./thestd;
 
         z = circshift(z,T(jj,:));
@@ -277,7 +288,10 @@ function sbxAlignmaster(fname,Depth)
     parfor jj = 1:numFrames
 
         z = double(sbxreadpacked(fname,Frames(1,jj)-1,1));
-
+        if ~isequal(rect,false)
+            z = crop(z,rect);
+        end
+        
         z = z - gl(jj)*l;
 
         z = circshift(z,T(jj,:));

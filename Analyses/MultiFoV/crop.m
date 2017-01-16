@@ -1,4 +1,4 @@
-function [Images, Maps] = crop(Images, rect, Maps)
+function [Images, Maps, rect] = crop(Images, rect, Maps)
 
 
 %% Parse input arguments
@@ -64,7 +64,7 @@ if ~isempty(Images)
 end
 
 % Close figure (UI-crop only)
-if islogical(rect) && rect == true
+if UI
     close gcf;
 end
 

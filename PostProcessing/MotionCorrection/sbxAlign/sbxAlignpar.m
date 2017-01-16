@@ -1,4 +1,4 @@
-function [m,v,T] = sbxAlignpar(fname,thestd,gl,l,Frames,numDepths)
+function [m,v,T] = sbxAlignpar(fname,thestd,gl,l,Frames,numDepths,rect)
 
 
 
@@ -10,8 +10,15 @@ function [m,v,T] = sbxAlignpar(fname,thestd,gl,l,Frames,numDepths)
 
 % T - optimal translation for each frame
 
+    if ~exist('rect','var') || isempty(rect)
+        rect = false;
+    end
+    
     A = sbxreadpacked(fname,1,1);
-
+    if ~isequal(rect,false)
+        A = crop(A,rect);
+    end
+    
     global info
 
     
@@ -157,7 +164,10 @@ function [m,v,T] = sbxalignsub(fname,idx,rg1,rg2,thestd,gl,l,numDepths)
 
 
         A = double(sbxreadpacked(fname,idx(1,1),1));
-
+        if ~isequal(rect,false)
+            A = crop(A,rect);
+        end
+        
         A = A(rg1,rg2);
 
         A = A - gl(idx(2,1))*l;
@@ -179,7 +189,10 @@ function [m,v,T] = sbxalignsub(fname,idx,rg1,rg2,thestd,gl,l,numDepths)
 
 
         A = double(sbxreadpacked(fname,idx(1,1),1));
-
+        if ~isequal(rect,false)
+            A = crop(A,rect);
+        end
+        
         A = A(rg1,rg2);
 
         A = A - gl(idx(2,1))*l;
@@ -189,6 +202,9 @@ function [m,v,T] = sbxalignsub(fname,idx,rg1,rg2,thestd,gl,l,numDepths)
         
 
         B = double(sbxreadpacked(fname,idx(1,2),1));
+        if ~isequal(rect,false)
+            B = crop(B,rect);
+        end
 
         B = B(rg1,rg2);
 
