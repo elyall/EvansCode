@@ -1,4 +1,4 @@
-function ROIdata = sbxDistribute(fname, varargin)
+function [ROIdata,MCdata] = sbxDistribute(fname, varargin)
 
 saveOut = false;
 saveFile = '';
@@ -37,11 +37,12 @@ if saveOut && isempty(saveFile)
     saveFile = [fname,'.rois'];
 end
 
+fprintf('Distributing sbxalign and sbxsegment data for: %s\n',fname);
 
 %% Create MCdata variable
 if exist([fname,'.align'], 'file')
-    vars = whos(matfile([fname,'.align']));
-    if ~any(strcmp({vars(:).name}, 'MCdata'))
+%     vars = whos(matfile([fname,'.align']));
+%     if ~any(strcmp({vars(:).name}, 'MCdata'))
         load([fname, '.align'], 'T', '-mat');
         MCdata.T = T;
         MCdata.type = 'Translation';
@@ -49,33 +50,43 @@ if exist([fname,'.align'], 'file')
         MCdata.FullFilename = [fname, '.sbx'];
         MCdata.Channel2AlignFrom = 1;
         MCdata.Parameters = [];
-        save([fname, '.align'], 'MCdata', '-append', '-mat');
-    end
+        if saveOut
+            save([fname, '.align'], 'MCdata', '-append', '-mat');
+            fprintf('\tMCdata saved to: %s\n',[fname,'.align']);
+        end
+%     end
+else
+    MCdata = [];
 end
 
 
 %% Create ROIdata
 if exist([fname,'.segment'], 'file')
+    
+    % Create ROIdata
     ROIdata = createROIdata([fname,'.segment'], 'ImageFile', {[fname,'.sbx']});
-end
-
-
-%% Distribute ROI signals
-% if exist([fname,'.signals'], 'file')
-%     load([fname,'.signals'], 'sig', 'pil', '-mat');
-%     for rindex = 1:numel(ROIdata.rois)
-%         ROIdata.rois(rindex).rawdata = sig(:,rindex)';
-%         ROIdata.rois(rindex).rawneuropil = pil(:,rindex)';
-%     end
-% end
-
-
-%% Save ROIdata to file
-if saveOut
-    if ~exist(saveFile, 'file')
-        save(saveFile, 'ROIdata', '-mat', '-v7.3');
-    else
-        save(saveFile, 'ROIdata', '-mat', '-append');
+    
+    % Distribute ROI signals
+    if exist([fname,'.signals'], 'file')
+        load([fname,'.signals'], 'sig', 'pil', '-mat');
+        for rindex = 1:numel(ROIdata.rois)
+            ROIdata.rois(rindex).rawdata = sig(:,rindex)';
+            ROIdata.rois(rindex).rawneuropil = pil(:,rindex)';
+        end
     end
+    
+    % Save ROIdata to file
+    if saveOut
+        if ~exist(saveFile, 'file')
+            save(saveFile, 'ROIdata', '-mat', '-v7.3');
+        else
+            save(saveFile, 'ROIdata', '-mat', '-append');
+        end
+        fprintf('\tROIdata saved to: %s\n',saveFile);
+    end
+    
+else
+    ROIdata = [];
 end
+
 

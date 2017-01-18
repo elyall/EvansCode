@@ -368,7 +368,7 @@ dim = handles.dim;
 % end
 
 save([strtok(handles.fn,'.') '.segment'],'mask','dim','-mat','-v7.3');
-fprintf('Saved segments\n');
+fprintf('Saved segments to: %s\n',[strtok(handles.fn,'.') '.segment']);
 
 
 % --- Executes during object creation, after setting all properties.

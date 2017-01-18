@@ -41,7 +41,7 @@ function [] = sbxComputeci(fname,Depth)
 
     
 
-    imsize = [info.recordsPerBuffer,size(info.S,2)];   
+    imsize = [info.recordsPerBuffer,796];   % size(info.S,2)
 
     nframes = numel(Frames);
 

@@ -1,11 +1,11 @@
 function [ROIdata, series, ROIindex] = ROIorganize(ROIdata, AnalysisInfo, frames, ROIindex, varargin)
 
 saveOut = false;
+saveFile = '';
 
 TrialIndex = [1 inf];
 numFramesBefore = []; % '[]' for default
 numFramesAfter = []; % '[]' for default
-saveFile = '';
 SeriesVariables = {}; % strings of fieldnames in 'frames' struct to extract to be trial-wise
 
 directory = cd;
