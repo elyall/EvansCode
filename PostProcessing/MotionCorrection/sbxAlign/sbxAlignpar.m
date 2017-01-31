@@ -11,13 +11,10 @@ function [m,v,T] = sbxAlignpar(fname,thestd,gl,l,Frames,numDepths,rect)
 % T - optimal translation for each frame
 
     if ~exist('rect','var') || isempty(rect)
-        rect = false;
+        rect = [];
     end
     
     A = sbxreadpacked(fname,1,1);
-    if ~isequal(rect,false)
-        A = crop(A,rect);
-    end
     
     global info
 
@@ -36,11 +33,14 @@ function [m,v,T] = sbxAlignpar(fname,thestd,gl,l,Frames,numDepths,rect)
     rgs = spliteven(rg,log2(nblocks));    
 
     
-
-    rg1 = 33:size(A,1);
-
-    rg2 = 46:size(A,2)-45;
-
+    if isempty(rect)
+        rg1 = 33:size(A,1);
+        rg2 = 46:size(A,2)-45;
+    else
+        rg1 = rect(1):rect(2);
+        rg2 = rect(3):rect(4);
+    end
+    
     
 
     thestd = thestd(rg1,rg2);
@@ -65,7 +65,7 @@ function [m,v,T] = sbxAlignpar(fname,thestd,gl,l,Frames,numDepths,rect)
 
         subrg = rgs{ii};
 
-        [ms(:,:,ii),vs(:,:,ii),Ts{ii}] = sbxalignsub(fname,subrg,rg1,rg2,thestd,gl,l,numDepths,rect);   
+        [ms(:,:,ii),vs(:,:,ii),Ts{ii}] = sbxalignsub(fname,subrg,rg1,rg2,thestd,gl,l,numDepths);   
 
     end
 
@@ -87,7 +87,7 @@ function [m,v,T] = sbxAlignpar(fname,thestd,gl,l,Frames,numDepths,rect)
 
         for ii = 1:nblocksafter
 
-            [u,v] = fftalign(ms(:,:,ii*2-1)/length(Ts{ii*2-1}), ms(:,:,ii*2  )/length(Ts{ii*2  }));
+            [u,v] = fftAlign(ms(:,:,ii*2-1)/length(Ts{ii*2-1}), ms(:,:,ii*2  )/length(Ts{ii*2  }));
 
 
 
@@ -157,16 +157,13 @@ end
 
 
 
-function [m,v,T] = sbxalignsub(fname,idx,rg1,rg2,thestd,gl,l,numDepths,rect)
+function [m,v,T] = sbxalignsub(fname,idx,rg1,rg2,thestd,gl,l,numDepths)
 
     if(size(idx,2)==1)
 
 
 
         A = double(sbxreadpacked(fname,idx(1,1),1));
-        if ~isequal(rect,false)
-            A = crop(A,rect);
-        end
         
         A = A(rg1,rg2);
 
@@ -189,9 +186,6 @@ function [m,v,T] = sbxalignsub(fname,idx,rg1,rg2,thestd,gl,l,numDepths,rect)
 
 
         A = double(sbxreadpacked(fname,idx(1,1),1));
-        if ~isequal(rect,false)
-            A = crop(A,rect);
-        end
         
         A = A(rg1,rg2);
 
@@ -202,9 +196,6 @@ function [m,v,T] = sbxalignsub(fname,idx,rg1,rg2,thestd,gl,l,numDepths,rect)
         
 
         B = double(sbxreadpacked(fname,idx(1,2),1));
-        if ~isequal(rect,false)
-            B = crop(B,rect);
-        end
 
         B = B(rg1,rg2);
 
@@ -214,7 +205,7 @@ function [m,v,T] = sbxalignsub(fname,idx,rg1,rg2,thestd,gl,l,numDepths,rect)
 
         
 
-        [u,v] = fftalign(A,B);
+        [u,v] = fftAlign(A,B);
 
 
 
@@ -240,13 +231,13 @@ function [m,v,T] = sbxalignsub(fname,idx,rg1,rg2,thestd,gl,l,numDepths,rect)
 
         idx1 = idx(:,floor(end/2)+1 : end);
 
-        [A,v1,T0] = sbxalignsub(fname,idx0,rg1,rg2,thestd,gl,l,numDepths,rect);
+        [A,v1,T0] = sbxalignsub(fname,idx0,rg1,rg2,thestd,gl,l,numDepths);
 
-        [B,v2,T1] = sbxalignsub(fname,idx1,rg1,rg2,thestd,gl,l,numDepths,rect);
+        [B,v2,T1] = sbxalignsub(fname,idx1,rg1,rg2,thestd,gl,l,numDepths);
 
 
 
-        [u,v] = fftalign(A/size(idx0,2), B/size(idx1,2));
+        [u,v] = fftAlign(A/size(idx0,2), B/size(idx1,2));
 
 
 

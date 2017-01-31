@@ -1,6 +1,14 @@
-function [] = sbxComputeci(fname,Depth)
+function [] = sbxComputeci(fname,Depth,rect)
 
 
+    if ~exist('rect','var') || isempty(rect)
+        rect = false;
+    end
+    if isequal(rect,true)
+        [~, ~, rect] = crop(sbxreadpacked(fname,0,1), rect);
+    end
+    
+    
     %% Edit to load and analyze single depth
     if ~exist('Depth','var') || isempty(Depth)
         Depth = 1;
@@ -17,23 +25,41 @@ function [] = sbxComputeci(fname,Depth)
     if Depth==1
         Frames(1) = []; % throw out very first frame as it's incomplete and not at the right depth
     end
+
+    %%
+    global info
+
+    A = sbxread(fname,0,1);
+    if ~isequal(rect,false)
+        rect([1,2]) = floor(rect([1,2]));
+        rect([3,4]) = ceil(rect([3,4]));
+        mask = true(size(A));
+        mask(rect(2)+1:rect(2)+rect(4), rect(1)+1:rect(1)+rect(3)) = false;
+    end
+    N = min(size(A))-20;    % leave margin
+    if rem(N,2)
+        N = N+1;
+    end
+    yidx = round(size(A,1)/2)-N/2 + 1 : round(size(A,1)/2)+ N/2;
+    xidx = round(size(A,2)/2)-N/2 + 1 : round(size(A,2)/2)+ N/2;
+    A = A(yidx,xidx);
+    maskA = mask(yidx,xidx);
     
     %%
     vals = load([fname,str,'.align'],'-mat','T','v','Q','thestd');
 
     T = vals.T;
 
+%     Q = zeros(numel(maskA),2);
+%     Q(maskA(:),:) = vals.Q;
     Q = vals.Q;
 
     s = sqrt(vals.v);
 
+%     thestd = ones(size(mask));
+%     thestd(mask) = vals.thestd;
     thestd = vals.thestd;
-
     
-
-    sbxread(fname,0,1);
-
-    global info
 
     
 
@@ -71,11 +97,11 @@ function [] = sbxComputeci(fname,Depth)
 
         
 
-    parfor ii = 1:nblocks
+    for ii = 1:nblocks
 
         rg = floor((ii-1)*nframes/nblocks)+1:floor(ii*nframes/nblocks);
 
-        [c(:,:,:,ii),xray(:,:,:,:,ii)] = doOneBlock(fname,imsize,res,winsize,T,Q,s,nframes,rg,thestd,Frames);
+        [c(:,:,:,ii),xray(:,:,:,:,ii)] = doOneBlock(fname,imsize,res,winsize,T,Q,s,nframes,rg,thestd,Frames,mask);
 
     end
 
@@ -101,7 +127,7 @@ end
 
 
 
-function [c,xray] = doOneBlock(fname,imsize,res,winsize,T,Q,s,nframes,rg,thestd,Frames)
+function [c,xray] = doOneBlock(fname,imsize,res,winsize,T,Q,s,nframes,rg,thestd,Frames,mask)
 
     xray = zeros([imsize*res,winsize,winsize],'double');
 
@@ -120,7 +146,7 @@ function [c,xray] = doOneBlock(fname,imsize,res,winsize,T,Q,s,nframes,rg,thestd,
     for nn = rg
 
         A = double(sbxreadpacked(fname,Frames(nn)-1,1));
-
+        
         A = A./thestd;
 
         Ar = circshift(A,T(nn,:));

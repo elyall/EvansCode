@@ -7,6 +7,7 @@ function sbxAlignmaster(fname,Depth,rect)
     end
     if isequal(rect,true)
         [~, ~, rect] = crop(sbxreadpacked(fname,0,1), rect);
+        rect = round([rect(3),rect(3)+rect(4),rect(1),rect(1)+rect(2)]);
     end
 
     fprintf('Starting sbxAlignmaster: %s\n',[fname,'.sbx']);
@@ -33,10 +34,7 @@ function sbxAlignmaster(fname,Depth,rect)
     %%
 
     z = sbxreadpacked(fname,0,1);
-    if ~isequal(rect,false)
-        z = crop(z,rect);
-    end
-    
+
     szz = size(z);
 
     
@@ -62,9 +60,6 @@ function sbxAlignmaster(fname,Depth,rect)
     parfor jj = 1:numFrames
 
         z = double(sbxreadpacked(fname,Frames(1,jj)-1,1));
-        if ~isequal(rect,false)
-            z = crop(z,rect);
-        end
 
 
         ms = ms + z(:)*X(jj,:);
@@ -99,10 +94,13 @@ function sbxAlignmaster(fname,Depth,rect)
     [m,~,T] = sbxAlignpar(fname,thestd,gl,l,Frames,numDepths,rect); %Takes about 2.5 minutes
 
 
-
-    rgx = (1:size(m,2))+45;
-
-    rgy = 32 + (1:size(m,1));
+    if isempty(rect)
+        rgx = (1:size(m,2))+45;
+        rgy = 32 + (1:size(m,1));
+    else
+        rgy = rect(1):rect(2);
+        rgx = rect(3):rect(4);
+    end
 
     T0 = T;
 
@@ -159,9 +157,6 @@ function sbxAlignmaster(fname,Depth,rect)
     parfor jj = 1:numFrames
 
         z = single(sbxreadpacked(fname,Frames(1,jj)-1,1));
-        if ~isequal(rect,false)
-            z = crop(z,rect);
-        end
         
         z = z./thestd;
 
@@ -288,9 +283,6 @@ function sbxAlignmaster(fname,Depth,rect)
     parfor jj = 1:numFrames
 
         z = double(sbxreadpacked(fname,Frames(1,jj)-1,1));
-        if ~isequal(rect,false)
-            z = crop(z,rect);
-        end
         
         z = z - gl(jj)*l;
 

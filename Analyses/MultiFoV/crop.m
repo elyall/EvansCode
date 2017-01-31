@@ -1,5 +1,5 @@
 function [Images, Maps, rect] = crop(Images, rect, Maps)
-
+% rect - [x, y, width, height] (bottom left corner->x,y)
 
 %% Parse input arguments
 if iscell(Images)

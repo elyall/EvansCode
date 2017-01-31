@@ -34,7 +34,7 @@ while index<=length(varargin)
 end
 
 if saveOut && isempty(saveFile)
-    saveFile = [fname,'.rois'];
+    saveFile = fname;
 end
 
 fprintf('Distributing sbxalign and sbxsegment data for: %s\n',fname);
@@ -51,7 +51,7 @@ if exist([fname,'.align'], 'file')
         MCdata.Channel2AlignFrom = 1;
         MCdata.Parameters = [];
         if saveOut
-            save([fname, '.align'], 'MCdata', '-append', '-mat');
+            save([saveFile,'.align'], 'MCdata', '-append', '-mat');
             fprintf('\tMCdata saved to: %s\n',[fname,'.align']);
         end
 %     end
@@ -77,6 +77,7 @@ if exist([fname,'.segment'], 'file')
     
     % Save ROIdata to file
     if saveOut
+        saveFile = [saveFile,'.rois'];
         if ~exist(saveFile, 'file')
             save(saveFile, 'ROIdata', '-mat', '-v7.3');
         else

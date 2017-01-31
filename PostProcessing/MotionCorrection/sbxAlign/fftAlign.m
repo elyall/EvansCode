@@ -1,5 +1,5 @@
 
-function [u,v] = fftalign(A,B)
+function [u,v] = fftAlign(A,B)
 
 N = min(size(A))-20;    % leave margin
 

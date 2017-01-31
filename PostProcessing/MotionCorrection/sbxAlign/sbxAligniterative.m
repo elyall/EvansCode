@@ -12,7 +12,7 @@ function [m,v,T] = sbxAligniterative(fname,m0,rg1,rg2,thestd,gl,l,Frames,rect)
 
 
 if ~exist('rect','var') || isempty(rect)
-    rect = false;
+    rect = [];
 end
 
 global info
@@ -22,9 +22,6 @@ numFrames = size(Frames,2);
 T = zeros(numFrames,2);
 
 A = sbxreadpacked(fname,0,1);
-if ~isequal(rect,false)
-    A = crop(A,rect);
-end
 
 m = zeros(length(rg1),length(rg2));
 
@@ -39,9 +36,6 @@ l = l(rg1,rg2);
 parfor ii = 1:numFrames
 
     A = sbxreadpacked(fname,Frames(1,ii)-1,1);
-    if ~isequal(rect,false)
-        A = crop(A,rect);
-    end
     
     A = double(A(rg1,rg2));
 
@@ -49,7 +43,7 @@ parfor ii = 1:numFrames
 
     A = A./thestd;
 
-    [dx,dy] = fftalign(A,m0);
+    [dx,dy] = fftAlign(A,m0);
 
     T(ii,:) = [dx,dy];
 
