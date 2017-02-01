@@ -1,10 +1,11 @@
-function [CoM,p] = permutationRun(ROIs, varargin)
+function [p,Corr,CoM,TrialIndex,outliers] = permutationRun(ROIs, targetTrials, varargin)
 
 numPerms = 10000;
 StimIDs = [];       % vector of indices of stimuli to analyze
-ROIindex = [];      % matrix of dimensions numROIs by numFiles
-TrialIndex = {};    % cell of length numFiles, where each element is indices of trials
-outliers = {};      % cell of length numFiles, where each element is totalTrials x totalROIs
+ROIindex = [];     
+TrialIndex = [];    % indices of trials to analyze
+RunSpeed = [];      % mean run speed for each trial
+outliers = [];      % logical matrix specifying which trials are outliers for a given ROI (totalTrials x totalROIs)
 
 % CoM calculation
 positions = [];
@@ -58,202 +59,150 @@ while index<=length(varargin)
 end
 
 if ~exist('ROIs', 'var')
-    [ROIs, p] = uigetfile({'*.rois'}, 'Select 2 corresponding ROI files', directory,'MultiSelect','on');
+    [ROIs, p] = uigetfile({'*.rois'}, 'Select 2 corresponding ROI files', directory);
     if isnumeric(ROIs)
         return
     end
     ROIs = fullfile(p, ROIs);
 end
-if isstruct(ROIs)
-    ROIs = {ROIs};
-end
 
 
 %% Load data
-numFiles = numel(ROIs);
-if iscellstr(ROIs)
-    ROIFiles = ROIs;
+if ischar(ROIs)
+    ROIFile = ROIs;
     for findex = 1:numFiles
-        load(ROIFiles{findex}, 'ROIdata', 'outliers', '-mat');
-        ROIs{findex} = ROIdata; clear ROIdata;
+        load(ROIFile{findex}, 'ROIdata', 'outliers', '-mat');
+        ROIs = ROIdata; clear ROIdata;
     end
     if saveOut && isempty(saveFile)
-        saveFile = strcat(strtok(ROIFiles{1},'.'),'.perm');
+        saveFile = strcat(strtok(ROIFile{1},'.'),'.permrun');
     end
 end
 
 % Compute mean stim
-for findex = 1:numFiles
-    if ~isfield(ROIs{findex}.rois, 'stimMean')
-        ROIs{findex} = computeTrialMean(ROIs{findex});
-    end
+if ~isfield(ROIs.rois, 'stimMean')
+    ROIs = computeTrialMean(ROIs{findex});
 end
 
 
 %% Determine ROIs
-totalROIs = cellfun(@(x) numel(x.rois), ROIs);
+totalROIs = numel(ROIs.rois);
 if isempty(ROIindex)
-    ROIindex = cell(1,numFiles);
-    for findex = 1:numFiles
-        ROIindex{findex} = (1:totalROIs(findex))';
-    end
-    try
-        ROIindex = cat(2,ROIindex{:});
-    catch
-        error('Files need to have the same number of ROIs, or ROIindex needs to be specified');
-    end
-else % ROIindex specified
-    if isrow(ROIindex)
-        ROIindex = ROIindex';
-    end
-    if size(ROIindex,2) ~= numFiles
-        ROIindex = repmat(ROIindex,1,2); % assumes index is same for both files
-    end
+    ROIindex = 1:totalROIs;
 end
-numROIs = size(ROIindex,1);
+numROIs = numel(ROIindex);
 
 
 %% Determine trials
-totalTrials = cellfun(@(x) numel(x.DataInfo.TrialIndex), ROIs);
+totalTrials = numel(ROIs.DataInfo.TrialIndex);
 if isempty(TrialIndex) % use all trials
-    TrialIndex = cell(1,numFiles);
-    for findex = 1:numFiles
-        TrialIndex{findex} = true(totalTrials(findex),1);
-    end
+    TrialIndex = true(totalTrials,1);
 else
-    if ~iscell(TrialIndex)
-        TrialIndex = {TrialIndex};
-    end
-    if numel(TrialIndex) ~= numFiles
-        TrialIndex = repmat(TrialIndex,1,2); % assumes index is same for both files
-    end
-    for findex = 1:numFiles
-        TrialIndex{findex} = ismember(ROIs{findex}.DataInfo.TrialIndex',TrialIndex{findex}); % convert to logical vector
-    end
+    TrialIndex = ismember(ROIs.DataInfo.TrialIndex',TrialIndex); % convert to logical vector
 end
-numTrials = cellfun(@nnz, TrialIndex);
+numTrials = nnz(TrialIndex);
+targetTrials = ismember(ROIs.DataInfo.TrialIndex',targetTrials);
 
 
 %% Determine outliers
 if isempty(outliers)
-    outliers = cell(1,numFiles);
-    for findex = 1:numFiles
-        outliers{findex} = false(totalTrials(findex),totalROIs(findex));
-    end
+    outliers = false(totalTrials,numROIs);
 elseif isequal(outliers, true) % compute outliers
-    outliers = cell(1,numFiles);
-    for findex = 1:numFiles
-        outliers{findex} = false(totalTrials(findex),totalROIs(findex));
-        for rindex = ROIindex(:,findex)';
-            outliers{findex}(TrialIndex{findex},rindex) = determineOutliers(ROIs{findex}.rois(rindex).stimMean(TrialIndex{findex}),'GroupID',ROIs{findex}.DataInfo.StimID(TrialIndex{findex}),'type','medianRule');
-        end
-    end
-else % outliers input
-    if ~iscell(outliers)
-        outliers = {outliers};
-    end
-    if numel(outliers) ~= numFiles
-        outliers = repmat(outliers,1,2);
+    outliers = false(totalTrials,totalROIs);
+    for rindex = ROIindex'
+        outliers(TrialIndex,rindex) = determineOutliers(ROIs.rois(rindex).stimMean(TrialIndex),'GroupID',ROIs.DataInfo.StimID(TrialIndex),'type','medianRule');
     end
 end
 
 
 %% Determine stimuli
 if isempty(StimIDs)
-    StimIDs = cellfun(@(x) unique(x.DataInfo.StimID),ROIs,'UniformOutput',false);
-    StimIDs = unique(cat(1,StimIDs{:}));
+    StimIDs = unique(ROIs.DataInfo.StimID);
     StimIDs(1) = []; % remove control stimulus
 end
 numStim = numel(StimIDs);
 
 % Determine trials for each stimulus
-StimIndex = cell(1,numFiles);
-for findex = 1:numFiles
-    StimIndex{findex} = false(totalTrials(findex),numStim); % empty dimension to make bsxfun step easier
-    for sindex = 1:numStim
-        StimIndex{findex}(:,sindex) = ROIs{findex}.DataInfo.StimID==StimIDs(sindex);
-    end
-end
+StimIndex = bsxfun(@eq, ROIs.DataInfo.StimID, StimIDs');
+
+% Determine trials available for each stimulus
+Trials = bsxfun(@and, TrialIndex, StimIndex);
+totalTrialsPerStim = sum(Trials);
 
 
 %% Gather data to analyze
 
-% Determine trials to use for each ROI
-Trials = cell(1,numFiles);
-for findex = 1:numFiles
-    Trials{findex} = bsxfun(@and, TrialIndex{findex}, ~outliers{findex}(:,ROIindex(:,findex)));
-    Trials{findex} = bsxfun(@and, Trials{findex}, permute(StimIndex{findex},[1,3,2]));
-end
-if numFiles == 2
-    numTrialsPerStim = cellfun(@sum,Trials,'UniformOutput',false);
-    numTrialsPerStim = squeeze(cat(4, numTrialsPerStim{:}));
-    numTrialsPerStim = cumsum(numTrialsPerStim,3);
-elseif numFiles == 1
-    midwaypoint = floor(totalTrials/2);
-    numTrialsPerStim = squeeze(sum(Trials{1}(1:midwaypoint,:,:)));
-    numTrialsPerStim = cat(3, numTrialsPerStim, squeeze(sum(Trials{1})));
-end
-Trials = cat(1,Trials{:});
+% Determine number of trials to pull for each ROI for each stimulus
+targetTrials = bsxfun(@and, TargetTrials, StimIndex);
+numTrialsPerStim = sum(targetTrials);
 
 % Gather Data: matrix of trial means
-StimMeans = [];
-for findex = 1:numFiles
-    StimMeans = cat(1,StimMeans,[ROIs{findex}.rois(ROIindex(:,findex)).stimMean]);
-end
-num = max(max(numTrialsPerStim(:,:,2)));
-Data = nan(numStim,numROIs,num);
-for rindex = 1:numROIs
-    for sindex = 1:numStim
-        Data(sindex,rindex,:) = [StimMeans(Trials(:,rindex,sindex),rindex);nan(num-numTrialsPerStim(rindex,sindex,2),1)];
-    end
-end
+StimMeans = repmat(permute([ROIs.rois(ROIindex).stimMean],[1,3,2]),1,numStim,1);
+StimMeans(~repmat(StimIndex,1,numROIs,1)) = NaN;   % remove data for other stimuli
+StimMeans(repmat(permute(outliers(:,ROIindex),[1,3,2]),1,numStim,1)) = NaN;          % remove outliers
 
 
 %% Compute metrics off of permutations
 
 % Initialize output
-dCoM = nan(numROIs,numPerms+1);
-dSel = nan(numROIs,numPerms+1);
+CoM = nan(numROIs,numPerms+1);
+TrialIndex = false(totalTrials,numPerms+1);
 
-% Cycle through permutations
-fprintf('Computing %d permutations for %d ROIs...\n',numPerms,numROIs);
+% Cycle through permutations computing map
+fprintf('Computing CoM for %d ROIs (%d permutations)...\n',numROIs,numPerms);
 pfH = parfor_progress(numPerms+1);
 parfor pindex = 1:numPerms+1
     
-    % Generate tuning curves (ignore control position)
-    Curves = nan(numROIs,numStim,2);
-    for sindex = 1:numStim
-        for rindex = 1:numROIs
-            if pindex ~= 1
-                TI = randperm(numTrialsPerStim(rindex,sindex,2));
-            else
-                TI = 1:numTrialsPerStim(rindex,sindex,2);
-            end
-            Curves(rindex,sindex,1) = mean(Data(sindex,rindex,TI(1:numTrialsPerStim(rindex,sindex,1))));
-            Curves(rindex,sindex,2) = mean(Data(sindex,rindex,TI(numTrialsPerStim(rindex,sindex,1)+1:numTrialsPerStim(rindex,sindex,2))));
-        end
+    % Determine trials to sample
+    if pindex == 1
+        currentTrials = repmat(targetTrials,1,1,numROIs);
+    else
+        currentTrials = Trials; % FIX
     end
+    TrialIndex(:,pindex) = any(currentTrials,2);
     
-    % Compute center of mass change
-    dCoM(:,pindex) = diff([computeCenterOfMass(Curves(:,:,1),positions,distBetween),computeCenterOfMass(Curves(:,:,2),positions,distBetween)],[],2);
+    % Generate tuning curves (ignore control position)
+    Curves = nanmean(StimMeans(repmat(currentTrials,1,1,numROIs)));
     
-    % Compute selectivity change
-    Min = min(min(Curves,[],3),[],2);
-    dSel(:,pindex) = diff([computeVectorSelectivity(Curves(:,:,1),Min,1),computeVectorSelectivity(Curves(:,:,2),Min,1)],[],2);
+    % Compute center of mass 
+    CoM(:,pindex) = computeCenterOfMass(Curves,positions,distBetween);
+    
     
     parfor_progress(pfH); % update status
 end
 parfor_progress(pfH,0);
 
-Actual = [dCoM(:,1),dSel(:,1)];
-dCoM(:,1) = [];
-dSel(:,1) = [];
+
+%% Determine runspeed mean and variance for each permutation
+if ~isempty(RunSpeed)
+    RunSpeed = repmat(RunSpeed,1,numPerms+1);
+    Speed.mean = mean(RunSpeed(TrialIndex));
+    Speed.std = std(RunSpeed(TrialIndex));
+else
+    Speed = [];
+end
 
 
-%% Generate p-values
-p = nan(numROIs,2);
-p(:,1) = sum(bsxfun(@gt,abs(dCoM),abs(Actual(:,1))),2)/numPerms;
-p(:,2) = sum(bsxfun(@gt,abs(dSel),abs(Actual(:,2))),2)/numPerms;
+%% Compute correlations of map
+Corr = nan(1,numPerms+1);
+Loc = [ROIs.rois(ROIindex).centroid];
+
+fprintf('Computing map correlation for %d ROIs (%d permutations)...\n',numROIs,numPerms);
+pfH = parfor_progress(numPerms+1);
+parfor pindex = 1:numPerms+1
+    
+    % Compute map correlation
+    Corr(pindex) = computeCorr(CoM(:,pindex),Loc); %FIX
+    
+    parfor_progress(pfH); % update status
+end
+parfor_progress(pfH,0);
+
+% Generate p-value
+temp = mean(Corr);
+Corr = Corr - temp;
+p = sum(abs(Corr(2:end))>abs(Corr(1)))/numPerms;
+Corr = Corr + temp;
 
 
 %% Save outputs
