@@ -1,8 +1,8 @@
 function [] = sbxComputeci(fname,Depth,rect)
 
 
-    if ~exist('rect','var') || isempty(rect)
-        rect = false;
+    if ~exist('rect','var')
+        rect = [];
     end
     if isequal(rect,true)
         [~, ~, rect] = crop(sbxreadpacked(fname,0,1), rect);
@@ -30,34 +30,29 @@ function [] = sbxComputeci(fname,Depth,rect)
     global info
 
     A = sbxread(fname,0,1);
-    if ~isequal(rect,false)
+    if ~isempty(rect)
         rect([1,2]) = floor(rect([1,2]));
         rect([3,4]) = ceil(rect([3,4]));
         mask = true(size(A));
         mask(rect(2)+1:rect(2)+rect(4), rect(1)+1:rect(1)+rect(3)) = false;
     end
-    N = min(size(A))-20;    % leave margin
-    if rem(N,2)
-        N = N+1;
-    end
-    yidx = round(size(A,1)/2)-N/2 + 1 : round(size(A,1)/2)+ N/2;
-    xidx = round(size(A,2)/2)-N/2 + 1 : round(size(A,2)/2)+ N/2;
-    A = A(yidx,xidx);
-    maskA = mask(yidx,xidx);
+%     N = min(size(A))-20;    % leave margin
+%     if rem(N,2)
+%         N = N+1;
+%     end
+%     yidx = round(size(A,1)/2)-N/2 + 1 : round(size(A,1)/2)+ N/2;
+%     xidx = round(size(A,2)/2)-N/2 + 1 : round(size(A,2)/2)+ N/2;
+%     A = A(yidx,xidx);
     
     %%
     vals = load([fname,str,'.align'],'-mat','T','v','Q','thestd');
 
     T = vals.T;
 
-%     Q = zeros(numel(maskA),2);
-%     Q(maskA(:),:) = vals.Q;
     Q = vals.Q;
 
     s = sqrt(vals.v);
 
-%     thestd = ones(size(mask));
-%     thestd(mask) = vals.thestd;
     thestd = vals.thestd;
     
 
@@ -97,7 +92,7 @@ function [] = sbxComputeci(fname,Depth,rect)
 
         
 
-    for ii = 1:nblocks
+    parfor ii = 1:nblocks % parfor
 
         rg = floor((ii-1)*nframes/nblocks)+1:floor(ii*nframes/nblocks);
 
@@ -120,7 +115,7 @@ function [] = sbxComputeci(fname,Depth,rect)
     
 
     save([fname,str,'.align'],'-mat','c3','xray','-append');
-
+    fprintf('xray saved to: %s\n',[fname,str,'.align']);
     
 
 end

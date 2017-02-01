@@ -103,11 +103,15 @@ function loadbtn_Callback(hObject, eventdata, handles)
         return
     end
     
+    set(handles.figure1,'MenuBar','figure');
     axis off
     handles.im = imagesc(0,[0,1]);
     
     m = double(m);
-    m = (m-min(m(:)))/(max(m(:))-min(m(:)));
+    m(isinf(m)) = min(m(:));
+    n = prctile(m(:),99);
+    m = (m-min(m(:)))/(n-min(m(:)));
+    m(m>n) = 1;
     
     try
         handles.c3 = c3;

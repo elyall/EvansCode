@@ -65,7 +65,12 @@ function Z = sbxreadpacked(fname,offset,nframes)
         %EDIT Patrick:: smooth interpolant as well
 
 
-
+        if(~isfield(info,'scanmode'))
+            info.scanmode = 1;      % unidirectional
+        end
+        if(info.scanmode==0)
+            info.recordsPerBuffer = info.recordsPerBuffer*2;
+        end
 
 
         switch info.channels

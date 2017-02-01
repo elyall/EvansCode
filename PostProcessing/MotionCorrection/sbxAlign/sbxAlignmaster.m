@@ -100,6 +100,8 @@ function sbxAlignmaster(fname,Depth,rect)
     else
         rgy = rect(1):rect(2);
         rgx = rect(3):rect(4);
+        mask = false(szz);
+        mask(rgy,rgx) = true;
     end
 
     T0 = T;
@@ -157,8 +159,12 @@ function sbxAlignmaster(fname,Depth,rect)
     parfor jj = 1:numFrames
 
         z = single(sbxreadpacked(fname,Frames(1,jj)-1,1));
+        if ~isempty(rect) %Evan
+            z(~mask) = 0;
+        end
         
         z = z./thestd;
+        z(isinf(z)) = 0; %Evan
 
         z = circshift(z,T(jj,:));
 
@@ -191,7 +197,9 @@ function sbxAlignmaster(fname,Depth,rect)
     v = reshape(ss.^2,size(l));
 
     
-
+    ms(isnan(ms)) = 0;%Evan
+    m2(isnan(m2)) = 0;%Evan
+    v2(isnan(v2)) = 0;%Evan
     
 
     [Q,~] = qr(ms,0);
@@ -201,7 +209,6 @@ function sbxAlignmaster(fname,Depth,rect)
     s2 = reshape(sqrt(1/numFrames*(v2 - sum(m2.^2,2))),size(l));
 
     m2 = reshape(m2(:,1)*X(1,1),size(l));
-
 
 
     
@@ -275,21 +282,25 @@ function sbxAlignmaster(fname,Depth,rect)
     %}
 
     
-
+    s2(s2==0) = inf; %Evan
+    
     k = 0;
 
     fprintf('Computing simple stats... pass %d\n',2);
 
-    parfor jj = 1:numFrames
+    parfor jj = 1:numFrames % parfor
 
         z = double(sbxreadpacked(fname,Frames(1,jj)-1,1));
+        if ~isempty(rect) %Evan
+            z(~mask) = 0;
+        end
         
         z = z - gl(jj)*l;
 
         z = circshift(z,T(jj,:));
 
         z = z./thestd;
-
+        z(isinf(z)) = 0; %Evan
         
 
         z = conv2(g,g,z,'same');
@@ -300,10 +311,12 @@ function sbxAlignmaster(fname,Depth,rect)
 
     end
 
-    
+    s2(s2==inf) = 0; %Evan
 
     sm = s2./m2;
-
+    sm(isnan(sm)) = 0; %Evan
+    sm(isinf(sm)) = 0; %Evan
+    
     k = k/numFrames - 3;
 
     
