@@ -109,7 +109,8 @@ function loadbtn_Callback(hObject, eventdata, handles)
     
     m = double(m);
     m(isinf(m)) = min(m(:));
-    n = prctile(m(:),99);
+%     n = prctile(m(:),99);
+    n = max(m(:));
     m = (m-min(m(:)))/(n-min(m(:)));
     m(m>n) = 1;
     
