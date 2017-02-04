@@ -1,4 +1,4 @@
-function [p,rho,Speed,theta,p_corr,CoM] = permutationRun(ROIdata, targetTrials, varargin)
+function [p,rho,Speed,theta,p_corr,CoM,p_tuned] = permutationRun(ROIdata, targetTrials, varargin)
 
 numPerms = 500;
 StimIDs = [];       % vector of indices of stimuli to analyze
@@ -143,7 +143,7 @@ elseif isequal(outliers, true)                  % compute outliers
 end
 
 % Gather mean activity for each trial of every ROI
-StimMeans = repmat(permute([ROIdata.rois(ROIindex).stimMean],[1,3,2]),1,numStim,1); % collect data
+StimMeans = repmat(permute([ROIdata.rois(ROIindex).stimMean],[1,3,2]),1,numStim,1); % collect data (nTrials x nStim x nROIs)
 StimMeans(~repmat(Stims,1,1,numROIs)) = NaN;                                        % remove data for other stimuli
 StimMeans(repmat(permute(outliers,[1,3,2]),1,numStim,1)) = NaN;                     % remove outliers
 
@@ -153,14 +153,16 @@ StimMeans(repmat(permute(outliers,[1,3,2]),1,numStim,1)) = NaN;                 
 % Initialize output
 CoM = nan(numROIs,numPerms+1);
 TrialIndex = false(totalTrials,numPerms+1);
+p_tuned = nan(numROIs,numPerms+1);
+Max = nan(numROIs,numPerms+1);
 
 % Cycle through permutations computing map
 blankTrials = false(totalTrials,numStim);
 fprintf('Computing CoM for %d ROIs (%d permutations)...\n',numROIs,numPerms);
 pfH = parfor_progress(numPerms+1);
-for pindex = 1:numPerms+1
+parfor pindex = 1:numPerms+1
     
-    % Determine trials to sample
+    % Determine sample of trials for current permutation
     if pindex == 1
         currentTrials = targetTrials;
     else
@@ -175,11 +177,20 @@ for pindex = 1:numPerms+1
     currentData = StimMeans;
     currentData(~repmat(currentTrials,1,1,numROIs)) = NaN;
     Curves = squeeze(nanmean(currentData))';
-    Curves(all(Curves<=.2,2),:) = NaN; % remove not driven neurons
+    
+    % Determine peak of tuning curve
+    Max(:,pindex) = max(Curves,[],2);
     
     % Compute center of mass 
     CoM(:,pindex) = computeCenterOfMass(Curves,positions,distBetween);
-         
+    
+    % Compute p values for whether neurons are significantly tuned
+    for rindex = 1:numROIs
+        data = StimMeans(:,:,rindex);
+        dict = arrayfun(@(x,y) y*ones(x,1),sum(currentTrials),1:numStim,'UniformOutput',false);
+        p_tuned(rindex,pindex) = anovan(data(currentTrials), cat(1,dict{:}), 'model','full','display','off');
+    end
+    
     parfor_progress(pfH); % update status
 end
 parfor_progress(pfH,0);
@@ -206,7 +217,7 @@ end
 % Determine centroids
 Centroids = cat(1,ROIdata.rois(ROIindex).centroid);     % gather centroids (units in pixels)
 Centroids = bsxfun(@times,Centroids,pixelSize([2,1]));  % convert units to um (corrects for aspect ratio)
-index = ~isnan(CoM);
+index = ~isnan(CoM) & Max>.2 & p_tuned<.05;
 
 % Initialize outputs
 theta = nan(1,numPerms+1);
@@ -215,7 +226,7 @@ p_corr = nan(1,numPerms+1);
 
 fprintf('Computing map correlation for %d ROIs (%d permutations)...\n',numROIs,numPerms);
 pfH = parfor_progress(numPerms+1);
-for pindex = 1:numPerms+1
+parfor pindex = 1:numPerms+1
     
     % Compute map correlation
     [Projection,theta(pindex)] = projectOntoCoMAxis(Centroids(index(:,pindex),:), CoM(index(:,pindex),pindex));
