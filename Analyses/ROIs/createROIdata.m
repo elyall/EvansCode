@@ -4,6 +4,7 @@ saveOut = false;
 saveFile = '';
 
 ImageFile = {''};
+Depth = 1;
 ROIdata = [];
 
 %% Parse input arguments
@@ -13,6 +14,9 @@ while index<=length(varargin)
         switch varargin{index}
             case 'ImageFile'
                 ImageFile = varargin{index+1};
+                index = index + 2;
+            case 'Depth'
+                Depth = varargin{index+1};
                 index = index + 2;
             case 'ROIdata'
                 ROIdata = varargin{index+1};
@@ -41,6 +45,9 @@ if ~exist('ROIMasks', 'var') || isempty(ROIMasks)
     ROIMasks = fullfile(p, ROIMasks);
 end
 
+if ischar(ImageFile)
+    ImageFile = {ImageFile};
+end
 
 %% Load masks
 if ischar(ROIMasks)
@@ -68,6 +75,14 @@ if isempty(ROIdata)
     ROIdata.filename = ROIFile;
     ROIdata.offset = zeros(1,3);
     ROIdata.imagefiles = ImageFile;
+    if exist(ImageFile{1},'file')
+        Config = load2PConfig(ImageFile{1});
+        ROIdata.Config = Config;
+    else
+        warning('Image file ''%s'' not found',ImageFile{1});
+        ROIdata.Config = nan;
+    end
+    ROIdata.depth = Depth;
     offset = 0;
 else
     offset = numel(ROIdata.rois);

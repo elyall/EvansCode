@@ -1,12 +1,13 @@
 function [p,rho,Speed,theta,p_corr,CoM,p_tuned] = permutationRun(ROIdata, targetTrials, varargin)
 
-numPerms = 500;
+numPerms = 50000;
 StimIDs = [];       % vector of indices of stimuli to analyze
 ROIindex = [];     
 TrialIndex = [];    % indices of trials to analyze
 RunSpeed = [];      % mean run speed for each trial
 outliers = [];      % logical matrix specifying which trials are outliers for a given ROI (totalTrials x totalROIs)
 pixelSize = [1,1];  % microns per pixel ([y,x]) -> corrects for aspect ratio
+nSamples = [];
 
 % CoM calculation
 positions = [];
@@ -41,6 +42,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'RunSpeed'
                 RunSpeed = varargin{index+1};
+                index = index + 2;
+            case 'nSamples'
+                nSamples = varargin{index+1};
                 index = index + 2;
             case 'pixelSize'
                 pixelSize = varargin{index+1};
@@ -119,9 +123,18 @@ for sindex = 1:numStim
 end
 
 % Determine number of trials to pull for each stimulus
-targetTrials = ismember(ROIdata.DataInfo.TrialIndex',targetTrials); % logical vector indexing target trials
-targetTrials = bsxfun(@and, targetTrials, Stims);                   % logical vector numTrials x numStim indexing target trials for each stimulus
-nSamples = sum(targetTrials);
+if ~iscell(targetTrials)
+    targetTrials = {targetTrials};
+end
+numTargets = numel(targetTrials);
+temp = false(totalTrials,numStim,numTargets);
+for tindex = 1:numTargets
+    temp(:,:,tindex) = bsxfun(@and, ismember(ROIdata.DataInfo.TrialIndex',targetTrials{tindex}), Stims);
+end
+targetTrials = temp;
+if isempty(nSamples)
+    nSamples = sum(targetTrials(:,:,1));
+end
 
 
 %% Determine ROIs to analyze and gather their responses
@@ -151,20 +164,21 @@ StimMeans(repmat(permute(outliers,[1,3,2]),1,numStim,1)) = NaN;                 
 %% Compute metrics off of permutations
 
 % Initialize output
-CoM = nan(numROIs,numPerms+1);
-TrialIndex = false(totalTrials,numPerms+1);
-p_tuned = nan(numROIs,numPerms+1);
-Max = nan(numROIs,numPerms+1);
+CoM = nan(numROIs,numPerms+numTargets);
+TrialIndex = false(totalTrials,numPerms+numTargets);
+p_tuned = nan(numROIs,numPerms+numTargets);
+Max = nan(numROIs,numPerms+numTargets);
 
 % Cycle through permutations computing map
 blankTrials = false(totalTrials,numStim);
-fprintf('Computing CoM for %d ROIs (%d permutations)...\n',numROIs,numPerms);
-pfH = parfor_progress(numPerms+1);
-parfor pindex = 1:numPerms+1
+fprintf('Computing CoM for %d ROIs (%d permutations)...\n',numROIs,numPerms+numTargets);
+pfH = parfor_progress(numPerms+numTargets);
+parfor pindex = 1:numPerms+numTargets
     
     % Determine sample of trials for current permutation
-    if pindex == 1
-        currentTrials = targetTrials;
+    targetTrials; % parfor requires this variable be sent to all workers, otherwise returns indexing error
+    if pindex <= numTargets
+        currentTrials = targetTrials(:,:,pindex);
     else
         currentTrials = blankTrials;
         for sindex = 1:numStim
@@ -198,9 +212,9 @@ parfor_progress(pfH,0);
 
 %% Determine runspeed mean and variance for each permutation
 if ~isempty(RunSpeed)
-    SpeedMean = nan(1,numPerms+1);
-    SpeedStD = nan(1,numPerms+1);
-    parfor pindex = 1:numPerms+1
+    SpeedMean = nan(1,numPerms+numTargets);
+    SpeedStD = nan(1,numPerms+numTargets);
+    parfor pindex = 1:numPerms+numTargets
         SpeedMean(pindex) = mean(RunSpeed(TrialIndex(:,pindex)));
         SpeedStD(pindex) = std(RunSpeed(TrialIndex(:,pindex)));
     end
@@ -220,13 +234,13 @@ Centroids = bsxfun(@times,Centroids,pixelSize([2,1]));  % convert units to um (c
 index = ~isnan(CoM) & Max>.2 & p_tuned<.05;
 
 % Initialize outputs
-theta = nan(1,numPerms+1);
-rho = nan(1,numPerms+1);
-p_corr = nan(1,numPerms+1);
+theta = nan(1,numPerms+numTargets);
+rho = nan(1,numPerms+numTargets);
+p_corr = nan(1,numPerms+numTargets);
 
-fprintf('Computing map correlation for %d ROIs (%d permutations)...\n',numROIs,numPerms);
-pfH = parfor_progress(numPerms+1);
-parfor pindex = 1:numPerms+1
+fprintf('Computing map correlation for %d ROIs (%d permutations)...\n',numROIs,numPerms+numTargets);
+pfH = parfor_progress(numPerms+numTargets);
+parfor pindex = 1:numPerms+numTargets
     
     % Compute map correlation
     [Projection,theta(pindex)] = projectOntoCoMAxis(Centroids(index(:,pindex),:), CoM(index(:,pindex),pindex));
@@ -238,14 +252,21 @@ parfor_progress(pfH,0);
 
 % Generate p-value
 temp = mean(rho);
-rho = rho - temp;
-p = sum(abs(rho(2:end))>abs(rho(1)))/numPerms;
-rho = rho + temp;
-if p>.0001
-    fprintf('p = %.4f\n',p);
-else
-    fprintf('p = %e\n',p);
+rho = rho - temp; % mean subtract distribution
+p = nan(1,numTargets);
+for tindex = 1:numTargets
+    p(tindex) = sum(abs(rho(numTargets+1:end))>abs(rho(tindex)))/numPerms; % determine percent of permutations beyond target
+    if p(tindex)>.0001
+        fprintf('p%d=%.4f\t',tindex,p(tindex));
+    elseif p(tindex)==0
+        fprintf('p%d=%d',tindex,p(tindex));
+    else
+        fprintf('p%d=%e\t',tindex,p(tindex));
+    end
 end
+fprintf('\n');
+rho = rho + temp; % add mean back
+
 
 %% Save outputs
 if saveOut && ~isempty(saveFile)
@@ -260,21 +281,33 @@ end
 
 %% Display plots
 if verbose
+    cmap = lines(numTargets);
     figure;
     subplot(1,3,1);
-    plot(Speed.mean(2:end),rho(2:end),'k.'); hold on;
-    plot(Speed.mean(1),rho(1),'g*');
+    plot(Speed.mean(numTargets+1:end),rho(numTargets+1:end),'k.'); hold on;
+    for tindex = 1:numTargets
+        plot(Speed.mean(tindex),rho(tindex),'*','Color',cmap(tindex,:));
+    end
+    legend([{'null dist.'};strcat('target',cellstr(num2str((1:numTargets)')))]);
     xlabel('Mean Run Speed (deg/s)');
     ylabel('Rho');
 %     figure;
     subplot(1,3,2);
-    plot(Speed.std(2:end),rho(2:end),'k.'); hold on;
-    plot(Speed.std(1),rho(1),'g*');
+    plot(Speed.std(numTargets+1:end),rho(numTargets+1:end),'k.'); hold on;
+    for tindex = 1:numTargets
+        plot(Speed.std(tindex),rho(tindex),'*','Color',cmap(tindex,:));
+    end
+    legend([{'null dist.'};strcat('target',cellstr(num2str((1:numTargets)')))]);
     xlabel('STD Run Speed (deg/s)');
     ylabel('Rho');
 %     figure;
     subplot(1,3,3);
-    histogram(theta,'Normalization','probability');
+    [N,edges] = histcounts(theta(numTargets+1:end),'Normalization','probability');
+    stairs(edges([1,1:end,end]),[0,100*N([1:end,end]),0],'k');  hold on; % take edges down to 0 and fill out last bin
+    YLim = get(gca,'YLim');
+    for tindex = 1:numTargets
+        plot([theta(tindex),theta(tindex)],YLim,'--','Color',cmap(tindex,:));
+    end
     ylabel('Percent')
     xlabel('Angle of Axis (degrees)');
 end
