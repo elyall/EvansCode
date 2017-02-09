@@ -167,6 +167,7 @@ if iscellstr(Maps)
     MapFiles = Maps;
     Maps = imref2d();
     for findex = 1:numFiles
+        Maps(findex) = imref2d();
         temp = load(MapFiles{findex}, 'Map', '-mat');
         if isfield(temp,'Map')
             Maps(findex) = temp.Map;
