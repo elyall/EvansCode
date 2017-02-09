@@ -1,7 +1,18 @@
-function [ROIs,MCdata] = sbxDistribute(fname, varargin)
+function ROIs = segment2ROIdata(fname, varargin)
+% SEGMENT2ROIDATA	convert sbxsegment output into ROIdata structure.
+%   ROIS = segment2ROIdata(FNAME) locates all files that fit
+%   [FNAME,'*.segment'], and creates ROIdata structure for files that don't
+%   already have a corresponding '.rois' file with ROIdata in it (does not
+%   access subfolders)
+%
+%   ROIS = segment2ROIdata(...,'save') saves output ROIdata to a mat file
+%   with the same name as the segment file but with a '.rois' extension
+%
+%   ROIS = segment2ROIdata(...,'overwrite') recreates ROIdata structure for
+%   each file regardless of whether a corresponding ROIdata structure
+%   already exists
 
-override = false;
-
+overwrite = false;
 saveOut = false;
 
 %% Parse input arguments
@@ -21,8 +32,8 @@ while index<=length(varargin)
             case {'Save', 'save'}
                 saveOut = true;
                 index = index + 1;
-            case 'override'
-                override = ~override;
+            case 'overwrite'
+                overwrite = ~overwrite;
                 index = index + 1;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -34,43 +45,10 @@ while index<=length(varargin)
     end
 end
 
-fprintf('Distributing sbxalign and sbxsegment data for: %s\n',fname);
+fprintf('Distributing sbxsegment data for: %s\n',fname);
 
 
 p = fileparts(fname);
-
-%% Create MCdata variable
-
-% Determine what align files exist
-AlignFiles = dir([fname,'*.align']);
-AlignFiles = fullfile(p,{AlignFiles(:).name});
-
-% Determine matching sbx files
-ImageFiles = closestFile(AlignFiles, '.sbx');
-
-% Save MCdata struct to each file
-temp = struct('type',num2cell(nan(numel(AlignFiles),1)));
-if ~isempty(AlignFiles)
-    for findex = 1:numel(AlignFiles)
-        vars = whos(matfile(AlignFiles{findex}));
-        if ~any(strcmp({vars(:).name}, 'MCdata')) || override
-            load(AlignFiles{findex}, 'T', '-mat');
-            temp(findex).T = T;
-            temp(findex).type = 'Translation';
-            temp(findex).date = datestr(now);
-            temp(findex).FullFilename = ImageFiles{findex};
-            temp(findex).Channel2AlignFrom = 1;
-            temp(findex).Parameters = [];
-            if saveOut
-                MCdata = temp(findex);
-                save(AlignFiles{findex}, 'MCdata', '-append', '-mat');
-                fprintf('\tMCdata saved to: %s\n',AlignFiles{findex});
-            end
-        end
-    end
-end
-MCdata = temp;
-
 
 %% Create ROIdata
 
@@ -87,7 +65,7 @@ for findex = 1:numFiles
         Depth(findex) = 1;
     else
         temp = 0;
-        while ~isnan(str2double(SegmentFiles{findex}(index+5+1)))
+        while ~isnan(str2double(SegmentFiles{findex}(index+5+temp+1)))
             temp = temp + 1;
         end
         Depth(findex) = str2double(SegmentFiles{findex}(index+5:index+5+temp));
@@ -103,7 +81,7 @@ if ~isempty(SegmentFiles)
     for findex = 1:numFiles
         ROIFile = [SegmentFiles{findex}(1:end-7),'rois'];
         vars = whos(matfile(ROIFile));
-        if ~any(strcmp({vars(:).name}, 'ROIdata')) || override
+        if ~any(strcmp({vars(:).name}, 'ROIdata')) || overwrite
             
             % Create ROIdata
             ROIs{findex} = createROIdata(SegmentFiles{findex}, 'ImageFile', ImageFiles(findex), 'Depth', Depth(findex));
@@ -119,6 +97,9 @@ if ~isempty(SegmentFiles)
                 fprintf('\tROIdata saved to: %s\n',ROIFile);
             end
             
+        else
+            load(ROIFile,'ROIdata','-mat')
+            ROIs{findex} = ROIdata;
         end
     end
 end

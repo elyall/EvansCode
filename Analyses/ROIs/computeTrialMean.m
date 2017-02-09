@@ -65,6 +65,12 @@ if ~isfield(ROIdata.rois, 'dFoF')
 end
 numTrials = size(ROIdata.rois(1).dFoF,1);
 
+% Fix legacy issue
+if ~isfield(ROIdata,'Config')
+    warning('ROIdata doesn''t have Config struct -> assuming FrameRate=15.49 & Depth=1');
+    ROIdata.Config.Depth = 1;
+    ROIdata.Config.FrameRate = 15.49;
+end
 
 %% Determine data to analyze
 if ROIindex(end) == inf
@@ -76,7 +82,7 @@ if isempty(FrameIndex)
     for tindex = 1:numTrials
 %         FrameIndex{tindex} = ROIdata.DataInfo.numFramesBefore+1:ROIdata.DataInfo.numFramesBefore+ROIdata.DataInfo.numStimFrames(tindex);
         F = ROIdata.DataInfo.numFramesBefore+ROIdata.DataInfo.numStimFrames(tindex);
-        FrameIndex{tindex} = F-7:F;
+        FrameIndex{tindex} = F-floor(round(ROIdata.Config.FrameRate/2)/ROIdata.Config.Depth)+1:F; % analyze last 500ms
     end
 elseif ~iscell(FrameIndex)
     FrameIndex = {FrameIndex};
