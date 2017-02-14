@@ -120,19 +120,19 @@ numROIs = numel(ROIindex);
 if TrialIndex(end) == inf
     TrialIndex = [TrialIndex(1:end-1), TrialIndex(end-1)+1:ROIdata.DataInfo.TrialIndex(end)];
 end
-TrialIndex = ismember(ROIdata.DataInfo.TrialIndex, TrialIndex);
-numTrials = numel(TrialIndex);
 
 
 %% Gather run speed data
 if ischar(TrialRunSpeed)
-    TrialRunSpeed = gatherRunData(TrialRunSpeed);
+    TrialRunSpeed = gatherRunData(TrialRunSpeed,[],'TrialIndex',TrialIndex);
+    SpeedMean = nanmean(TrialRunSpeed,2);
+else
+    SpeedMean = nanmean(TrialRunSpeed(ismember(ROIdata.DataInfo.TrialIndex, TrialIndex),:),2);
 end
-SpeedMean = nanmean(TrialRunSpeed(TrialIndex,:),2);
-% SpeedStd = nanstd(TrialRunSpeed(TrialIndex),2);
 
 % Detrmine trials in each window
-Index = false(numTrials,numWindows);
+TrialIndex = ismember(ROIdata.DataInfo.TrialIndex, TrialIndex);
+Index = false(numel(TrialIndex),numWindows);
 for windex = 1:numWindows
     Index(:,windex) = SpeedMean>=startOfWindow(windex) & SpeedMean<=startOfWindow(windex)+width;
 end
@@ -157,10 +157,12 @@ CoM = nan(numROIs, numWindows);
 p_tuned = nan(numROIs, numWindows);
 Max = nan(numROIs, numWindows);
 TrialIndex = ROIdata.DataInfo.TrialIndex(TrialIndex);
-parfor windex = find(~bad)
-    [~, Curves, ~, p_tuned(:,windex)] = computeTuningCurve(ROIdata, ROIindex, TrialIndex(Index(:,windex)), 'ControlID', ControlID, 'StimIDs', StimIDs);
-    Max(:,windex) = max(Curves(:,2:end),[],2);
-    CoM(:,windex) = computeCenterOfMass(Curves, positions, distBetween);
+parfor windex = 1:numWindows
+    if ~bad(windex)
+        [~, Curves, ~, p_tuned(:,windex)] = computeTuningCurve(ROIdata, ROIindex, TrialIndex(Index(:,windex)), 'ControlID', ControlID, 'StimIDs', StimIDs);
+        Max(:,windex) = max(Curves(:,2:end),[],2);
+        CoM(:,windex) = computeCenterOfMass(Curves, positions, distBetween);
+    end
 end
 
 
