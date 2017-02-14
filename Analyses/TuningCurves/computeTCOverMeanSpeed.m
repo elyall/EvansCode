@@ -1,11 +1,10 @@
-function [CoM,Max,p_tuned] = computeTCOverTime(ROIdata, duration, startOfWindow, varargin)
+function [CoM,Max,p_tuned,numTrialsPerStim,StimIDs] = computeTCOverMeanSpeed(ROIdata, TrialRunSpeed, width, startOfWindow, varargin)
 
 saveOut = false;
 saveFile = '';
 
 ROIindex = [1 inf];
 TrialIndex = [1 inf];
-frameRate = 15.46;
 verbose = false;
 
 % Tuning curve parameters
@@ -28,9 +27,6 @@ while index<=length(varargin)
                 index = index + 2;
             case 'TrialIndex'
                 TrialIndex = varargin{index+1};
-                index = index + 2;
-            case 'frameRate'
-                frameRate = varargin{index+1};
                 index = index + 2;
             case 'ControlID'
                 ControlID = varargin{index+1};
@@ -71,12 +67,20 @@ if ~exist('ROIdata','var') || isempty(ROIdata)
     ROIdata = fullfile(p,ROIdata);
 end
 
-if ~exist('duration','var') || isempty(duration)
-    duration = .5; % seconds
+if ~exist('TrialRunSpeed','var') || TrialRunSpeed
+    TrialRunSpeed = closestFile(ROIdata.filename,'.exp');
+    TrialRunSpeed = TrialRunSpeed{1};
+end
+if isempty(TrialRunSpeed)
+    error('need run speed data');
+end
+
+if ~exist('width','var') || isempty(width)
+    width = 100; % deg/s or cm/s (depends on TrialRunSpeed input)
 end
 
 if ~exist('startOfWindow','var') || isempty(startOfWindow)
-    startOfWindow = 0:.1:1; % seconds
+    startOfWindow = 0:25:300; % deg/s or cm/s (depends on TrialRunSpeed input)
 end
 numWindows = numel(startOfWindow);
 
@@ -100,7 +104,11 @@ end
 if ~isfield(ROIdata.rois, 'dFoF')
     ROIdata = computeDFoF(ROIdata);
 end
-numTrials = size(ROIdata.rois(1).dFoF,1);
+
+% Compute trial mean
+if ~isfield(ROIdata.rois, 'stimMean')
+    ROIdata = computeTrialMean(ROIdata);
+end
 
 
 %% Determine data to analyze
@@ -110,25 +118,41 @@ end
 numROIs = numel(ROIindex);
 
 if TrialIndex(end) == inf
-    TrialIndex = [TrialIndex(1:end-1), TrialIndex(end-1)+1:numTrials];
+    TrialIndex = [TrialIndex(1:end-1), TrialIndex(end-1)+1:ROIdata.DataInfo.TrialIndex(end)];
+end
+TrialIndex = ismember(ROIdata.DataInfo.TrialIndex, TrialIndex);
+numTrials = numel(TrialIndex);
+
+
+%% Gather run speed data
+if ischar(TrialRunSpeed)
+    TrialRunSpeed = gatherRunData(TrialRunSpeed);
+end
+SpeedMean = nanmean(TrialRunSpeed(TrialIndex),2);
+% SpeedStd = nanstd(TrialRunSpeed(TrialIndex),2);
+
+% Detrmine trials in each window
+Index = false(numTrials,numWindows);
+for windex = 1:numWindows
+    Index(:,windex) = SpeedMean>=startOfWindow(windex) & SpeedMean<=startOfWindow(windex)+width;
 end
 
-% Determine column indices of windows
-numFrames = round(frameRate*duration);
-FrameIndex = ROIdata.DataInfo.numFramesBefore+1:ROIdata.DataInfo.numFramesBefore+numFrames; % column indices for first window within stimulus
-maxStimFrames = max(ROIdata.DataInfo.numStimFrames);
-stimFrameTimeStamps = 0:1/frameRate:(maxStimFrames-1)/frameRate;            % time of start of each frame 
-[~,Offset] = min(abs(bsxfun(@minus, startOfWindow,stimFrameTimeStamps')));  % determine first frame that overlaps with start of window by >=50% of that frame
-FrameIndex = bsxfun(@plus, FrameIndex,(Offset-1)');                         % column indices for each window
-
+% Determine number of trials per stimulus
+if isempty(StimIDs)
+    StimIDs = unique(ROIdata.DataInfo.StimID(TrialIndex));
+end
+numTrialsPerStim = nan(numStim,numWindows);
+for windex = 1:numWindows
+    numTrialsPerStim(:,windex) = arrayfun(@(x,y) nnz(isequal(x,y)), StimIDs, ROIdata.DataInfo.StimID(TrialIndex(Index(:,
+end
 
 %% Calculate center of mass via sliding window
 CoM = nan(numROIs, numWindows);
 p_tuned = nan(numROIs, numWindows);
 Max = nan(numROIs, numWindows);
+TrialIndex = ROIdata.DataInfo.TrialIndex(TrialIndex);
 parfor windex = 1:numWindows
-    temp = computeTrialMean(ROIdata, 'ROIindex', ROIindex, 'FrameIndex', FrameIndex(windex,:));
-    [~, Curves, ~, p_tuned(:,windex)] = computeTuningCurve(temp, ROIindex, TrialIndex, 'ControlID', ControlID, 'StimIDs', StimIDs);
+    [~, Curves, ~, p_tuned(:,windex)] = computeTuningCurve(ROIdata, ROIindex, TrialIndex(Index(:,windex)), 'ControlID', ControlID, 'StimIDs', StimIDs);
     Max(:,windex) = max(Curves(:,2:end),[],2);
     CoM(:,windex) = computeCenterOfMass(Curves, positions, distBetween);
 end
@@ -160,7 +184,7 @@ if verbose
     % Display curve
     figure;
     errorbar(startOfWindow,mean(CoM),std(CoM)/sqrt(numROIs));
-    xlabel(sprintf('Start of %dms window',duration*1000));
+    xlabel(sprintf('Start of %dms window',width*1000));
     ylabel('Center of Mass');
 end
 
