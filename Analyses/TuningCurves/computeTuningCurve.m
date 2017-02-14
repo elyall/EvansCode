@@ -1,4 +1,4 @@
-function [ROIdata, Curves, outliers] = computeTuningCurve(ROIdata, ROIindex, TrialIndex, varargin)
+function [ROIdata, Curves, outliers, p_tuned] = computeTuningCurve(ROIdata, ROIindex, TrialIndex, varargin)
 
 FitTuningCurves = false; % gaussian fit
 ControlID = 0; % StimID of control trials, or '[]' if no control trial
@@ -230,9 +230,12 @@ if FitTuningCurves
 end
 
 
-%% Output curves
+%% Output extras
 if nargout > 1
     Curves = reshape([ROIdata.rois(ROIindex).curve],numel(ROIdata.rois(1).curve),numel(ROIindex))';
+end
+if nargout > 3
+    p_tuned = [ROIdata.rois(ROIindex).TunedPValue];
 end
 
 

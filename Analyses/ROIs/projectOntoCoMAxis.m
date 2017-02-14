@@ -1,4 +1,4 @@
-function [Projection,theta,rsquared] = projectOntoCoMAxis(Centroids, Data, varargin)
+function [Projection,bestAngle,rsquared,theta] = projectOntoCoMAxis(Centroids, Data, varargin)
 
 insidePWC = [];
 
@@ -103,26 +103,10 @@ if size(Centroids,1)~=numel(Data)
 end
 
     
-%% Whiten centroids
-Mean = mean(Centroids);                             % calculate mean
-ZeroedCentroids = bsxfun(@minus, Centroids, Mean);  % subtract off mean (center data)
-A = ZeroedCentroids'*ZeroedCentroids;
-[V,D,~] = svd(A);                                   % compute SVD
-if any(diag(D)==0)                                  % ensure all points on diagonal have some weight
-    ind = find(diag(D)==0);
-    D(ind,ind) = 0.00001;
-end
-whMat = sqrt(size(ZeroedCentroids,1)-1)*V*sqrtm(inv(D))*V'; % determine whitening transform
-WhiteCentroids = ZeroedCentroids*whMat;                     % whiten data
-invMat = pinv(whMat);                                       % determine inverse of transform
+%% Whiten data
 
-% if verbose % Check whitening maintains underlying structure
-%     figure;
-%     subplot(1,2,1);
-%     plot(WhiteCentroids(:,1),WhiteCentroids(:,2),'.');
-%     subplot(1,2,2);
-%     plot(Centroids(:,1),Centroids(:,2),'.');
-% end
+% Whiten centroids
+[WhiteCentroids, invMat, ~, Mean] = whiten(Centroids);
 
 
 %% Compute correlation for all angles
@@ -140,9 +124,9 @@ if verbose || saveVideo
     p = nan(180,1);
     theta = 1:180;
 else
-    rsquared = nan(1791,1);
-    p = nan(1791,1);
-    theta = 1:0.1:180;
+    theta = 0.1:0.1:180;
+    rsquared = nan(numel(theta),1);
+    p = nan(numel(theta),1);
 end
 for tindex = 1:numel(theta)
         
@@ -222,27 +206,37 @@ if saveVideo
     close(hV); %close video
 end
 
+% De-whiten angles
+% figure;
+for tindex = 1:numel(theta)
+    [x,y] = pol2cart(theta(tindex)*2*pi/360,50);% convert to cartesian vector
+    v = [x,y]*invMat;                           % apply inverse whitening transform
+    theta(tindex) = cart2pol(v(1),v(2))*180/pi; % convert to angle
+%     plot([x,-x],[y,-y],'b-'); hold on;
+%     plot([v(1),-v(1)],[v(2),-v(2)],'r-'); xlim([-100,100]); ylim([-100,100]); drawnow; hold off;
+end
+
 
 %% Project data onto best angle
 
 % Determine best angle
-[~,temp] = max(rsquared);
-theta = theta(temp);
+[~,bestAngle] = max(rsquared);
+bestAngle = theta(bestAngle);
+
+% Determine PWC center
+if ~isempty(insidePWC)
+    m1 = min(Centroids(insidePWC,:));
+    m2 = max(Centroids(insidePWC,:));
+else
+    m1 = min(Centroids);
+    m2 = max(Centroids);
+end
+PWCcenter = (m2-m1)/2+m1;
 
 % Compute projection along best fit axis, centered over PWC
-if ~isempty(insidePWC)
-    PWCcenter = mean(WhiteCentroids(insidePWC,:));                          % find PWC center
-else
-    PWCcenter = mean(WhiteCentroids);
-end
-[dist,Y] = ProjectOntoAngle(bsxfun(@minus,WhiteCentroids,PWCcenter),theta); % project on axis centered on PWC
-Projection = [dist,Y]*invMat;                                               % transform back to non-white axis
+[dist,Y] = ProjectOntoAngle(Centroids,bestAngle,PWCcenter); % project on axis centered on PWC
+Projection = [dist,Y];
 
-% Calculate vector along the best angle
-[x,y] = pol2cart(theta*2*pi/360,0.5);
-vector = [x,y;-x,-y]*invMat;
-theta = cart2pol(vector(1,1),vector(1,2))*180/pi;
-vector = bsxfun(@plus,vector,Mean);
 
 
 % %% Checks

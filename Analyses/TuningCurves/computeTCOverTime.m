@@ -124,9 +124,12 @@ FrameIndex = bsxfun(@plus, FrameIndex,(Offset-1)');                         % co
 
 %% Calculate center of mass via sliding window
 CoM = nan(numROIs, numWindows);
+p_tuned = nan(numROIs, numWindows);
+Max = nan(numROIs, numWindows);
 parfor windex = 1:numWindows
     temp = computeTrialMean(ROIdata, 'ROIindex', ROIindex, 'FrameIndex', FrameIndex(windex,:));
-    [~, Curves, ~] = computeTuningCurve(temp, ROIindex, TrialIndex, 'ControlID', ControlID, 'StimIDs', StimIDs);
+    [~, Curves, ~, p_tuned(:,windex)] = computeTuningCurve(temp, ROIindex, TrialIndex, 'ControlID', ControlID, 'StimIDs', StimIDs);
+    Max(:,windex) = max(Curves(:,2:end),[],2);
     CoM(:,windex) = computeCenterOfMass(Curves, positions, distBetween);
 end
 
@@ -134,9 +137,9 @@ end
 %% Save output
 if saveOut
     if exist(saveFile,'file')
-        save(saveFile,'CoM','-append');
+        save(saveFile,'CoM','Max','p_tuned','-append');
     else
-        save(saveFile,'CoM','-v7.3');
+        save(saveFile,'CoM','Max','p_tuned','-v7.3');
     end
     fprintf('Saved sliding window analysis to: %s\n',saveFile);
 end
@@ -144,6 +147,17 @@ end
 
 %% Display results
 if verbose
+    
+    % Compute mean and standard error for significantly tuned and driven neurons
+    Mean = nan(1,numWindows);
+    StdErrMean = nan(1,numWindows);
+    for windex = 1:numWindows
+        index = p_tuned(:,windex)<0.05 & Max(:,windex)>.2;
+        Mean(windex) = mean(CoM(index,windex));
+        StdErrMean(windex) = std(CoM(index,windex))/sqrt(nnz(index));
+    end
+    
+    % Display curve
     figure;
     errorbar(startOfWindow,mean(CoM),std(CoM)/sqrt(numROIs));
     xlabel(sprintf('Start of %dms window',duration*1000));
