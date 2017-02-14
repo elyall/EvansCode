@@ -67,7 +67,7 @@ if ~exist('ROIdata','var') || isempty(ROIdata)
     ROIdata = fullfile(p,ROIdata);
 end
 
-if ~exist('TrialRunSpeed','var') || TrialRunSpeed
+if ~exist('TrialRunSpeed','var') || isempty(TrialRunSpeed)
     TrialRunSpeed = closestFile(ROIdata.filename,'.exp');
     TrialRunSpeed = TrialRunSpeed{1};
 end
@@ -84,7 +84,7 @@ if ~exist('startOfWindow','var') || isempty(startOfWindow)
 end
 numWindows = numel(startOfWindow);
 
-fprintf('Calculating CoM with sliding window over stimulus...\n');
+fprintf('Calculating CoM with sliding window over mean speed...\n');
 
 
 %% Load ROI data
@@ -128,7 +128,7 @@ numTrials = numel(TrialIndex);
 if ischar(TrialRunSpeed)
     TrialRunSpeed = gatherRunData(TrialRunSpeed);
 end
-SpeedMean = nanmean(TrialRunSpeed(TrialIndex),2);
+SpeedMean = nanmean(TrialRunSpeed(TrialIndex,:),2);
 % SpeedStd = nanstd(TrialRunSpeed(TrialIndex),2);
 
 % Detrmine trials in each window
@@ -139,19 +139,25 @@ end
 
 % Determine number of trials per stimulus
 if isempty(StimIDs)
-    StimIDs = unique(ROIdata.DataInfo.StimID(TrialIndex));
+    StimIDs = unique(ROIdata.DataInfo.StimID(TrialIndex))';
 end
-numTrialsPerStim = nan(numStim,numWindows);
+numTrialsPerStim = nan(numel(StimIDs),numWindows);
 for windex = 1:numWindows
-    numTrialsPerStim(:,windex) = arrayfun(@(x,y) nnz(isequal(x,y)), StimIDs, ROIdata.DataInfo.StimID(TrialIndex(Index(:,
+    for sindex = 1:numel(StimIDs)
+        numTrialsPerStim(sindex,windex) = nnz(ROIdata.DataInfo.StimID(TrialIndex' & Index(:,windex))==StimIDs(sindex));
+    end
 end
+
+% Ignore windows without a single trial for any given stimulus
+bad = any(numTrialsPerStim==0,1);
+
 
 %% Calculate center of mass via sliding window
 CoM = nan(numROIs, numWindows);
 p_tuned = nan(numROIs, numWindows);
 Max = nan(numROIs, numWindows);
 TrialIndex = ROIdata.DataInfo.TrialIndex(TrialIndex);
-parfor windex = 1:numWindows
+parfor windex = find(~bad)
     [~, Curves, ~, p_tuned(:,windex)] = computeTuningCurve(ROIdata, ROIindex, TrialIndex(Index(:,windex)), 'ControlID', ControlID, 'StimIDs', StimIDs);
     Max(:,windex) = max(Curves(:,2:end),[],2);
     CoM(:,windex) = computeCenterOfMass(Curves, positions, distBetween);
@@ -161,9 +167,9 @@ end
 %% Save output
 if saveOut
     if exist(saveFile,'file')
-        save(saveFile,'CoM','Max','p_tuned','-append');
+        save(saveFile,'CoM','Max','p_tuned','numTrialsPerStim','StimIDs','-append');
     else
-        save(saveFile,'CoM','Max','p_tuned','-v7.3');
+        save(saveFile,'CoM','Max','p_tuned','numTrialsPerStim','StimIDs','-v7.3');
     end
     fprintf('Saved sliding window analysis to: %s\n',saveFile);
 end
