@@ -204,7 +204,14 @@ if ~iscell(eventdata)
     Maps = cell(numel(Images), 1);
 else
     Images = eventdata{1};
-    Maps = eventdata{2};
+    if ~isempty(eventdata{2})
+        Maps = eventdata{2};
+    else
+        Maps = cell(numel(Images), 1);
+        for findex = 1:numel(Images)
+            Maps{findex} = imref2d([size(Images{findex},1), size(Images{findex},2)]);
+        end
+    end
 end
 
 % Load Images

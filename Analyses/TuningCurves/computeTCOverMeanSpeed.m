@@ -125,16 +125,14 @@ end
 %% Gather run speed data
 if ischar(TrialRunSpeed)
     TrialRunSpeed = gatherRunData(TrialRunSpeed,[],'TrialIndex',TrialIndex);
-    SpeedMean = nanmean(TrialRunSpeed,2);
-else
-    SpeedMean = nanmean(TrialRunSpeed(ismember(ROIdata.DataInfo.TrialIndex, TrialIndex),:),2);
 end
+SpeedMean = nanmean(TrialRunSpeed,2);
 
 % Detrmine trials in each window
 TrialIndex = ismember(ROIdata.DataInfo.TrialIndex, TrialIndex);
 Index = false(numel(TrialIndex),numWindows);
 for windex = 1:numWindows
-    Index(:,windex) = SpeedMean>=startOfWindow(windex) & SpeedMean<=startOfWindow(windex)+width;
+    Index(TrialIndex,windex) = SpeedMean>=startOfWindow(windex) & SpeedMean<=startOfWindow(windex)+width;
 end
 
 % Determine number of trials per stimulus
@@ -149,17 +147,16 @@ for windex = 1:numWindows
 end
 
 % Ignore windows without a single trial for any given stimulus
-bad = any(numTrialsPerStim==0,1);
+bad = any(numTrialsPerStim<1,1);
 
 
 %% Calculate center of mass via sliding window
 CoM = nan(numROIs, numWindows);
 p_tuned = nan(numROIs, numWindows);
 Max = nan(numROIs, numWindows);
-TrialIndex = ROIdata.DataInfo.TrialIndex(TrialIndex);
 parfor windex = 1:numWindows
     if ~bad(windex)
-        [~, Curves, ~, p_tuned(:,windex)] = computeTuningCurve(ROIdata, ROIindex, TrialIndex(Index(:,windex)), 'ControlID', ControlID, 'StimIDs', StimIDs);
+        [~, Curves, ~, p_tuned(:,windex)] = computeTuningCurve(ROIdata, ROIindex, ROIdata.DataInfo.TrialIndex(Index(:,windex)), 'ControlID', ControlID, 'StimIDs', StimIDs);
         Max(:,windex) = max(Curves(:,2:end),[],2);
         CoM(:,windex) = computeCenterOfMass(Curves, positions, distBetween);
     end

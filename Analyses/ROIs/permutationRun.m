@@ -1,6 +1,6 @@
 function [p,rho,Speed,theta,p_corr,CoM,p_tuned] = permutationRun(ROIdata, targetTrials, varargin)
 
-numPerms = 50000;
+numPerms = 5000;
 StimIDs = [];       % vector of indices of stimuli to analyze
 ROIindex = [];     
 TrialIndex = [];    % indices of trials to analyze
@@ -58,7 +58,7 @@ while index<=length(varargin)
             case {'save','Save'}
                 saveOut = true;
                 index = index + 1;
-            case 'saveFile'
+            case {'saveFile','SaveFile'}
                 saveFile = varargin{index+1};
                 index = index + 2;
             case 'verbose'
@@ -271,9 +271,9 @@ rho = rho + temp; % add mean back
 %% Save outputs
 if saveOut && ~isempty(saveFile)
     if ~exist(saveFile,'file')
-        save(saveFile,'p','rho','Speed','theta','p_corr','CoM','ROIindex','TrialIndex','-v7.3');
+        save(saveFile,'p','rho','Speed','theta','p_corr','CoM','ROIindex','TrialIndex','numTargets','-v7.3');
     else
-        save(saveFile,'p','rho','Speed','theta','p_corr','CoM','ROIindex','TrialIndex','-append');
+        save(saveFile,'p','rho','Speed','theta','p_corr','CoM','ROIindex','TrialIndex','numTargets','-append');
     end
     fprintf('Saved permutation results to: %s\n',saveFile);
 end
