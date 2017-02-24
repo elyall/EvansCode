@@ -1,5 +1,6 @@
 function Avg = avgStack(Images,numFramesPerDepth,varargin)
 
+MCdata = [];
 numDepths = [];
 saveOut = false;
 saveFile = '';
@@ -11,6 +12,9 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
+            case 'MCdata'
+                MCdata = varargin{index+1};
+                index = index + 2;
             case 'numDepths'
                 numDepths = varargin{index+1};
                 index = index + 2;
@@ -67,6 +71,12 @@ if numel(numFramesPerDepth)<numDepths
     catch
         numFramesPerDepth = [numFramesPerDepth';repmat(numFramesPerDepth(end),numDepths-numel(numFramesPerDepth),1)];
     end
+end
+
+
+%% Motion correct frames
+if ~isempty(MCdata)
+    Images = applyMotionCorrection(Images,MCdata);
 end
 
 
