@@ -1,4 +1,4 @@
-function [ROIs,Centroids,Labels] = UIroi(N,Image,Labels)
+function [ROIs,Centroids,Labels] = UIroi(N,Image,Labels,ROIs)
 
 directory = cd;
 
@@ -19,13 +19,22 @@ if ~exist('Labels','var') || isempty(Labels)
     Labels = num2cell(num2str((1:N)'));
 end
 
+if ~exist('ROIs','var') || isempty(ROIs)
+    ROIs = cell(1,N);
+end
+if ~iscell(ROIs)
+    ROIs = {ROIs};
+end
+if numel(ROIs)==1 && N>1
+    ROIs = repmat(ROIs,1,N);
+end
+
 %% Load image
 if ischar(Image)
     Image = imread(Image);
 end
 
 %% Define ROIs
-ROIs = cell(1,N);
 Centroids = nan(N,2);
 
 hF = figure('NumberTitle','off','CloseRequestFcn',@DeleteFcn);
@@ -34,7 +43,7 @@ fcn = makeConstrainToRectFcn('impoly',get(gca,'XLim'),get(gca,'YLim'));
 for rindex = 1:N
     go = false;
     set(hF,'Name',sprintf('Select ROI %s (exit figure when finished)',Labels{rindex}));
-    h = impoly(gca,'Closed',1,'PositionConstraintFcn',fcn);
+    h = impoly(gca,ROIs{rindex},'Closed',1,'PositionConstraintFcn',fcn);
     while ~go
         pause(.2)
     end
