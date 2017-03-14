@@ -4,11 +4,8 @@ saveOut = false;
 saveFile = '';
 
 TrialIndex = [1 inf];
-Depth = 1;
 secondsBefore = 1.5;
 secondsAfter = 4.5;
-% numFramesBefore = []; % '[]' for default
-% numFramesAfter = []; % '[]' for default
 SeriesVariables = {}; % strings of fieldnames in 'frames' struct to extract to be trial-wise
 
 directory = cd;
@@ -41,14 +38,11 @@ while index<=length(varargin)
             case {'Trials','trials'}
                 TrialIndex = varargin{index+1};
                 index = index + 2;
-            case 'Depth'
-                Depth = varargin{index+1};
+            case 'secondsBefore'
+                secondsBefore = varargin{index+1};
                 index = index + 2;
-            case 'numFramesBefore'
-                numFramesBefore = varargin{index+1};
-                index = index + 2;
-            case 'numFramesAfter'
-                numFramesAfter = varargin{index+1};
+            case 'secondsAfter'
+                secondsAfter = varargin{index+1};
                 index = index + 2;
             case {'Save', 'save'}
                 saveOut = true;
@@ -209,7 +203,7 @@ for rindex = ROIindex
     end
     for nindex = 1:numTrials
         StimFrames = AnalysisInfo.ExpStimFrames(TrialIndex(nindex),:);
-        relativeID = [find(depthID>=StimFrames(1),1,'first'), find(depthID<=StimFrames(2),1,'last')];
+        relativeID = [find(depthID>=StimFrames(1),1,'first'), find(depthID<StimFrames(2),1,'last')];
         ROIdata.DataInfo.numStimFrames(nindex) = diff(relativeID) + 1;
         currentIndex = relativeID(1)-numFramesBefore:relativeID(1)+numFramesAfter;
         try

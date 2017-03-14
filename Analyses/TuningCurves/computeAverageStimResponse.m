@@ -11,32 +11,32 @@ saveFile = '';
 directory = cd;
 
 %% Parse input arguments
-index = 1;
-while index<=length(varargin)
+relativeID(1) = 1;
+while relativeID(1)<=length(varargin)
     try
-        switch varargin{index}
+        switch varargin{relativeID(1)}
             case {'Depth','depth'}
-                Depth = varargin{index+1};
-                index = index + 2;
+                Depth = varargin{relativeID(1)+1};
+                relativeID(1) = relativeID(1) + 2;
             case 'timeBefore'
-                timeBefore = varargin{index+1};
-                index = index + 2;
+                timeBefore = varargin{relativeID(1)+1};
+                relativeID(1) = relativeID(1) + 2;
             case 'timeAfter'
-                timeAfter = varargin{index+1};
-                index = index + 2;
+                timeAfter = varargin{relativeID(1)+1};
+                relativeID(1) = relativeID(1) + 2;
             case {'Save', 'save'}
                 saveOut = true;
-                index = index + 1;
+                relativeID(1) = relativeID(1) + 1;
             case {'SaveFile', 'saveFile'}
-                saveFile = varargin{index+1};
-                index = index + 2;
+                saveFile = varargin{relativeID(1)+1};
+                relativeID(1) = relativeID(1) + 2;
             otherwise
-                warning('Argument ''%s'' not recognized',varargin{index});
-                index = index + 1;
+                warning('Argument ''%s'' not recognized',varargin{relativeID(1)});
+                relativeID(1) = relativeID(1) + 1;
         end
     catch
-        warning('Argument %d not recognized',index);
-        index = index + 1;
+        warning('Argument %d not recognized',relativeID(1));
+        relativeID(1) = relativeID(1) + 1;
     end
 end
 
@@ -131,7 +131,7 @@ Config = load2PConfig(ImageFiles);
 numFramesBefore = round(timeBefore*Config.FrameRate/Config.Depth);
 numFramesAfter = round(timeAfter*Config.FrameRate/Config.Depth);
 
-Frames = idDepth(Config.Depth, Config.Frames, 'Depth', Depth);
+depthID = idDepth(Config.Depth, Config.Frames, 'Depth', Depth);
 
 %% Compute average trial
 fprintf('Calculating average trials for:\n');
@@ -168,12 +168,13 @@ for sindex = 1:numStims
     for tindex = 1:numTrials
         
         % Load trial
-        index = find(Frames-AnalysisInfo.ExpStimFrames(currentTrials(tindex),1)>=0,1);
+                StimFrames = AnalysisInfo.ExpStimFrames(currentTrials(tindex),:);
+        relativeID = [find(depthID>=StimFrames(1),1,'first'), find(depthID<StimFrames(2),1,'last')];
         [frames, loadObj] = load2P(ImageFiles{1},...
             'Type',     'Direct',...
             'Depth',    Depth,...
             'Channel',  Channel,...
-            'Frames',   Frames(index-numFramesBefore:index+numFramesAfter),...
+            'Frames',   depthID(relativeID(1)-numFramesBefore:relativeID(1)+numFramesAfter),...
             'Double');
         if MotionCorrect
             frames = applyMotionCorrection(frames, MCdata, loadObj);
@@ -190,8 +191,7 @@ for sindex = 1:numStims
         AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex} + frames; % if concerned about precision clipping high values during sum add: /numTrials;
         
         % Save for later calculation
-        index2 = find(Frames-AnalysisInfo.ExpStimFrames(currentTrials(tindex),2)<0,1,'last');
-        trialdFoF{sindex}(:,:,tindex) = mean(frames(:,:,numFramesBefore+1:numFramesBefore+index2-index+1), 3);
+        trialdFoF{sindex}(:,:,tindex) = mean(frames(:,:,numFramesBefore+1:numFramesBefore+diff(relativeID)+1), 3);
     end
     AvgTrial{sindex} = uint16(AvgTrial{sindex}/numTrials); % if not concerned about precision clipping high values after sum, otherwise comment out and amend above
     AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex}/numTrials; % if not concerned about precision clipping high values after sum, otherwise comment out and amend above
