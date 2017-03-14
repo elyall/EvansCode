@@ -15,7 +15,7 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
-            case 'type'
+            case {'type','Type'}
                 type = varargin{index+1};
                 index = index + 2;
             case 'numSTDsOutlier'

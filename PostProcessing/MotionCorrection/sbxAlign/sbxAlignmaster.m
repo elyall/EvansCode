@@ -2,8 +2,8 @@ function sbxAlignmaster(fname,Depth,rect)
 
     global info
     
-    if ~exist('rect','var') || isempty(rect)
-        rect = false;
+    if ~exist('rect','var')
+        rect = [];
     end
     if isequal(rect,true)
         [~, ~, rect] = crop(sbxreadpacked(fname,0,1), rect);
@@ -24,7 +24,7 @@ function sbxAlignmaster(fname,Depth,rect)
         str = '';
     end
     
-    Frames = idDepth([fname,'.sbx'],'Depth',Depth)';    
+    Frames = idDepth([fname,'.sbx'],[],'Depth',Depth)';    
     if Depth==1
         Frames(1) = []; % throw out very first frame as it's wrong (blank row in T added in at end)
     end
@@ -97,6 +97,7 @@ function sbxAlignmaster(fname,Depth,rect)
     if isempty(rect)
         rgx = (1:size(m,2))+45;
         rgy = 32 + (1:size(m,1));
+        mask = [];
     else
         rgy = rect(1):rect(2);
         rgx = rect(3):rect(4);
@@ -159,7 +160,7 @@ function sbxAlignmaster(fname,Depth,rect)
     parfor jj = 1:numFrames
 
         z = single(sbxreadpacked(fname,Frames(1,jj)-1,1));
-        if ~isempty(rect) %Evan
+        if ~isempty(mask) %Evan
             z(~mask) = 0;
         end
         
@@ -291,7 +292,7 @@ function sbxAlignmaster(fname,Depth,rect)
     parfor jj = 1:numFrames % parfor
 
         z = double(sbxreadpacked(fname,Frames(1,jj)-1,1));
-        if ~isempty(rect) %Evan
+        if ~isempty(mask) %Evan
             z(~mask) = 0;
         end
         

@@ -21,7 +21,7 @@ function [] = sbxComputeci(fname,Depth,rect)
         str = '';
     end
     
-    Frames = idDepth([fname,'.sbx'],'Depth',Depth);    
+    Frames = idDepth([fname,'.sbx'],[],'Depth',Depth);    
     if Depth==1
         Frames(1) = []; % throw out very first frame as it's incomplete and not at the right depth
     end
@@ -35,6 +35,8 @@ function [] = sbxComputeci(fname,Depth,rect)
         rect([3,4]) = ceil(rect([3,4]));
         mask = true(size(A));
         mask(rect(2)+1:rect(2)+rect(4), rect(1)+1:rect(1)+rect(3)) = false;
+    else
+        mask = [];
     end
 %     N = min(size(A))-20;    % leave margin
 %     if rem(N,2)

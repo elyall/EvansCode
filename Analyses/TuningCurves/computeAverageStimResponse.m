@@ -1,23 +1,28 @@
 function [AvgTrial, AvgTrialdFoF, StimResponse] = computeAverageStimResponse(ImageFiles, ExperimentFile, TrialIndex, MotionCorrect, varargin)
 
+Depth = 1;
+Channel = 1;
+timeBefore = 2;
+timeAfter = 4;
+
 saveOut = false;
 saveFile = '';
 
 directory = cd;
-
-numFramesBefore = 20;
-numFramesAfter = 49;
 
 %% Parse input arguments
 index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
-            case 'numFramesBefore'
-                numFramesBefore = varargin{index+1};
+            case {'Depth','depth'}
+                Depth = varargin{index+1};
                 index = index + 2;
-            case 'numFramesAfter'
-                numFramesAfter = varargin{index+1};
+            case 'timeBefore'
+                timeBefore = varargin{index+1};
+                index = index + 2;
+            case 'timeAfter'
+                timeAfter = varargin{index+1};
                 index = index + 2;
             case {'Save', 'save'}
                 saveOut = true;
@@ -116,11 +121,17 @@ elseif isstruct(MotionCorrect)
 elseif MotionCorrect == true && ~exist('MCdata', 'var')
     load(ExperimentFile, 'MCdata', '-mat');
 end
+if ~exist('MCdata','var')
+    MotionCorrect = false;
+end
 
-
-%% Load in image config
+%% Load image config and determine number of frames before and after
 Config = load2PConfig(ImageFiles);
 
+numFramesBefore = round(timeBefore*Config.FrameRate/Config.Depth);
+numFramesAfter = round(timeAfter*Config.FrameRate/Config.Depth);
+
+Frames = idDepth(Config.Depth, Config.Frames, 'Depth', Depth);
 
 %% Compute average trial
 fprintf('Calculating average trials for:\n');
@@ -132,9 +143,9 @@ StimResponse.info.numFramesAfter = numFramesAfter;
 
 % Initialize outputs
 numFrames = numFramesBefore+numFramesAfter+1;
-AvgTrial = repmat({zeros([Config(1).size(1:end-1), numFrames])},numStims,1);
-AvgTrialdFoF = repmat({zeros([Config(1).size(1:end-2), numFrames])},numStims,1);
-trialdFoF = repmat({zeros([Config(1).size(1:end-2), numFrames])},numStims,1);
+AvgTrial = repmat({zeros([Config(1).size(1:2), numFrames])},numStims,1);
+AvgTrialdFoF = repmat({zeros([Config(1).size(1:2), numFrames])},numStims,1);
+trialdFoF = repmat({zeros([Config(1).size(1:2), numFrames])},numStims,1);
 % AvgTrial = cell(numStims,1);
 % AvgTrialdFoF = cell(numStims,1);
 % trialdFoF = cell(numStims,1);
@@ -157,27 +168,30 @@ for sindex = 1:numStims
     for tindex = 1:numTrials
         
         % Load trial
-        [frames, loadObj] = load2P(ImageFiles{1},... %
+        index = find(Frames-AnalysisInfo.ExpStimFrames(currentTrials(tindex),1)>=0,1);
+        [frames, loadObj] = load2P(ImageFiles{1},...
             'Type',     'Direct',...
-            'Frames',   AnalysisInfo.ExpStimFrames(currentTrials(tindex),1)-numFramesBefore:AnalysisInfo.ExpStimFrames(currentTrials(tindex),1)+numFramesAfter,...
+            'Depth',    Depth,...
+            'Channel',  Channel,...
+            'Frames',   Frames(index-numFramesBefore:index+numFramesAfter),...
             'Double');
         if MotionCorrect
             frames = applyMotionCorrection(frames, MCdata, loadObj);
         end
+        frames = permute(frames,[1,2,5,3,4]);
         
         % Add trial to average
         AvgTrial{sindex} = AvgTrial{sindex} + frames; % if concerned about precision clipping high values during sum add: /numTrials;
         
         % Compute trial's dFoF
-        baseline = median(frames(:,:,:,1,1:numFramesBefore),5);
+        baseline = median(frames(:,:,1:numFramesBefore),3);
         baseline(baseline<1) = 1; % in reality this never happens but don't want to enhance a small value
-        frames = bsxfun(@rdivide, bsxfun(@minus, frames(:,:,:,1,:), baseline), baseline);
-        AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex} + permute(frames, [1,2,3,5,4]); % if concerned about precision clipping high values during sum add: /numTrials;
+        frames = bsxfun(@rdivide, bsxfun(@minus, frames, baseline), baseline);
+        AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex} + frames; % if concerned about precision clipping high values during sum add: /numTrials;
         
         % Save for later calculation
-        lastFrame = min(numFramesBefore+1+diff(AnalysisInfo.ExpStimFrames(tindex,:)), numFrames);
-%         trialdFoF{sindex}(:,:,:,tindex) = mean(frames(:,:,:,1,numFramesBefore+1:lastFrame), 5);
-        trialdFoF{sindex}(:,:,:,tindex) = mean(frames(:,:,:,1,lastFrame-7:lastFrame), 5);
+        index2 = find(Frames-AnalysisInfo.ExpStimFrames(currentTrials(tindex),2)<0,1,'last');
+        trialdFoF{sindex}(:,:,tindex) = mean(frames(:,:,numFramesBefore+1:numFramesBefore+index2-index+1), 3);
     end
     AvgTrial{sindex} = uint16(AvgTrial{sindex}/numTrials); % if not concerned about precision clipping high values after sum, otherwise comment out and amend above
     AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex}/numTrials; % if not concerned about precision clipping high values after sum, otherwise comment out and amend above
@@ -187,19 +201,19 @@ end
    
 
 %% Compute average response
-StimResponse.avg = nan([Config(1).size(1:end-2), numStims]);
-StimResponse.se = nan([Config(1).size(1:end-2), numStims]);
-StimResponse.pvalue = ones([Config(1).size(1:end-2), numStims]);
-StimResponse.excited = false([Config(1).size(1:end-2), numStims]);
+StimResponse.avg = nan([Config(1).size(1:2), numStims]);
+StimResponse.se = nan([Config(1).size(1:2), numStims]);
+StimResponse.pvalue = ones([Config(1).size(1:2), numStims]);
+StimResponse.excited = false([Config(1).size(1:2), numStims]);
 for sindex = 1:numStims
-    StimResponse.avg(:,:,:,sindex) = mean(trialdFoF{sindex}, 4);
-    StimResponse.se(:,:,:,sindex) = std(trialdFoF{sindex},[],4)/sqrt(size(trialdFoF{sindex},4));
+    StimResponse.avg(:,:,sindex) = mean(trialdFoF{sindex}, 3);
+    StimResponse.se(:,:,sindex) = std(trialdFoF{sindex},[],3)/sqrt(size(trialdFoF{sindex},3));
     if sindex ~= 1
-        [~, StimResponse.pvalue(:,:,:,sindex)] = ttest2(...
+        [~, StimResponse.pvalue(:,:,sindex)] = ttest2(...
             trialdFoF{1},...
             trialdFoF{sindex},...
-            'dim', 4);
-        StimResponse.excited(:,:,:,sindex) = StimResponse.avg(:,:,:,sindex) > StimResponse.avg(:,:,:,1);
+            'dim', 3);
+        StimResponse.excited(:,:,sindex) = StimResponse.avg(:,:,sindex) > StimResponse.avg(:,:,1);
     end
 end
 
@@ -207,9 +221,9 @@ end
 %% Save to file
 if saveOut
     if ~exist(saveFile, 'file')
-        save(saveFile, 'AvgTrial', 'AvgTrialdFoF', 'StimResponse', '-mat', '-v7.3');
+        save(saveFile, 'AvgTrial', 'AvgTrialdFoF', 'StimResponse', 'TrialIndex', '-mat', '-v7.3');
     else
-        save(saveFile, 'AvgTrial', 'AvgTrialdFoF', 'StimResponse', '-mat','-append');
+        save(saveFile, 'AvgTrial', 'AvgTrialdFoF', 'StimResponse', 'TrialIndex', '-mat','-append');
     end
     fprintf('Saved average stimuli to: %s\n', saveFile);
 end
