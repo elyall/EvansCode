@@ -4,6 +4,9 @@ Depth = 1;
 Channel = 1;
 timeBefore = 2;
 timeAfter = 4;
+% Filter = [];
+Filter = fspecial('gaussian',5,1);
+Baseline = 30; % scalar specifying the prctile, 'trial-wise', or a frame that represents the baseline
 
 saveOut = false;
 saveFile = '';
@@ -11,32 +14,38 @@ saveFile = '';
 directory = cd;
 
 %% Parse input arguments
-relativeID(1) = 1;
-while relativeID(1)<=length(varargin)
+index = 1;
+while index<=length(varargin)
     try
-        switch varargin{relativeID(1)}
+        switch varargin{index}
             case {'Depth','depth'}
-                Depth = varargin{relativeID(1)+1};
-                relativeID(1) = relativeID(1) + 2;
+                Depth = varargin{index+1};
+                index = index + 2;
             case 'timeBefore'
-                timeBefore = varargin{relativeID(1)+1};
-                relativeID(1) = relativeID(1) + 2;
+                timeBefore = varargin{index+1};
+                index = index + 2;
             case 'timeAfter'
-                timeAfter = varargin{relativeID(1)+1};
-                relativeID(1) = relativeID(1) + 2;
+                timeAfter = varargin{index+1};
+                index = index + 2;
+            case {'filter','Filter'}
+                Filter = varargin{index+1};
+                index = index + 2;
+            case 'Baseline'
+                Baseline = varargin{index+1};
+                index = index + 2;
             case {'Save', 'save'}
                 saveOut = true;
-                relativeID(1) = relativeID(1) + 1;
+                index = index + 1;
             case {'SaveFile', 'saveFile'}
-                saveFile = varargin{relativeID(1)+1};
-                relativeID(1) = relativeID(1) + 2;
+                saveFile = varargin{index+1};
+                index = index + 2;
             otherwise
-                warning('Argument ''%s'' not recognized',varargin{relativeID(1)});
-                relativeID(1) = relativeID(1) + 1;
+                warning('Argument ''%s'' not recognized',varargin{index});
+                index = index + 1;
         end
     catch
-        warning('Argument %d not recognized',relativeID(1));
-        relativeID(1) = relativeID(1) + 1;
+        warning('Argument %d not recognized',index);
+        index = index + 1;
     end
 end
 
@@ -168,7 +177,7 @@ for sindex = 1:numStims
     for tindex = 1:numTrials
         
         % Load trial
-                StimFrames = AnalysisInfo.ExpStimFrames(currentTrials(tindex),:);
+        StimFrames = AnalysisInfo.ExpStimFrames(currentTrials(tindex),:);
         relativeID = [find(depthID>=StimFrames(1),1,'first'), find(depthID<StimFrames(2),1,'last')];
         [frames, loadObj] = load2P(ImageFiles{1},...
             'Type',     'Direct',...
@@ -176,6 +185,9 @@ for sindex = 1:numStims
             'Channel',  Channel,...
             'Frames',   depthID(relativeID(1)-numFramesBefore:relativeID(1)+numFramesAfter),...
             'Double');
+        if ~isempty(Filter)
+            frames = imfilter(frames, Filter);
+        end
         if MotionCorrect
             frames = applyMotionCorrection(frames, MCdata, loadObj);
         end
@@ -185,7 +197,13 @@ for sindex = 1:numStims
         AvgTrial{sindex} = AvgTrial{sindex} + frames; % if concerned about precision clipping high values during sum add: /numTrials;
         
         % Compute trial's dFoF
-        baseline = median(frames(:,:,1:numFramesBefore),3);
+        if ischar(Baseline)
+            baseline = median(frames(:,:,1:numFramesBefore),3);
+        elseif isscalar(Baseline)
+            baseline = prctile(frames,Baseline,3);
+        else
+            baseline = Baseline;
+        end
         baseline(baseline<1) = 1; % in reality this never happens but don't want to enhance a small value
         frames = bsxfun(@rdivide, bsxfun(@minus, frames, baseline), baseline);
         AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex} + frames; % if concerned about precision clipping high values during sum add: /numTrials;

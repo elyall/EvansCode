@@ -1,45 +1,33 @@
-function saveFile = Vid(saveFile,Images,varargin)
+function SaveFile = Vid(SaveFile,Images,varargin)
+%VID    Saves image frames to video file
 
-% Filters
+% Default parameters that can be changed
 Afilt = false;
 % Afilt = fspecial('gaussian',5,1);
 Tfilt = false;
 % Tfilt = 1/100*ones(1,100);
-
-% Speed
-frameRate = 15.45;
-
-% Motion correction
-MCdata = [];
-
-% Display info
+frameRate = 15.45/4;
+MCdata = {[]};
+Maps = {[]};
+MergeType = 'mean'; % 'mean' or 'blend'
 StimIndex = false; % vector, logical or numeric
 showColorBar = false;
-% Crop = false;
-Crop = [32.51, 0, 729.98, 512];
-
-% Color info
+Crop = false;
+% Crop = [32.51, 0, 729.98, 512];
 CLim = [];
-CMapType = 'green';
+CMapType = 'gray';
 
-% Loading only
-Channel = 1;
-Frames = [1 inf];
+indMap = [];
+Dim = [];
+Map = [];
 
 directory = cd;
-
 
 %% Parse input arguments
 index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
-            case 'Frames'
-                Frames = varargin{index+1};
-                index = index + 2;
-            case 'Channel'
-                Channel = varargin{index+1};
-                index = index + 2;
             case {'frameRate','FrameRate'}
                 frameRate = varargin{index+1};
                 index = index + 2;
@@ -67,6 +55,17 @@ while index<=length(varargin)
             case 'MCdata'
                 MCdata = varargin{index+1};
                 index = index + 2;
+            case 'Maps'
+                Maps = varargin{index+1};
+                index = index + 2;
+            case 'MergeType'
+                MergeType = varargin{index+1};
+                index = index + 2;
+            case 'Map'
+                indMap = varargin{index+1};
+                Dim = varargin{index+2};
+                Map = varargin{index+3};
+                index = index + 4;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
                 index = index + 1;
@@ -78,51 +77,117 @@ while index<=length(varargin)
 end
 
 if ~exist('Images','var') || isempty(Images)
-    [Images,directory] = uigetfile({'*.sbx;*.tiff'}, 'Select image files:', directory);
+    [Images,directory] = uigetfile({'*.sbx;*.tiff'}, 'Select image files:', directory,'MultiSelect','on');
     if isnumeric(Images)
         return
     end
     Images = fullfile(directory,Images);
 end
 
-if ~exist('saveFile','var') || isempty(saveFile)
+if ~exist('SaveFile','var') || isempty(SaveFile)
     if iscellstr(Images)
-        [~,saveFile,~]=fileparts(Images{1});
+        [~,SaveFile,~]=fileparts(Images{1});
     else
-        saveFile='vid';
+        SaveFile='vid';
     end
-    [saveFile,directory]=uiputfile({'*.avi'},'Save as',fullfile(directory,[saveFile,'.avi']));
-    if isempty(saveFile)
+    [SaveFile,directory]=uiputfile({'*.avi'},'Save as',fullfile(directory,[SaveFile,'.avi']));
+    if isempty(SaveFile)
         return
     end
-    saveFile=fullfile(directory,saveFile);
+    SaveFile=fullfile(directory,SaveFile);
 end
 
 
-%% Load Images
-if iscellstr(Images) || ischar(Images)
-    [Images, loadObj] = load2P(Images,'Frames',Frames,'Channel',Channel);
+%% Adjust inputs for number of files
+if ~iscell(Images)
+    Images = {Images};
 end
-numFrames = size(Images,5);
+numFiles = numel(Images);
 
-% Motion correct images
-if ~isempty(MCdata)
-    Images = applyMotionCorrection(Images, MCdata, loadObj);
+if ~iscell(MCdata)
+    MCdata = {MCdata};
 end
-
-% Crop images
-if ~isequal(Crop,false)
-    Images = crop(Images, Crop);
+if numel(MCdata)==1 && numFiles>1
+    MCdata = repmat(MCdata, numFiles, 1);
 end
 
-% Filter images in space
-if ~isequal(Afilt,false)
-    Images = imfilter(Images,Afilt);
+if ~iscell(Maps)
+    Maps = {Maps};
 end
-        
-% Filter images in time
-if ~isequal(Tfilt,false)
-    Images = filter(Tfilt,1,double(Images),[],3);
+if numel(Maps)==1 && numFiles>1
+    Maps = repmat(Maps, numFiles, 1);
+end
+
+if ~isequal(Crop,false) && size(Crop,1)==1 && numFiles>1
+    Crop = repmat(Crop,numFiles,1);
+end
+
+
+%% Create and adjust images
+for findex = 1:numFiles
+    
+    % Load images
+    if iscellstr(Images{findex}) || ischar(Images{findex})
+        Images{findex} = load2P(Images{findex});
+    end
+    
+    % Motion correct images
+    if ~isempty(MCdata{findex})
+        if ischar(MCdata{findex})
+            temp = load(MCdata{findex},'MCdata','-mat');
+            MCdata{findex} = temp.MCdata;
+        end
+        Images{findex} = applyMotionCorrection(Images{findex}, MCdata{findex});
+    end
+    
+    % Remove unwanted dimensions and convert to double
+    if ndims(Images{findex})>3
+        Images{findex} = squeeze(Images{findex}(:,:,1,1,:));
+    end
+    Images{findex} = double(Images{findex});
+    
+    % Load map
+    if ischar(Maps{findex})
+        temp = load(Maps{findex},'Map','-mat');
+        Maps{findex} = temp;
+    elseif isempty(Maps{findex})
+        Maps{findex} = imref2d([size(Images{findex},1),size(Images{findex},2)]);
+    end
+    
+    % Crop images
+    if ~isequal(Crop,false)
+        [Images{findex},Maps{findex}] = crop(Images{findex}, Crop(findex,:), Maps{findex});
+    end
+    
+    % Filter images in space
+    if ~isequal(Afilt,false)
+        Images{findex} = imfilter(Images{findex},Afilt);
+    end
+    
+    % Filter images in time
+    if ~isequal(Tfilt,false)
+        Images{findex} = filter(Tfilt,1,double(Images{findex}),[],3);
+    end
+    
+end
+numFrames = size(Images{1},3);
+
+% Convert maps to array
+Maps = cat(1,Maps{:});
+
+% Build composite image
+if numFiles > 1
+    if isempty(indMap)
+        [Dim, refMap, indMap] = mapFoVs(Maps, 'type', MergeType);
+    end
+    temp = Images;
+    Images = nan([refMap.ImageSize,numFrames]);
+    for findex = 1:numFrames
+        current = cellfun(@(x) x(:,:,findex), temp, 'UniformOutput', false);
+        Images(:,:,findex) = createImage(current, Maps, 'speed', 'pretty', 'Map', indMap, Dim, refMap, 'OutputView', refMap);
+    end
+else
+    Images = Images{1};
 end
 
 
@@ -130,7 +195,7 @@ end
 
 % Determine Color Limits
 if isempty(CLim)
-    temp = double(Images(:,:,:,:,round(end/2)));
+    temp = double(Images(:,:,round(end/2)));
     CLim = prctile(temp(:), [.01,99.99]);
 end
 
@@ -148,6 +213,10 @@ switch CMapType
         cmap = [zeros(128,1), linspace(0,1,128)', zeros(128,1)];
     case 'blue'
         cmap = [zeros(128,1), zeros(128,1), linspace(0,1,128)'];
+    case 'parula'
+        cmap = parula(128);
+    case 'hot'
+        cmap = hot(128);
 end
 
 
@@ -160,10 +229,10 @@ end
 
 
 %% Save each stimulus average to video
-fprintf('Writing video: %s...', saveFile);
+fprintf('Writing video: %s...', SaveFile);
 
 % Open video
-vidObj = VideoWriter(saveFile,'Motion JPEG AVI');
+vidObj = VideoWriter(SaveFile,'Motion JPEG AVI');
 set(vidObj, 'FrameRate', frameRate);
 open(vidObj);
 
@@ -176,7 +245,7 @@ parfor_progress(numFrames);
 for findex = 1:numFrames
     
     % Display Image
-    imagesc(Images(:,:,:,1,findex), CLim);
+    imagesc(Images(:,:,findex), CLim);
     axis equal off;
     colormap(cmap);
     

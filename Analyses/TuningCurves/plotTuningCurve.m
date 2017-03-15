@@ -4,7 +4,7 @@ saveOut = false;
 saveFile = ''; % filename to save plots to
 
 % Items to display
-showControl = false;
+showControl = true;
 showFit = false;
 showDataPoints = false;
 showStimStars = false;

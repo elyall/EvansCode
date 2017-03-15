@@ -133,7 +133,7 @@ if ~exist('ROIs','var') || isempty(ROIs)
     end
     ROIs = fullfile(p,ROIs);
 end
-if ischar(ROIs)
+if ischar(ROIs) || isstruct(ROIs)
     ROIs = {ROIs};
 end
 
@@ -203,7 +203,7 @@ if ~isempty(Image)
     else
         imagesc(Image)
     end
-    % axis equal off
+%     axis equal off
     
 end
 
@@ -296,7 +296,7 @@ if showColorBar
     end
     
     % Determine cbTickLabel
-    if isempty(cbTick) && strcmp(DataType,'Discrete')
+    if isempty(cbTick) && strcmpi(DataType,'discrete')
         cbTickLabel = cellstr(num2str((1:size(Colors,1))'));    % label for each index of colormap
         Split = range(NewYLim)/numel(cbTickLabel);              % distance between two colors
         cbTick = NewYLim(1)+Split/2:Split:NewYLim(2);           % locations of ticks

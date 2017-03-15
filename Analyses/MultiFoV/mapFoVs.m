@@ -1,9 +1,39 @@
 function [Dim, refMap, indMap, Maps] = mapFoVs(Maps, varargin)
-% Dim - first two values are X,Y distance from top left corner. second
-% two values are width and height.
+%MAPFOVS    Creates objects for merging multiple images into one image
+%   [DIM, REFMAP] = mapFoVs(MAPS) determines the location of each imref2d
+%   object input in the final composite image. MAPS is a cell array of
+%   strings specifying files to load variable 'Map' from, a cell array of
+%   imref2d objects, or an array of imref2d objects, of length N. DIM is
+%   Nx4, where DIM(1,1:2) is the X,Y distance of the first image from the
+%   top left corner of the composite image. DIM(1,3) is the width of that
+%   image, and DIM(1,4) is the height. REFMAP is the imref2d object for the
+%   final composite image.
+%
+%   mapFoVs() prompts the user to select multiple '.exp', '.align', or
+%   '.mat' files to load variable 'Map' from. Each 'Map' variable should be
+%   the imref2d object for a single input image.
+%
+%   [DIM, REFMAP, INDMAP] = mapFoVs(MAPS, 'Type', MERGETYPE) specifies how
+%   the INDMAP used for creating the composite image is created. MERGETYPE
+%   can be 'index', 'mean', or 'blend'. INDMAP is a matrix of size HxWxN
+%   indexing the location of each input image within the composite image.
+%       'index' -> INDMAP(:,:,1) indexes the location of image 1 within the
+%       composite image
+%       'mean'  -> INDMAP weights overlapping pixels to be represented
+%       evenly
+%       'blend' -> INDMAP weights overlapping pixels as a function of their
+%       distance from their respective datasets. This results in data
+%       further from the edge of a given image being represented more and
+%       the composite image looking cleaner.
+%
+%   [DIM, REFMAP, INDMAP, MAPS] = mapFoVs(...) returns MAPS, an Nx1 array
+%   containing the individual imref2d objects for the images composited.
+%
 
-type = 'index'; % 'index' or 'mean' or 'blend'(indMap only)
+% Default parameters that can be changed
+type = 'index'; % 'index', 'mean', or 'blend' specifying the type of indMap output
 
+% Placeholders
 directory = cd;
 
 %% Parse input arguments
@@ -28,12 +58,10 @@ if ~exist('Maps', 'var')
     [Maps,p] = uigetfile({'*.exp;*.align'}, 'Select files containing maps:', directory, 'MultiSelect', 'on');
     if isnumeric(Maps)
         return
-    elseif iscellstr(Maps)
-        Maps = fullfile(p, Maps);
-    else
-        Maps = {fullfile(p, Maps)};
     end
-elseif ischar(Maps)
+    Maps = fullfile(p, Maps);
+end
+if ischar(Maps)
     Maps = {Maps};
 end
 
@@ -50,6 +78,12 @@ if iscellstr(Maps)
             Maps(findex) = temp.Map;
         end
         clear temp;
+    end
+elseif iscell(Maps)
+    temp = Maps;
+    Maps = imref2d();
+    for findex = 1:numFiles
+        Maps(findex) = temp{findex};
     end
 end
 
@@ -82,7 +116,7 @@ end
 
 if nargout > 2
     %% Index map
-    indMap = zeros(H, W, numFiles);
+    indMap = false(H, W, numFiles);
     for findex = 1:numFiles
         ylim = [ceil(Maps(findex).YWorldLimits(1)),floor(Maps(findex).YWorldLimits(2))] - floor(YLim(1));
         xlim = [ceil(Maps(findex).XWorldLimits(1)),floor(Maps(findex).XWorldLimits(2))] - floor(XLim(1));
@@ -92,15 +126,15 @@ if nargout > 2
     
     %% Blend map
     switch type
-        
-        case 'index'
-            indMap = logical(indMap);
             
         case 'mean'
             indMap = bsxfun(@rdivide, indMap, sum(indMap,3));
+            indMap(isnan(indMap)) = 0;
             
         case 'blend'
             fullMap = sum(indMap, 3);
+            indMap = double(indMap);
+            
             for findex = 1:numFiles
                 
                 % Find data points current data set is overlapping with others
@@ -135,6 +169,7 @@ if nargout > 2
             % (data closer to the border will count less than data further
             % from the border)
             indMap = bsxfun(@rdivide, indMap, sum(indMap,3));
+            indMap(isnan(indMap)) = 0;
     end
 end
 

@@ -6,9 +6,9 @@ speed = 'quick'; % 'quick' or 'pretty'
 % type = 'blend'; % 'mean' or 'blend' (for pretty only)
 scaling = 'Independent'; % 'Independent' or 'Joint' (for quick only)
 
-% Crop = false;
+Crop = false;
 % Crop = true; % matrix (numFiles x 4:[xmin, ymin, width, height]) or 'true' for prompting
-Crop = repmat([32.51, 0, 729.98, 512], 1, 1);
+% Crop = repmat([32.51, 0, 729.98, 512], 1, 1);
 
 filt = false;
 % filt = fspecial('gaussian', 5, 1);
@@ -158,7 +158,7 @@ end
 if numFiles > 1
     switch speed
         
-        case 'pretty' % Build Pretty Image
+        case {'pretty','blend'} % Build Pretty Image
             
             % Create map
             if isempty(indMap)
@@ -175,7 +175,7 @@ if numFiles > 1
             end
             
             
-        case 'quick' % Build Quick Image
+        case {'quick','mean'} % Build Quick Image
             %             for cindex = 1:Dimensions(1,3);
             %                 Image = Images{1}(:,:,cindex);
             Image = Images{1}(:,:,1);
