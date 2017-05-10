@@ -2,11 +2,11 @@ function SaveFile = Vid(SaveFile,Images,varargin)
 %VID    Saves image frames to video file
 
 % Default parameters that can be changed
-Afilt = false;
-% Afilt = fspecial('gaussian',5,1);
+% Afilt = false;
+Afilt = fspecial('gaussian',5,1);
 Tfilt = false;
 % Tfilt = 1/100*ones(1,100);
-frameRate = 15.45/4;
+frameRate = 15.45;
 MCdata = {[]};
 Maps = {[]};
 MergeType = 'mean'; % 'mean' or 'blend'
@@ -15,7 +15,7 @@ showColorBar = false;
 Crop = false;
 % Crop = [32.51, 0, 729.98, 512];
 CLim = [];
-CMapType = 'gray';
+CMapType = 'parula';
 
 indMap = [];
 Dim = [];
@@ -128,7 +128,7 @@ for findex = 1:numFiles
     
     % Load images
     if iscellstr(Images{findex}) || ischar(Images{findex})
-        Images{findex} = load2P(Images{findex});
+        Images{findex} = load2P(Images{findex},'Frames',[1,inf]);
     end
     
     % Motion correct images

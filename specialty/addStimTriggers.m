@@ -1,5 +1,6 @@
 function info = addStimTriggers(info, ExperimentFile, FirstID)
 
+frameTriggerScanOffset = false;
 saveOut = true;
 
 %% Grab experiments and look at other first frame IDs
@@ -24,7 +25,10 @@ DataInFile = [ExperimentFile(1:end-3),'bin'];
 if ~exist(DataInFile,'file')
     error('Cannot locate DataInFile: %s',DataInFile);
 end
-load(ExperimentFile,'DAQChannels','Experiment','TrialInfo','-mat');
+load(ExperimentFile,'DAQChannels','Experiment','TrialInfo','numDelayScans','-mat');
+if ~exist('numDelayScans','var')
+    numDelayScans = 0;
+end
 InputNames = DAQChannels(~cellfun(@isempty,strfind(DAQChannels, 'I_')));
 DataInFID = fopen(DataInFile, 'r');
 DataIn = fread(DataInFID, inf, Experiment.saving.dataPrecision);
@@ -33,14 +37,18 @@ nInputChannels = numel(InputNames);
 DataIn = reshape(DataIn, nInputChannels, numel(DataIn)/nInputChannels)';    % reshape to be nScans x nInputChannels
 DataIn = DataIn(:,strcmp(InputNames,'I_FrameCounter'));                     % keep only frame trigger
 DataIn = DataIn-[0;DataIn(1:end-1)]>0;                                      % locate onset of trigger
-
+if frameTriggerScanOffset<0                                                 % offset frame trigger to coincide with start of frame
+    DataIn = cat(1,DataIn(abs(frameTriggerScanOffset)+1:end),false(abs(frameTriggerScanOffset),1));
+elseif frameTriggerScanOffset>0
+    DataIn = cat(1,false(frameTriggerScanOffset,1),DataIn(1:end-frameTriggerScanOffset));
+end
 
 %% Determine scan ID of each trigger output
 numTrials = numel(TrialInfo.StimID);
 OutputNames = DAQChannels(~cellfun(@isempty,strfind(DAQChannels, 'O_')));
 
 % Create output triggers
-Trigger = logical([]);
+Trigger = false(numDelayScans,1);
 Trial = logical(Experiment.Triggers(:,strcmp(OutputNames,'O_2PTrigger'),1));
 for tindex = 1:numTrials
     Trigger = cat(1,Trigger,Trial);
@@ -50,7 +58,8 @@ for tindex = 1:numTrials
 end
 
 % Determine scan ID of each trigger
-ScanID = find(Trigger); clear Trigger;
+TriggerScans = find(Trigger); 
+% clear Trigger;
 
 
 %% Determine which frame each trigger occurred on
@@ -68,10 +77,16 @@ info.line = nan(numTriggers,1);
 info.event_id = ones(numTriggers,1);
 
 % Determine frame ID of each trigger
-info.frame(1) = FirstID; % set first frame from user input
-for tindex = 2:numTriggers
-    info.frame(tindex) = sum(DataIn(ScanID(tindex-1):ScanID(tindex)))+info.frame(tindex-1);
+if numDelayScans==0
+    info.frame(1) = FirstID; % set first frame of first stimulus from user input
+else % assumes holdStart is active -> all frames are accounted for
+    info.frame(1) = sum(DataIn(1:TriggerScans(1)));
 end
+for tindex = 2:numTriggers
+    info.frame(tindex) = sum(DataIn(TriggerScans(tindex-1)+1:TriggerScans(tindex)))+info.frame(tindex-1); % add # of frames initiated since last trigger
+end
+info.frame = info.frame - 1; % change 1 indexing to 0 indexing
+
 
 %% Save to file
 if saveOut

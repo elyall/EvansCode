@@ -2,6 +2,7 @@ function Avg = avgStack(Images,numFramesPerDepth,varargin)
 
 MCdata = [];
 numDepths = [];
+Depth = 1;
 saveOut = false;
 saveFile = '';
 
@@ -17,6 +18,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'numDepths'
                 numDepths = varargin{index+1};
+                index = index + 2;
+            case 'Depth'
+                Depth = varargin{index+1};
                 index = index + 2;
             case {'Save','save'}
                 saveOut = true;
@@ -56,13 +60,28 @@ if ischar(Images)
     end
 end
 
+% Motion correct frames
+if ~isempty(MCdata)
+    Images = applyMotionCorrection(Images,MCdata);
+end
+
+% Format images
+if ndims(Images)==3     % add channel dimension
+    Images = permute(Images,[1,2,4,3]);
+elseif ndims(Images)==5 % keep requested depth(s) and re-interleave
+    Images = Images(:,:,Depth,:,:);
+    [H,W,numZ,numC,numFrames] = size(Images);
+    Images = permute(Images,[1,2,4,3,5]);
+    Images = reshape(Images,H,W,numC,numZ*numFrames);
+end
+
 
 %% Determine number of frames per depth & number of depths
-[H,W,D,C,F] = size(Images);
+[H,W,C,F] = size(Images);
 if isinf(numFramesPerDepth)
     numFramesPerDepth = F;
 end
-if isempty(numDepths);
+if isempty(numDepths)
     numDepths = floor(F/numFramesPerDepth(end));
 end
 if numel(numFramesPerDepth)<numDepths
@@ -74,19 +93,13 @@ if numel(numFramesPerDepth)<numDepths
 end
 
 
-%% Motion correct frames
-if ~isempty(MCdata)
-    Images = applyMotionCorrection(Images,MCdata);
-end
-
-
 %% Average across frames
-Avg = nan(H,W,numDepths);
+Avg = nan(H,W,C,numDepths);
 for dindex = 1:numDepths
     if dindex ~= numDepths
-        Avg(:,:,dindex) = mean(Images(:,:,1,1,numFramesPerDepth*(dindex-1)+1:numFramesPerDepth*dindex),5);
+        Avg(:,:,:,dindex) = mean(Images(:,:,:,numFramesPerDepth*(dindex-1)+1:numFramesPerDepth*dindex),4);
     else
-        Avg(:,:,dindex) = mean(Images(:,:,1,1,numFramesPerDepth*(dindex-1)+1:end),5);
+        Avg(:,:,:,dindex) = mean(Images(:,:,:,numFramesPerDepth*(dindex-1)+1:end),4);
     end
 end
 

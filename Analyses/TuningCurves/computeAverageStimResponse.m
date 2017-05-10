@@ -160,7 +160,7 @@ trialdFoF = repmat({zeros([Config(1).size(1:2), numFrames])},numStims,1);
 % trialdFoF = cell(numStims,1);
 
 % Cycle through stimuli computing averages
-for sindex = 1:numStims
+parfor sindex = 1:numStims
     
     % Determine trials to average
     currentTrials = find(AnalysisInfo.StimID == StimIDs(sindex));
