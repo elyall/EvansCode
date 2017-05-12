@@ -203,7 +203,7 @@ for rindex = ROIindex
     end
     for nindex = 1:numTrials
         StimFrames = AnalysisInfo.ExpStimFrames(TrialIndex(nindex),:);
-        relativeID = [find(depthID>=StimFrames(1),1,'first'), find(depthID<StimFrames(2),1,'last')];
+        relativeID = [find(depthID>=StimFrames(1),1,'first'), find(depthID<StimFrames(2),1,'last')]; % assigns stim frames to be frame during which stim came in through frame before frame during which stim moves out
         ROIdata.DataInfo.numStimFrames(nindex) = diff(relativeID) + 1;
         currentIndex = relativeID(1)-numFramesBefore:relativeID(1)+numFramesAfter;
         try

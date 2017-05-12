@@ -116,7 +116,7 @@ guidata(gd.fig, gd);
 
 % Load files
 if dataAvailable
-    if ~exist('Maps', 'var') || isemtpy(Maps)
+    if ~exist('Maps', 'var') || isempty(Maps)
         Maps = [];
     end
     LoadExperiment(gd.Control.load,{Images, Maps},gd)

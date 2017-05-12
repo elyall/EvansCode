@@ -1,12 +1,4 @@
-function [Data, FileIndex, ROIindex, In] = gatherData(In, Var, Pointers, Index, ROIindex, FileIndex, varargin)
-% ROIs is a cell array of strings specifying the filenames of the ROI
-% files, or it is a cell array of ROIdata objects
-% FieldName is a field name of 'ROIdata.rois'
-% Index is a number indexing in that field (e.g. '1' or use '':'' for all elements)
-% Label is a cell array of strings of ROIs to gather data from, or false if
-% gathering data from ROIs with any label (use 'none' for unlabeled)
-% ROIindex is a list of roi indices, correspondings to the files listed in
-% FileIndex
+function [Data, FileIndex, Index1, In] = gatherData(In, Var, Pointers, FileIndex, Index1, Index2, varargin)
 
 outputFormat = [];
 
@@ -30,17 +22,13 @@ end
 
 if ~exist('In', 'var') || isempty(In)
     directory = cd;
-    [In, p] = uigetfile({'*.mat'},'Choose ROI file(s)', directory, 'MultiSelect', 'on');
+    [In, p] = uigetfile({'*.mat'},'Choose mat file(s)', directory, 'MultiSelect', 'on');
     if isnumeric(In)
         return
-    elseif iscell(In)
-        for findex = 1:numel(In)
-            In{findex} = fullfile(p, In{findex});
-        end
-    elseif ischar(In)
-        In = {fullfile(p, In)};
     end
-elseif ~iscell(In)
+    In = fullfile(p, In);
+end
+if ~iscell(In)
     In = {In};
 end
 numFiles = numel(In);
@@ -58,32 +46,33 @@ if numel(Pointers) < numFiles
     Pointers = repmat(Pointers,numFiles,1);
 end
 
-if ~exist('Index', 'var') || isempty(Index)
-    Index = ':';
-end
-
-if ~exist('ROIindex', 'var') || isempty(ROIindex)
-    ROIindex = 'all';
-end
-
 if ~exist('FileIndex', 'var')
     FileIndex = [];
 end
+
+if ~exist('Index1', 'var') || isempty(Index1)
+    Index1 = ':';
+end
+
+if ~exist('Index2', 'var') || isempty(Index2)
+    Index2 = ':';
+end
+
 
 %% Load data
 if iscellstr(In)
     if isempty(Var)
         error('Requires specific variable name to load from files input.');
     end
-    Files = In;
+    Filenames = In;
     In = cell(numFiles, 1);
     for findex = 1:numFiles
-        temp = load(Files{findex}, Var, '-mat');
+        temp = load(Filenames{findex}, Var, '-mat');
         In{findex} = temp.(Var);
     end
 end
 
-%% Organize data
+%% Pull out level desired
 for findex = 1:numFiles
     for index = 1:numel(Pointers{findex})
         if isa(Pointers{findex},'char')
@@ -105,34 +94,35 @@ for findex = 1:numFiles
 end
 
 
-%% Determine ROIs to gather data from
-if (isnumeric(ROIindex) && isequal(ROIindex, [1,inf])) || (ischar(ROIindex) && strcmp(ROIindex, 'all'))
-    numROIs = cellfun(@size, In, 'UniformOutput', false);
-    numROIs = cellfun(@(x) x(1), numROIs);
-    ROIindex = [];
+%% Determine data to pull out
+dim = cellfun(@size, In, 'UniformOutput', false);
+if isequal(Index1, [1,inf]) || ischar(Index1)
+    numPerFile = cellfun(@(x) x(1), dim);
+    Index1 = [];
     FileIndex = [];
     for findex = 1:numFiles
-        ROIindex = cat(2, ROIindex, 1:numROIs(findex));
-        FileIndex = cat(2, FileIndex, findex*ones(1,numROIs(findex)));
+        Index1 = cat(2, Index1, 1:numPerFile(findex));
+        FileIndex = cat(2, FileIndex, findex*ones(1,numPerFile(findex)));
     end
 else
-    numROIs = zeros(numFiles, 1);
+    numPerFile = zeros(numFiles, 1);
     for findex = 1:numFiles
-        numROIs(findex) = sum(FileIndex==findex);
+        numPerFile(findex) = sum(FileIndex==findex);
     end
 end
-totalROIs = sum(numROIs);
+numTotal = sum(numPerFile);
 
 
 %% Determine data size & initialize outputs
 if isempty(outputFormat)
-    dim = cellfun(@size, In, 'UniformOutput', false);
-
-    if numel(unique(cellfun(@numel,dim)))~=1
-        outputFormat = 'cell';
+    if isnumeric(In{1}) || iscell(In{1})
+        if numel(unique(cellfun(@numel,dim)))~=1 % dimensions vary across files
+            outputFormat = 'cell';
+        else
+            outputFormat = 'numeric';
+        end
     else
-%         dim = cellfun(@(x) x(2:end), dim);
-        outputFormat = 'numeric';
+        outputFormat = 'cell';
     end
 end
 
@@ -140,21 +130,21 @@ end
 %% Pull out data
 switch outputFormat
     case 'numeric'
-        if ischar(Index)
+        if ischar(Index2)
             num = size(In{1},2);
         else
-            num = numel(Index);
+            num = numel(Index2);
         end
-        Data = nan(totalROIs, num);
+        Data = nan(numTotal,num);
     case 'cell'
-        Data = cell(totalROIs, 1);
+        Data = cell(numTotal,1);
 end
-for rindex = 1:totalROIs
+for index = 1:numTotal
     switch outputFormat
         case 'numeric'
-            Data(rindex,:) = In{FileIndex(rindex)}(ROIindex(rindex),Index);
+            Data(index,:) = In{FileIndex(index)}(Index1(index),Index2);
         case 'cell'
-            Data{rindex} = In{FileIndex(rindex)}(ROIindex(rindex,Index));
+            Data{index} = In{FileIndex(index)}(Index1(index),Index2);
     end
 end
 

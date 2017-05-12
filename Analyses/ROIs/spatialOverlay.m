@@ -18,8 +18,8 @@ showColorBar = false;
 cbTitle = '';
 cbTick = [];
 cbTickLabel = {};
-FontSize_colorbarLabel = 20;
-FontSize_colorbarTicks = 20;
+FontSize_colorbarLabel = 15;
+FontSize_colorbarTicks = 15;
 flipColorbar = false;
 
 % ROI Properties
@@ -245,6 +245,12 @@ switch DataType
                     Colors = jet(N);
             end
         end
+        if isempty(cbTick) && strcmpi(DataType,'discrete')
+            cbTick = 1:size(Colors,1);                           % locations of ticks
+        end
+        if isempty(cbTickLabel)
+            cbTickLabel = cellstr(num2str((1:size(Colors,1))')); % label for each index of colormap
+        end
         
     case 'continuous'
         
@@ -262,7 +268,7 @@ switch DataType
                     Colors = jet(numSamples);
             end
         end
-        
+
 end
 
 
@@ -278,33 +284,27 @@ patchHandles = overlayROIs(ROIs,...
 %% Plot colorbar
 if showColorBar
    
+    % Display colorbar
     cbH = colorbar('westoutside'); % display colorbar
-    
     if flipColorbar
         set(cbH, 'Direction', 'reverse');
     end
 
-    % Flip colorbar
-    cmap = colormap;                                % determine colormap of image
-    NewCMap = cat(1,cmap,Colors);                   % concatenate plot colors to colormap
-    colormap(NewCMap);                              % set new colormap
-    set(gca,'CLim',[1,size(NewCMap,1)]);
+    % Append colormap
+    cmap = colormap;                                 % determine colormap of image
+    NewCMap = cat(1,cmap,Colors);                    % concatenate plot colors to colormap
+    colormap(NewCMap);                               % set new colormap
+    
+    % Determine limits of new section
+    set(gca,'CLim',[0,size(NewCMap,1)]+.5);
     if ~flipColorbar
-        NewYLim = [size(cmap,1)+1, size(NewCMap,1)];    % limit the colormap to this range
+        NewYLim = [size(cmap,1),size(NewCMap,1)]+.5; % limit the colormap to this range
+        cbTick = cbTick + size(cmap,1);
     else
-        NewYLim = [1, size(Colors,1)];
+        NewYLim = [0,size(Colors,1)]+.5;
     end
-    
-    % Determine cbTickLabel
-    if isempty(cbTick) && strcmpi(DataType,'discrete')
-        cbTickLabel = cellstr(num2str((1:size(Colors,1))'));    % label for each index of colormap
-        Split = range(NewYLim)/numel(cbTickLabel);              % distance between two colors
-        cbTick = NewYLim(1)+Split/2:Split:NewYLim(2);           % locations of ticks
-    else
-        cbTick = cbTick + NewYLim(1)-1;
-    end
-    
-    % Display labels
+        
+    % Center desired colormap and display labels
     set(cbH, 'Limits', NewYLim, 'FontSize', FontSize_colorbarTicks, 'Ticks', cbTick, 'YTickLabel', cbTickLabel);
         
     % Display colorbar title

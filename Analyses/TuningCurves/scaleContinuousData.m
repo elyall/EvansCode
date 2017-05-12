@@ -96,14 +96,4 @@ tickLabel = tickBounds(1):roundedTickRange:tickBounds(2);
 vals = Bounds(1):range(Bounds)/(numSamples-1):Bounds(2);
 tickLoc = interp1(vals,1:numSamples,tickLabel,'linear','extrap');
 
-% Old code before recognizing tick locations don't have to be integers
-% tickCount = numel(Ticks);
-% numValuesPerTick = round(numSamples/tickCount-1)-1;
-% scale = linspace(tickBounds(1),tickBounds(2),numValuesPerTick*(tickCount-1)+1);
-% increment = scale(2)-scale(1);
-% newBounds = Bounds + [1,-1].*mod([-1,1].*Bounds,increment);
-% roundTargets = newBounds(1):increment:newBounds(2);
-% 
-% [~,idx] = min(bsxfun(@(x,y)abs(x-y),Data',roundTargets')); %index of closest
-% Data = roundTargets(idx); %extract values
 

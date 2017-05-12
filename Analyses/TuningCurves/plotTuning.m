@@ -172,7 +172,13 @@ end
 
 
 %% Determine number of axes
-if isempty(AxesIndex)
+if ~isempty(hA) && isempty(AxesIndex)
+    if numel(hA)==1
+        AxesIndex = ones(1,numROIs); % plots all to same plot
+    elseif numel(hA)==numROIs
+        AxesIndex = 1:numROIs;
+    end
+elseif isempty(AxesIndex)
     AxesIndex = 1:numROIs;
     hA = nan(numROIs, 1);
 elseif isempty(hA)
