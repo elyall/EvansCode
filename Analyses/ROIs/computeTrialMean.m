@@ -1,7 +1,7 @@
 function [ROIdata,Means] = computeTrialMean(ROIdata, varargin)
 
 ROIindex = [1 inf];
-FrameIndex = []; % default takes mean over whole stim period; set to 'WhiskerTrim' to analyze last 500ms of stim
+FrameIndex = []; % default takes mean over whole stim period; set to 'VertPole' to analyze last 500ms of stim
 
 saveOut = false;
 saveFile = '';
@@ -82,7 +82,7 @@ if isempty(FrameIndex)
     for tindex = 1:numTrials
         FrameIndex{tindex} = ROIdata.DataInfo.numFramesBefore+1:ROIdata.DataInfo.numFramesBefore+ROIdata.DataInfo.numStimFrames(tindex); % analyze whole stim period
     end
-elseif ischar(FrameIndex) && strcmp(FrameIndex,'WhiskerTrim')
+elseif ischar(FrameIndex) && strcmp(FrameIndex,'VertPole')
     FrameIndex = cell(numTrials,1);
     for tindex = 1:numTrials
         F = ROIdata.DataInfo.numFramesBefore+ROIdata.DataInfo.numStimFrames(tindex);
