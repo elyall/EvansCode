@@ -1,4 +1,4 @@
-function [stim,keptFrames] = createStimMatrix(StimIndex, Stimulus, Trial, TrialIndex)
+function [stim,keptFrames] = createStimMatrix(StimIndex, Stimulus, Trial, TrialIndex, varargin)
 %
 % StimIndex - cell array of strings with stim combinations or logical
 % matrix specifying which stimulus was presented during that stimulus
@@ -10,12 +10,33 @@ function [stim,keptFrames] = createStimMatrix(StimIndex, Stimulus, Trial, TrialI
 %
 % TrialIndex - vector of trial IDs to keep
 
+Depth = [];
+
+%% Parse input arguments
+index = 1;
+while index<=length(varargin)
+    try
+        switch varargin{index}
+            case 'Depth'
+                Depth = varargin{index+1};
+                index = index + 2;
+            otherwise
+                warning('Argument ''%s'' not recognized',varargin{index});
+                index = index + 1;
+        end
+    catch
+        warning('Argument %d not recognized',index);
+        index = index + 1;
+    end
+end
+
 if ~exist('Trial','var')
     Trial = [];
 end
 if ~exist('TrialIndex','var') || isempty(TrialIndex)
     TrialIndex = [1 inf];
 end
+
 
 %% Format stim list
 if ~logical(StimIndex)
@@ -35,18 +56,33 @@ end
 [numStim,numCond] = size(StimIndex);
 
 %% Format stimulus clock
+
+% Set to proper values
 if any(Stimulus==0)
-    Stimulus = Stimulus+1;
+    Stimulus = Stimulus+1;     % set control index to 1
 end
-Stimulus(isnan(Stimulus)) = 0;
+Stimulus(isnan(Stimulus)) = 0; % set nans to 0
+numSamples = numel(Stimulus);
+
+% Determine frames to keep
+keptFrames = true(1,numSamples);
 if ~isempty(Trial)
     if TrialIndex(end)==inf
         TrialIndex = cat(2,TrialIndex(1:end-1),TrialIndex(end-1)+1:max(Trial));
     end
-    keptFrames = ismember(Trial,TrialIndex);
-    Stimulus = Stimulus(keptFrames);
+    keptFrames = ismember(Trial,TrialIndex); % keep only frames associated with desired trials
 end
+if ~isempty(Depth)
+    ID = idDepth(4,numSamples,'Depths',Depth);
+    keptFrames(setdiff(1:numSamples,ID)) = false; % keep only frames associated with desired depth
+end
+
+% Keep desired frames
+Stimulus = Stimulus(keptFrames); % keep only desired frames
 numSamples = numel(Stimulus);
+if ~isempty(Depth)
+    keptFrames = keptFrames(ID); % change index to be specific to desired depth
+end
 
 %% Create stim matrix
 stim = zeros(numCond,numSamples);
