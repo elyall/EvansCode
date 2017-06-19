@@ -9,9 +9,6 @@ function [AnalysisInfo,frames,InputNames,Config] = sbxPostProcess4(ExperimentFil
 % allows for frame trigger offset if TTL rising edge doesn't correlate with
 % frame start.
 
-ExperimentFile = '/media/elyall/Data/6094/170509/6094_130_003.exp';
-ImageFile = '/media/elyall/Data/6094/170509/6094_130_003.sbx';
-
 directory = cd;
 
 saveOut = false;
@@ -122,7 +119,7 @@ end
 %% Gather trial data
 
 % Determine trial parameters
-temp = Experiment.Triggers(:,strcmp(OutputNames,'O_2PTrigger'),1);
+temp = Experiment.Triggers(:,strcmp(OutputNames,'O_2PTrigger') | strcmp(OutputNames,'O_EventTrigger'),1);
 numTrigsPerTrial = nnz((temp-[0;temp(1:end-1)])>0);
 numTrials2 = numel(info.frame(info.event_id==1))/numTrigsPerTrial;
 if N ~= numTrials2

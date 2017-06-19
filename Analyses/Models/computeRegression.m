@@ -3,6 +3,7 @@ function [Filter,pred] = computeRegression(Data, Stim, numLags)
 % Stim is numStimxnumSamples
 
 Labels = {};
+interactions = true;
 
 %% Create lagged stimuli
 
@@ -15,6 +16,9 @@ for index = 1:numLags
     LagStim(index*numCond+1:(index+1)*numCond,:) = cat(2, zeros(numCond,index), Stim(:,1:end-index));
 end
 
+if interactions
+    LagStim = LagStim'*LagStim;
+end
 
 %% Compute regression
 
