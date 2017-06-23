@@ -1,17 +1,29 @@
-function ProjPoint = ProjectOntoLine(Vector, Points)
+function [ProjPoints,dist,orthoProj] = ProjectOntoLine(Vector, Points)
+% Vector is [x1, y1; x2, y2]
+% Points is N x 2
 
-% Normalize vector
-Line = diff(Vector, [], 1);     % determine vector
-v = Line/norm(Line);            % normalize line
+% % Normalize vector
+v = diff(Vector, [], 1); % determine vector
+v = v/norm(v);           % normalize line
 
 % Subtract off origin
-ProjPoint = bsxfun(@minus,Points,Vector(2,:));
+centeredPoints = bsxfun(@minus, Points, Vector(1,:));
 
 % Project points onto line
-ProjPoint = newPoints*Line./(Line'*Line)*Line';
-% for index = 1:size(ProjPoint,1)
-%     ProjPoint(index,:) = dot(ProjPoint(index,:),v)*v;
-% end
+ProjPoints = bsxfun(@times, centeredPoints*v', v);
 
 % Add back origin
-ProjPoint = bsxfun(@plus,ProjPoint,Vector(2,:));
+ProjPoints = bsxfun(@plus, ProjPoints, Vector(1,:));
+
+% Determine distance from line
+dist = Points - ProjPoints;
+dist = sqrt(sum(dist.^2,2));
+
+% Determine orthogonal projection
+orthoProj = Points - ProjPoints;
+orthoProj = bsxfun(@plus, orthoProj, Vector(1,:));
+
+% v = (V2-V1)/norm(V2-V1); %// normalized vector from V1 to V2
+% Q = dot(P-V1,v)*v+V1; %// projection of P onto line from V1 to V2
+% dist = norm(P-Q);
+% alfa = (Q(1)-V1(1))/(V2(1)-V1(1));
