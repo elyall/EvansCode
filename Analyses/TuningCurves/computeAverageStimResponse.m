@@ -6,7 +6,7 @@ timeBefore = 2;
 timeAfter = 4;
 % Filter = [];
 Filter = fspecial('gaussian',5,1);
-Baseline = 30; % scalar specifying the prctile, 'trial-wise', or a frame that represents the baseline
+Baseline = 'trial-wise'; % scalar specifying the prctile, 'trial-wise', or a frame that represents the baseline
 
 saveOut = false;
 saveFile = '';
