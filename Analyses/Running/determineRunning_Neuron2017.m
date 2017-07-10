@@ -1,22 +1,24 @@
-function [TrialIndex, RunIndex, FileIndex] = determineRunning(RunData, varargin)
+function [TrialIndex, RunIndex, FileIndex] = determineRunning_Neuron2017(RunData, varargin)
 
+TrialIndex = [1 inf]; %input data or data to load
+StimID = [];
+outFormat = '';
 
-% Default parameters that can be adjusted
-MinThresh = -inf;           % scalar that results in any trial with an instantaneous velocity below this value being thrown out (set to -inf to not throw anything out)
-MeanThresh = 100;           % scalar that results in any trial with a mean velocity below this value will being thrown out (set to -inf to not throw anything out)
-MeanMethod = 'medianRule';  % 'tukey','evan', or 'medianRule', determines the method used to find outliers within the remaining distribution of trial mean velocities
-StdMethod = 'medianRule';   % 'tukey','evan', or 'medianRule', determines the method used to find outliers within the remaining distribution of trial std velocities
-TrialIndex = [1 inf];       % vector specifying the indices of the input data or data to load
-outFormat = '';             % 'numeric' or 'cell' specifying whether the output is a vector of trial indices or a cell containing said vector
+% Evan Method
+% MinThresh = -inf;
+% MeanThresh = 100;
+% MeanStdDevThresh = 2;
+% StdDevStdDevThresh = 2;
 
-% Plotting
-verbose = false;            % display plots
-StimID = [];                % vector specifying the stim indices of each trial (only used for plotting)
-PauseTime = 2;              % time to pause after displaying each plot
+% Scott Method
+MinThresh = -inf;
+MeanThresh = 30;
+MeanStdDevThresh = 1.3;
+StdDevStdDevThresh = .8;
 
-% Evan's method parametersw
-numSTDsOutlier = 4;     % inf if no threshold
-minNumTrials = 5;       % -inf if no minimum (will error when gets to 2 trials)
+% Plots
+verbose = false;
+t = 0;
 
 directory = cd;
 
@@ -148,17 +150,59 @@ if verbose; plotdata('After Thresholding Min'); end
 RunIndex(Metrics(:,1) < MeanThresh) = false;
 if verbose; plotdata('After Thresholding Mean'); end
 
-%% Determine mean outliers
-outliers = determineOutliers(Metrics(RunIndex,1), 'type', MeanMethod, 'numSTDsOutlier', numSTDsOutlier, 'minNumTrials', minNumTrials);
-temp = find(RunIndex);
-RunIndex(temp(outliers)) = false;
-if verbose; plotdata('After Thresholding Mean Variance'); end
+%% Mean and Std (Evan)
 
-%% Determine std outliers
-outliers = determineOutliers(Metrics(RunIndex,2), 'type', StdMethod, 'numSTDsOutlier', numSTDsOutlier, 'minNumTrials', minNumTrials);
-temp = find(RunIndex);
-RunIndex(temp(outliers)) = false;
+% % Std dev threshold
+% while true
+%     numTrials = nnz(RunIndex);
+%     Indices = find(RunIndex);
+%     Val = nan(numTrials,1);
+%     for tindex = 1:numTrials
+%         mu = mean(Metrics(Indices(setdiff(1:numTrials,tindex)),2));        % determine mean without current trial
+%         sigma = std(Metrics(Indices(setdiff(1:numTrials,tindex)),2));      % determine std without current trial
+%         Val(tindex) = (Metrics(Indices(tindex),2)-mu)/sigma;               % calculate zscore of current trial relative to other data
+%     end
+%     if any(Val > StdDevStdDevThresh)                                        % at least one outlier exists
+%         [~,furthestIndex] = max(Val);                                       % determine largest outlier
+%         RunIndex(Indices(furthestIndex)) = false;                           % remove largest outlier
+%     else
+%         break
+%     end
+% %     if verbose
+% %         plotdata('Z-scoring Std Dev');
+% %     end
+% end
+% if verbose; plotdata('After Thresholding Std Dev Variance'); end
+% 
+% % Mean threshold
+% while true
+%     numTrials = nnz(RunIndex);
+%     Indices = find(RunIndex);
+%     Val = nan(numTrials,1);
+%     for tindex = 1:numTrials
+%         mu = mean(Metrics(Indices(setdiff(1:numTrials,tindex)),1));        % determine mean without current trial
+%         sigma = std(Metrics(Indices(setdiff(1:numTrials,tindex)),1));      % determine std without current trial
+%         Val(tindex) = abs(Metrics(Indices(tindex),1)-mu)/sigma;            % calculate zscore of current trial relative to other data
+%     end
+%     if any(Val > MeanStdDevThresh)                                         % at least one outlier exists
+%         [~,furthestIndex] = max(Val);                                      % determine largest outlier
+%         RunIndex(Indices(furthestIndex)) = false;                          % remove largest outlier
+%     else
+%         break
+%     end
+% %     if verbose
+% %         plotdata('Z-scoring Mean');
+% %     end
+% end
+% if verbose; plotdata('After Thresholding Mean Variance'); end
+
+
+%% Mean & Std (Scott)
+RunIndex(Metrics(:,1) < mean(Metrics(RunIndex,1)) - MeanStdDevThresh*std(Metrics(RunIndex,1))) = false; % scott method
+if verbose; plotdata('After Thresholding Mean Variance'); end
+RunIndex(Metrics(:,2) > mean(Metrics(RunIndex,2)) + StdDevStdDevThresh*std(Metrics(RunIndex,2))) = false; % scott method
 if verbose; plotdata('After Thresholding Std Dev Variance'); end
+
 
 %% Remove non-running trials from index
 for findex = 1:numFiles
@@ -253,7 +297,7 @@ end
         for sindex = 1:numStims
             temp{sindex} = Metrics(all([RunIndex,StimID==StimIDs(sindex)],2),1);
         end
-        temp(cellfun(@isempty,temp)) = {0}; % fix empty cells
+        temp(cellfun(@isempty,temp)) = {0};
         violin(temp'); grid on; hold on;
         for sindex = 1:numStims
             badIndex = all([~RunIndex,StimID==StimIDs(sindex)],2);
@@ -278,7 +322,7 @@ end
         end     
         
         drawnow;
-        pause(PauseTime);
+        pause(t);
     end %plotdata
 
 end %determineRunning

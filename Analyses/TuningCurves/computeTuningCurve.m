@@ -1,6 +1,7 @@
 function [ROIdata, Curves, outliers, p_tuned] = computeTuningCurve(ROIdata, ROIindex, TrialIndex, varargin)
 
 FitTuningCurves = false; % gaussian fit
+DetermineOutliers = true;
 ControlID = 0; % StimID of control trials, or '[]' if no control trial
 StimIDs = [];
 
@@ -15,7 +16,10 @@ while index<=length(varargin)
     try
         switch varargin{index}
             case 'Fit'
-                FitTuningCurves = true;
+                FitTuningCurves = ~FitTuningCurves;
+                index = index + 1;
+            case {'Outliers','DetermineOutliers','outliers'}
+                DetermineOutliers = ~DetermineOutliers;
                 index = index + 1;
             case 'ControlID'
                 ControlID = varargin{index+1};
@@ -93,17 +97,20 @@ if ROIindex(end) == inf
 end
 
 % Determine outliers for running trials of each stimulus
-fprintf('Determining outliers...');
-outliers = false(numel(TrialIndex),numel(ROIdata.rois));
-for rindex = ROIindex
-    outliers(TrialIndex,rindex) = determineOutliers(ROIdata.rois(rindex).stimMean(TrialIndex),'GroupID',ROIdata.DataInfo.StimID(TrialIndex),'type','medianRule');
+if DetermineOutliers
+    fprintf('Determining outliers...');
+    outliers = false(numel(TrialIndex),numel(ROIdata.rois));
+    for rindex = ROIindex
+        outliers(TrialIndex,rindex) = determineOutliers(ROIdata.rois(rindex).stimMean(TrialIndex),'GroupID',ROIdata.DataInfo.StimID(TrialIndex),'type','medianRule');
+    end
+    fprintf('\tComplete\n');
 end
-fprintf('\tComplete\n');
-
 
 %% Determine stimuli info
 if isempty(StimIDs)
     StimIDs = unique(ROIdata.DataInfo.StimID)';
+elseif iscolumn(StimIDs)
+    StimIDs = StimIDs';
 end
 numStimuli = numel(StimIDs);
 
