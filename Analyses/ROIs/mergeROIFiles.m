@@ -13,10 +13,10 @@ while index<=length(varargin)
             case 'ROIdict'
                 ROIdict = varargin{index+1};
                 index = index + 2;
-            case 'Save'
+            case {'save','Save'}
                 saveOut = true;
                 index = index + 1;
-            case 'SaveFile'
+            case {'saveFile','SaveFile'}
                 saveFile = varargin{index+1};
                 index = index + 2;
             otherwise
