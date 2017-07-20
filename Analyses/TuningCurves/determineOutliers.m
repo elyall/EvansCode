@@ -94,34 +94,31 @@ outliers = data < edges(1) | data > edges(2);
 
 % Evan method
 function outliers = findOutliers(data, minNumTrials, numSTDsOutlier)
+if iscolumn(data)
+    data = data';
+end
 N = numel(data);
-outliers = false(N,1);
 
+squaremat = repmat(data',1,N); % create square, diagonal matrix
+squaremat(1:N+1:end) = nan;    % remove diagonal to exclude own value from relative zscore
+
+outliers = false(N,1);
 while true
     
     % Determine if the minimum number of trials is met
-    n = nnz(~outliers);
-    if n <= minNumTrials
+    if nnz(~outliers) <= minNumTrials
         break
     end
     
-    % Calculate z-score for each value relative to the rest of the
-    % distribution
-    Val = nan(N,1);
-    for t = find(~outliers)'
-        index = true(N,1);
-        index(t) = false;
-        index(outliers) = false;
-        
-        mu = nanmean(data(index));          % determine mean without current trial
-        sigma = nanstd(data(index));        % determine std without current trial
-        Val(t) = abs(data(t)-mu)/sigma;     % calculate zscore of current trial relative to other data
-    end
+    % Calculate z-score for each value relative to the rest of the data
+    ZScore = abs(data-nanmean(squaremat))./nanstd(squaremat);
     
     % Determine if any value is an outlier
-    if any(Val > numSTDsOutlier)            % at least one outlier exists
-        [~,furthestIndex] = max(Val);       % determine largest outlier
-        outliers(furthestIndex) = true;     % remove largest outlier
+    if any(ZScore > numSTDsOutlier)
+        furthestIndex = find(Zscore==max(ZScore)); % determine largest outlier(s)
+        outliers(furthestIndex) = true;            % record largest outlier
+        squaremat(furthestIndex,:) = NaN;          % remove outlier from inclusion in other distributions
+        squaremat(:,furthestIndex) = NaN;          % remove outlier as an option
     else
         break
     end

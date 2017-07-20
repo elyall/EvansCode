@@ -126,9 +126,9 @@ end
 if nargout
     uiwait(gd.fig);
     gd = guidata(gd.fig);
-    if isfield(gd, 'Experiment')
-        Maps = {gd.Experiment(:).Map};
-        Images = {gd.Experiment(:).filename};
+    if isfield(gd, 'DataSets')
+        Maps = {gd.DataSets(:).Map};
+        Images = {gd.DataSets(:).filename};
     else
         Maps = {};
         Images = {};

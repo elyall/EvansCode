@@ -3,7 +3,7 @@ function [TrialIndex, RunIndex, FileIndex] = determineRunning(RunData, varargin)
 
 % Default parameters that can be adjusted
 MinThresh = -inf;           % scalar that results in any trial with an instantaneous velocity below this value being thrown out (set to -inf to not throw anything out)
-MeanThresh = 100;           % scalar that results in any trial with a mean velocity below this value will being thrown out (set to -inf to not throw anything out)
+MeanThresh = 100;           % scalar that results in any trial with a mean velocity below this value will be thrown out (set to -inf to not throw anything out)
 MeanMethod = 'medianRule';  % 'tukey','evan', or 'medianRule', determines the method used to find outliers within the remaining distribution of trial mean velocities
 StdMethod = 'medianRule';   % 'tukey','evan', or 'medianRule', determines the method used to find outliers within the remaining distribution of trial std velocities
 TrialIndex = [1 inf];       % vector specifying the indices of the input data or data to load
