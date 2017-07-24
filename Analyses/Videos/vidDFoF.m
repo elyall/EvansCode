@@ -1,16 +1,16 @@
 function [saveFile, CLim] = vidDFoF(saveFile, Images, Maps, varargin)
 
 StimIndex = [2 inf]; % stimuli indices to save to file
-StimFrameIndex = [23, 47]; % frame indices of stimulus period for each stimulus
-ControlIndex = 1; % false if no control trial
+StimFrameIndex = []; % frame indices of stimulus period for each stimulus
+ControlIndex = 1; % index in cell array, false if no control trial
 StimID = []; % ID #'s to display (including control trial)
 
 % Display settings
 type = 'AvgTrialdFoF'; % loading only
 CMapType = 'parula';
 showStimID = false;
-showStimMarker = false;
-showColorBar = true;
+showStimMarker = true;
+showColorBar = false;
 frameRate = 15.45*2;
 mergetype = 'pretty'; % 'quick' or 'pretty'
 Crop = false;
@@ -21,7 +21,7 @@ CLim = [];
 filt = false;
 % filt = fspecial('gaussian',5,1);
 pixelSize = [1,1];
-outputSize = [1080,1920/2];
+outputSize = [];
 
 directory = cd;
 
@@ -172,8 +172,16 @@ if StimIndex(end) == inf
     StimIndex = [StimIndex(1:end-1), StimIndex(end-1)+1:numel(Images{1})];
 end
 numStims = numel(StimIndex);
-if isempty(StimID)
+if ~isempty(StimID)
+    showStimID = true;
+elseif isempty(StimID) && showStimID
     StimID = 1:numStims;
+end
+if isnumeric(StimID)
+    if isrow(StimID)
+        StimID = StimID';
+    end
+    StimID = cellstr(num2str(StimID));
 end
 
 % Determine stimulus periods
@@ -214,6 +222,10 @@ switch CMapType
         cmap = parula(128);
 end
 
+% Add stim marker to colormap
+if showStimMarker && ~showStimID && ~showColorBar
+    cmap = [cmap;[1,1,1]];
+end
 
 %% Save each stimulus average to video
 
@@ -254,10 +266,23 @@ for index = 1:numStims
             % Image = cat(2,Image,zeros(outputSize)); % SPECIFIC TO NEWS BLURB
         end
         
+        if sindex == StimIndex(1) && findex == 1
+            % Determine frame dimensions
+            [H, W, ~] = size(Image);
+            Dist = min(round(H/20),round(W/20));
+        end
+        
         % Display and save image to file
-        if ~showStimID && ~showStimMarker && ~showColorBar % don't need to display image as no overlays
+        if ~showStimID && ~showColorBar % don't need to display image as no overlays
             Image = (Image-CLim(1))/range(CLim); % scale by CLim
-            Image = round(Image*(size(cmap,1)-1)+1); % convert to colormap indexing
+            if ~showStimMarker
+                Image = round(Image*(size(cmap,1)-1)+1); % convert to colormap indexing
+            else
+                Image = round(Image*(size(cmap,1)-2)+1); % convert to colormap indexing
+                if sindex ~= ControlIndex && findex>=StimFrameIndex(index,1) && findex<=StimFrameIndex(index,2)
+                    Image(H-Dist*2:H-Dist,W-Dist*2:W-Dist) = size(cmap,1); % add stim marker
+                end
+            end
             Image = ind2rgb(Image, cmap);        % convert to RGB image
             writeVideo(vidObj, Image);           % save to file
             
@@ -267,31 +292,27 @@ for index = 1:numStims
                 % Create figure
                 hF = figure('Units', 'Pixels', 'Position', [50, 50, 1450, 950], 'Color', 'w');
                 hA = axes('Parent', hF);
-                
-                % Determine frame dimensions
-                [H, W, ~] = size(Image);
-                StimH = round(H*pixelSize(1)/20);
-                StimW = round(W*pixelSize(2)/20);
             end
             
             % Display Image
             imagesc(Image, CLim);
+            set(hA,'DataAspectRatio',[1 1 1]);
             axis off; hold on;
             colormap(cmap);
             
             % Place Stimulus mark
             if showStimMarker && sindex ~= ControlIndex && findex>=StimFrameIndex(index,1) && findex<=StimFrameIndex(index,2)
-                patch([W-StimW*2; W-StimW; W-StimW; W-StimW*2],...
-                    [H-StimH*2; H-StimH*2; H-StimH; H-StimH],...
-                    'magenta','EdgeColor','magenta');
+                patch([W-Dist*2; W-Dist; W-Dist; W-Dist*2],...
+                    [H-Dist*2; H-Dist*2; H-Dist; H-Dist],...
+                    'white','EdgeColor','white');
             end
             
             % Place ID number
             if showStimID
                 if sindex == ControlIndex
-                    text(StimH, StimW, 'control', 'FontSize', 20, 'Color', 'm', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle');
+                    text(Dist, Dist, 'control', 'FontSize', 25, 'Color', 'w', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'middle');
                 else
-                    text(StimH, StimW, sprintf('%d', StimID(index)), 'FontSize', 20, 'Color', 'm', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle');
+                    text(Dist, Dist, StimID{index}, 'FontSize', 25, 'Color', 'w', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'middle');
                 end
             end
             
