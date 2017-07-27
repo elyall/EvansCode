@@ -1,29 +1,32 @@
-function [saveFile, CLim] = vidDFoF(saveFile, Images, Maps, varargin)
+function [Filename, CLim] = vidDFoF(Filename, Images, Maps, varargin)
+%vidDFoF Saves images to a video file
+%   SAVEFile = vidDFoF() prompts user to select a FILENAME to save to and
+%   select a .sbx or .tif file to load data from.
 
-StimIndex = [2 inf]; % stimuli indices to save to file
-StimFrameIndex = []; % frame indices of stimulus period for each stimulus
-ControlIndex = 1; % index in cell array, false if no control trial
-StimID = []; % ID #'s to display (including control trial)
+% TO DO: use insertText to display StimIDs without displaying to figure.
 
-% Display settings
-type = 'AvgTrialdFoF'; % loading only
-CMapType = 'parula';
-showStimID = false;
-showStimMarker = true;
-showColorBar = false;
-frameRate = 15.45*2;
-mergetype = 'pretty'; % 'quick' or 'pretty'
-Crop = false;
-% Crop = [32.51, 0, 729.98, 512];
-% Crop = [37.51,.51,722,510];
-borderLims = [3,3,34,42];     % number of pixels to ignore from edges when computing ROI means, inclusive (top, bottom, left, right)
-CLim = [];
-filt = false;
-% filt = fspecial('gaussian',5,1);
-pixelSize = [1,1];
-outputSize = [];
 
-directory = cd;
+% Default parameters that can be adjusted
+
+ControlIndex = 1;           % index in cell array, false if no control trial
+StimFrameIndex = [];        % frame indices of stimulus period for each stimulus
+StimID = {};                % text to display for each stimuls
+VarToLoad = 'AvgTrialdFoF'; % variable name to load from IMAGES if IMAGES is a char or cell array of strings
+CMap = 'parula';            % colormap or string specifying which colormap to use
+CLim = [];                  % 1x2 vector specifying the color limits ([] uses max and min)
+mergetype = 'pretty';       % 'quick' or 'pretty'
+filt = false;               % 2D filter to apply to each frame
+% filt = fspecial('gaussian',5,1);               % 2D filter to apply to each frame
+showColorBar = false;       % specifies whether to display the colorbar
+frameRate = 15.45*2;        % specifies the frame rate of the output video
+Crop = false;               % number of pixels to remove from edges (see: crop)
+borderLims = [];            % number of pixels along edges to set to zero, inclusive (top, bottom, left, right)
+pixelSize = [1,1];          % 1x2 vector specifying the aspect ratio (um/pixel)
+outputSize = [];            % 1x2 vector specifying the desired Height and Width of the output video
+
+
+% Placeholders
+directory = cd; % default directory when prompting user to select a file
 
 %% Check input arguments
 index = 1;
@@ -58,10 +61,10 @@ while index<=length(varargin)
                 pixelSize = varargin{index+1};
                 index = index + 2;
             case 'type'
-                type = varargin{index+1};
+                VarToLoad = varargin{index+1};
                 index = index + 2;
-            case 'CMapType'
-                CMapType = varargin{index+1};
+            case 'CMap'
+                CMap = varargin{index+1};
                 index = index + 2;
             case 'StimFrameIndex'
                 StimFrameIndex = varargin{index+1};
@@ -82,12 +85,12 @@ while index<=length(varargin)
     end
 end
 
-if ~exist('saveFile', 'var') || isempty(saveFile)
-    [saveFile, p] = uiputfile({'*.avi'},'Save file as',directory);
-    if isnumeric(saveFile)
+if ~exist('saveFile', 'var') || isempty(Filename)
+    [Filename, p] = uiputfile({'*.avi'},'Save file as',directory);
+    if isnumeric(Filename)
         return
     end
-    saveFile = fullfile(p, saveFile);
+    Filename = fullfile(p, Filename);
 end
 
 if ~exist('Images', 'var') || isempty(Images)
@@ -123,8 +126,8 @@ if iscellstr(Images)
     ImageFiles = Images;
     Images = cell(numel(ImageFiles),1);
     for findex = 1:numel(ImageFiles)
-        temp = load(ImageFiles{findex}, type, '-mat');
-        Images{findex} = temp.(type);
+        temp = load(ImageFiles{findex}, VarToLoad, '-mat');
+        Images{findex} = temp.(VarToLoad);
     end
 end
 numFiles = numel(Images);
@@ -205,33 +208,35 @@ if isempty(CLim)
 end
 
 % Determine colormap
-switch CMapType
-    case 'HiLo'
-        cmap = HiLoColormap(CLim(1), CLim(2));
-    case 'b2r'
-        cmap = b2r(CLim(1),CLim(2));
-    case 'gray'
-        cmap = gray(128);
-    case 'red'
-        cmap = [linspace(0,1,128)', zeros(128,1), zeros(128,1)];
-    case 'green'
-        cmap = [zeros(128,1), linspace(0,1,128)', zeros(128,1)];
-    case 'blue'
-        cmap = [zeros(128,1), zeros(128,1), linspace(0,1,128)'];
-    case 'parula'
-        cmap = parula(128);
+if ischar(CMap)
+    switch CMap
+        case 'HiLo'
+            CMap = HiLoColormap(CLim(1), CLim(2));
+        case 'b2r'
+            CMap = b2r(CLim(1),CLim(2));
+        case 'gray'
+            CMap = gray(128);
+        case 'red'
+            CMap = [linspace(0,1,128)', zeros(128,1), zeros(128,1)];
+        case 'green'
+            CMap = [zeros(128,1), linspace(0,1,128)', zeros(128,1)];
+        case 'blue'
+            CMap = [zeros(128,1), zeros(128,1), linspace(0,1,128)'];
+        case 'parula'
+            CMap = parula(128);
+    end
 end
 
 % Add stim marker to colormap
 if showStimMarker && ~showStimID && ~showColorBar
-    cmap = [cmap;[1,1,1]];
+    CMap = [CMap;[1,1,1]];
 end
 
 %% Save each stimulus average to video
 
 % Open video
-fprintf('Writing video: %s...', saveFile);
-vidObj = VideoWriter(saveFile,'Motion JPEG AVI');
+fprintf('Writing video: %s...', Filename);
+vidObj = VideoWriter(Filename,'Motion JPEG AVI');
 set(vidObj, 'FrameRate', frameRate);
 open(vidObj);
 
@@ -276,14 +281,14 @@ for index = 1:numStims
         if ~showStimID && ~showColorBar % don't need to display image as no overlays
             Image = (Image-CLim(1))/range(CLim); % scale by CLim
             if ~showStimMarker
-                Image = round(Image*(size(cmap,1)-1)+1); % convert to colormap indexing
+                Image = round(Image*(size(CMap,1)-1)+1); % convert to colormap indexing
             else
-                Image = round(Image*(size(cmap,1)-2)+1); % convert to colormap indexing
+                Image = round(Image*(size(CMap,1)-2)+1); % convert to colormap indexing
                 if sindex ~= ControlIndex && findex>=StimFrameIndex(index,1) && findex<=StimFrameIndex(index,2)
-                    Image(H-Dist*2:H-Dist,W-Dist*2:W-Dist) = size(cmap,1); % add stim marker
+                    Image(H-Dist*2:H-Dist,W-Dist*2:W-Dist) = size(CMap,1); % add stim marker
                 end
             end
-            Image = ind2rgb(Image, cmap);        % convert to RGB image
+            Image = ind2rgb(Image, CMap);        % convert to RGB image
             writeVideo(vidObj, Image);           % save to file
             
         else % need to display image before saving
@@ -298,7 +303,7 @@ for index = 1:numStims
             imagesc(Image, CLim);
             set(hA,'DataAspectRatio',[1 1 1]);
             axis off; hold on;
-            colormap(cmap);
+            colormap(CMap);
             
             % Place Stimulus mark
             if showStimMarker && sindex ~= ControlIndex && findex>=StimFrameIndex(index,1) && findex<=StimFrameIndex(index,2)

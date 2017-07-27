@@ -1,7 +1,7 @@
 function Baseline = determineBaseline(Images,Prctile,varargin)
 
-% Filter = [];
-Filter = fspecial('gaussian', 5, 1);
+Filter = [];
+% Filter = fspecial('gaussian', 5, 1);
 Frames = 2:2000;    % vector of frame indices to load (loading only)
 Depth = [1,inf];    % vector of depth indices to load (loading only)
 Channel = 1;        % vector of channel indices to load (loading only)
