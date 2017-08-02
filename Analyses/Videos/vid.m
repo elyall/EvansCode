@@ -19,8 +19,11 @@ function [Filename, CLim, indMap, Dim, Map] = vid(Filename, Images, varargin)
 StimFrameIndex = [];        % frame indices or logical vector of length numFrames specifying which frames to display a stimulus marker on
 Text = {};                  % cell array of text to overlay
 TextIndex = [];             % array of length numFrames indexing which text to display on each frame
+FontSize = 30;              % scalar specifying size of text
 Color = [1,1,1];            % color of overlays
 showColorBar = false;       % whether to display the colorbar
+CbLabel = 'Fluorescence (A.U.)'; 
+CbFontSize = 20;            
 
 % Specify data
 MCdata = {[]};              % cell array of MCdata structures
@@ -65,12 +68,21 @@ while index<=length(varargin)
             case 'TextIndex'
                 TextIndex = varargin{index+1};
                 index = index + 2;
+            case 'FontSize'
+                FontSize = varargin{index+1};
+                index = index + 2;
             case 'Color'
                 Color = varargin{index+1};
                 index = index + 2;
-            case 'showColorBar'
-                showColorBar = true;
-                index = index + 1;
+            case {'ColorBar','Colorbar','colorbar'}
+                showColorBar = varargin{index+1};
+                index = index + 2;
+            case 'CbLabel'
+                CbLabel = varargin{index+1};
+                index = index + 2;
+            case 'CbFontSize'
+                CbFontSize = varargin{index+1};
+                index = index + 2;
             case 'MCdata'
                 MCdata = varargin{index+1};
                 index = index + 2;
@@ -80,10 +92,10 @@ while index<=length(varargin)
             case 'borderLims'
                 borderLims = varargin{index+1};
                 index = index + 2;
-            case 'Afilter'
+            case {'Afilter','Afilt'}
                 Afilt = varargin{index+1};
                 index = index + 2;
-            case 'Tfilter'
+            case {'Tfilter','Tfilt'}
                 Tfilt = varargin{index+1};
                 index = index + 2;
             case 'Maps'
@@ -170,7 +182,7 @@ for findex = 1:numFiles
     if iscellstr(Images{findex}) || ischar(Images{findex})
         Images{findex} = load2P(Images{findex},'Frames',[1,inf]);
     elseif iscell(Images{findex})
-        Images{findex} = cat(ndims,Images{findex}{:});
+        Images{findex} = cat(ndims(Images{findex}),Images{findex}{:});
     end
     
     % Motion correct images
@@ -242,11 +254,12 @@ else
 end
 
 % Scale for aspect ratio and desired output size
-sz = size(Images).*pixelSize; % determine how to scale to fix aspect ratio
+sz = size(Images); 
+sz(1:2) = sz(1:2).*pixelSize; % determine how to scale to fix aspect ratio
 if ~isempty(outputSize)
     sz = sz*min(outputSize./sz); % determine conversion to reach desired size while maintaining aspect ratio
 end
-Images = imresize(Images, sz); % scale images
+Images = imresize(Images, sz(1:2)); % scale images
 
 % Add blanks to short edge to make output desired size
 if ~isempty(outputSize)
@@ -263,7 +276,12 @@ end
 
 %% Determine color info
 if isempty(CLim)
-    CLim = prctile(Images(:), [.01,99.99]);
+    if numel(Images)<1000000
+        CLim = prctile(Images(:), [.01,99.99]);
+    else
+        CLim = prctile(datasample(Images(:),1000000,'Replace',false),[.01,99.99]);
+    end
+%     CLim = [min(Images(:)),max(Images(:))];
 end
 
 % Determine colormap
@@ -285,157 +303,52 @@ if ischar(CMap)
             CMap = parula(128);
     end
 end
+N = size(CMap,1);
 
-% Add overlay color to colormap
-if any(StimFrameIndex) || any(TextIndex)
-    Overlay = true;
-    CMap = [CMap;Color];
-else
-    Overlay = false;
+% Scale and convert images to colormap
+if ~showColorBar
+    Images = (Images-CLim(1))/range(CLim); % scale by CLim (desired max becomes 1 and desired min becomes 0)
+    Images = round(Images*(N-1)+1); % convert to colormap indexing
+    Images(Images>N) = N;           % set upper limit to be within colormap
+    Images(Images<1) = 1;           % set lower limit to be within colormap
+    CMap = [CMap;Color];            % append overlay color to colormap
 end
+
 
 %% Determine overlay info
 
-% Determine frame dimensions
-if any(StimFrameIndex)
+% Add overlay color to colormap and determine overlay location
+if any(StimFrameIndex) || any(TextIndex)
     [H, W, ~] = size(Images);
     Dist = min(round(H/20),round(W/20));
-    N = size(CMap,1)-2;
-else
-    N = size(CMap,1)-1;
 end
 
+% Convert stim index to logical
+if isnumeric(StimFrameIndex)
+    temp = StimFrameIndex;
+    StimFrameIndex = false(1,numFrames);
+    StimFrameIndex(temp) = true;
+end
+
+% Conver numeric text to cellstr
+if isnumeric(Text)
+    if isrow(Text)
+        Text = Text';
+    end
+    Text = cellstr(num2str(Text));
+end
+
+
 %% Save each stimulus average to video
+fprintf('Writing video: %s...', Filename);
 
 % Open video
-fprintf('Writing video: %s...', Filename);
 vidObj = VideoWriter(Filename,'Motion JPEG AVI');
 set(vidObj, 'FrameRate', frameRate);
 open(vidObj);
 
-for index = 1:numStims
-    sindex = StimIndex(index);
-    
-    for findex = 1:size(Images{1}{sindex},3)
-        
-        % Create frame
-        temp = cell(numFiles, 1);
-        for ind = 1:numFiles
-            temp{ind} = Images{ind}{sindex}(:,:,findex);
-        end
-        Image = createImage(temp, Maps, 'speed', MergeType, 'filter', filt, 'Map', indMap, Dim, Map);
-        
-        % Scale for aspect ratio and desired output size
-        sz = size(Image).*pixelSize; % determine how to scale to fix aspect ratio
-        if ~isempty(outputSize)
-            sz = sz*min(outputSize./sz); % determine conversion to reach desired size
-        end
-        Image = imresize(Image, sz); % scale video
-        
-        if ~isempty(outputSize) % add blanks to short edge to make output desired size
-            sz = size(Image);
-            dimind = find(sz-outputSize);
-            num = outputSize(dimind)-sz(dimind);
-            if dimind==1
-                Image = cat(dimind,zeros(floor(num/2),sz(2)),Image,zeros(ceil(num/2),sz(2)));
-            else
-                Image = cat(dimind,zeros(sz(1),floor(num/2)),Image,zeros(sz(1),ceil(num/2)));
-            end
-            % Image = cat(2,Image,zeros(outputSize)); % SPECIFIC TO NEWS BLURB
-        end
-        
-        if sindex == StimIndex(1) && findex == 1
-            % Determine frame dimensions
-            [H, W, ~] = size(Image);
-            Dist = min(round(H/20),round(W/20));
-        end
-        
-        % Display and save image to file
-        if ~showStimID && ~showColorBar % don't need to display image as no overlays
-            Image = (Image-CLim(1))/range(CLim); % scale by CLim
-            if ~showStimMarker
-                Image = round(Image*(size(CMap,1)-1)+1); % convert to colormap indexing
-            else
-                Image = round(Image*(size(CMap,1)-2)+1); % convert to colormap indexing
-                if sindex ~= ControlIndex && findex>=StimFrameIndex(index,1) && findex<=StimFrameIndex(index,2)
-                    Image(H-Dist*2:H-Dist,W-Dist*2:W-Dist) = size(CMap,1); % add stim marker
-                end
-            end
-            Image = ind2rgb(Image, CMap);        % convert to RGB image
-            writeVideo(vidObj, Image);           % save to file
-            
-        else % need to display image before saving
-            
-            if sindex == StimIndex(1) && findex == 1
-                % Create figure
-                hF = figure('Units', 'Pixels', 'Position', [50, 50, 1450, 950], 'Color', 'w');
-                hA = axes('Parent', hF);
-            end
-            
-            % Display Image
-            imagesc(Image, CLim);
-            set(hA,'DataAspectRatio',[1 1 1]);
-            axis off; hold on;
-            colormap(CMap);
-            
-            % Place Stimulus mark
-            if showStimMarker && sindex ~= ControlIndex && findex>=StimFrameIndex(index,1) && findex<=StimFrameIndex(index,2)
-                patch([W-Dist*2; W-Dist; W-Dist; W-Dist*2],...
-                    [H-Dist*2; H-Dist*2; H-Dist; H-Dist],...
-                    'white','EdgeColor','white');
-            end
-            
-            % Place ID number
-            if showStimID
-                if sindex == ControlIndex
-                    text(Dist, Dist, 'control', 'FontSize', 25, 'Color', 'w', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'middle');
-                else
-                    text(Dist, Dist, Text{index}, 'FontSize', 25, 'Color', 'w', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'middle');
-                end
-            end
-            
-            % Display color bar
-            if showColorBar
-                cbH = colorbar;
-                ylabel(cbH, 'dF/F');
-            end
-            
-            % Write to video
-            drawnow
-            pause(0.01);
-            if showColorBar
-                frame = getframe(hF);
-            else
-                frame = getframe(hA);
-            end
-            writeVideo(vidObj, frame.cdata);
-            
-            % Close the figure
-            if sindex == StimIndex(end) && findex == size(Images{1}{sindex},3)
-                close(hF);
-            end
-            
-        end % display
-        
-    end % frames
-
-end % stims
-
-close(vidObj);
-
-fprintf('\tfinished\n');
-
-
-%% Save each stimulus average to video
-fprintf('Writing video: %s...', SaveFile);
-
-% Open video
-vidObj = VideoWriter(SaveFile,'Motion JPEG AVI');
-set(vidObj, 'FrameRate', frameRate);
-open(vidObj);
-
 % Create figure
-if showColorbar
+if showColorBar
     hF = figure('Units', 'Pixels', 'Position', [50, 50, 1450, 950], 'Color', 'w');
     hA = axes('Parent', hF);
 end
@@ -444,44 +357,64 @@ end
 parfor_progress(numFrames);
 for findex = 1:numFrames
     Image = Images(:,:,findex);
-    Image = (Image-CLim(1))/range(CLim); % scale by CLim
-    
-    % Add Stim Marker
-    if ~showStimMarker
-        Image = round(Image*N+1); % convert to colormap indexing
-    else
-        Image = round(Image*(size(CMap,1)-2)+1); % convert to colormap indexing
-        if sindex ~= ControlIndex && findex>=StimFrameIndex(index,1) && findex<=StimFrameIndex(index,2)
-            Image(H-Dist*2:H-Dist,W-Dist*2:W-Dist) = size(CMap,1); % add stim marker
+
+    if ~showColorBar
+        
+        % Add stim marker
+        if StimFrameIndex(findex)
+            Image(H-Dist*2:H-Dist,W-Dist*2:W-Dist) = N+1; % add stim marker
         end
-    end
-    Image = ind2rgb(Image, CMap);        % convert to RGB image
     
-    % Display Image
-    if showColorbar
-        image(Image);
+        % Convert to RGB image
+        Image = ind2rgb(Image, CMap);
+        
+        % Add text
+        if TextIndex(findex)
+            Image = insertText(Image,[Dist/2,Dist/2],Text{TextIndex(findex)},...
+                'FontSize',FontSize*2,'BoxOpacity',0,'TextColor',Color); % 2*FontSize to make insert and overlay on similar scales
+        end
+        
+    else
+        
+        % Display Image and colorbar
+        imagesc(Image,CLim);
         set(hA,'DataAspectRatio',[1 1 1]);
         axis off; hold on;
         colormap(CMap);
-        cbH = colorbar;
-        ylabel(cbH, 'Fluorescence (A.U.)');
+        cbH = colorbar('FontSize',CbFontSize/1.5);
+        ylabel(cbH,CbLabel,'FontSize',CbFontSize);
+        
+        % Add stim marker
+        if StimFrameIndex(findex)
+            patch([W-Dist*2; W-Dist; W-Dist; W-Dist*2],...
+                    [H-Dist*2; H-Dist*2; H-Dist; H-Dist],Color,...
+                    'EdgeColor',Color);
+        end
+        
+        % Add text
+        if TextIndex(findex)
+            text(Dist/2, Dist/2, Text{TextIndex(findex)},'FontSize',FontSize,...
+                'Color',Color,'HorizontalAlignment','left',...
+                'VerticalAlignment','top');
+        end
+
         drawnow;
         frame = getframe(hF);
-        img = frame.cdata;
+        Image = frame.cdata;
+        
     end
    
     % Write to video
-    drawnow
-    pause(0.01);
-    writeVideo(vidObj, img);
+    writeVideo(vidObj, Image);
     
     parfor_progress;
 end
 
-if showColorbar
+if showColorBar
     close(hF);
 end
 close(vidObj);
 parfor_progress(0);
 
 fprintf('\tfinished\n');
+

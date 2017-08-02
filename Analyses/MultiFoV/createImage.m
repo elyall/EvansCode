@@ -85,24 +85,13 @@ if ischar(Maps)
     Maps = {Maps};
 end
 
-numFiles = numel(Images);
 
+%% Load in and format data
 
-%% Load in maps
-if iscellstr(Maps)
-    MapFiles = Maps;
-    Maps = imref2d();
-    for findex = 1:numFiles
-        load(MapFiles{findex}, 'Map', '-mat');
-        Maps(findex) = Map;
-    end
-end
-
-
-%% Load in images
+% Load in images
 if iscellstr(Images)
     ImageFiles = Images;
-    for findex = 1:numFiles
+    for findex = 1:numel(ImageFiles)
         [~,~,ext] = fileparts(ImageFiles{findex});
         switch ext
             case '.exp'
@@ -115,6 +104,25 @@ if iscellstr(Images)
                 load(ImageFiles{findex},'m','-mat');
                 Images{findex} = m;
         end
+    end
+elseif isnumeric(Images) % convert to cell array
+    sz = size(Images);
+    N = ndims(Images);
+    if N == 3 % indexed image
+        Images = squeeze(mat2cell(Images,sz(1),sz(2),ones(sz(3),1)));
+    elseif N == 4 % RGB
+        Images = squeeze(mat2cell(Images,sz(1),sz(2),sz(3),ones(sz(4),1)));
+    end
+end
+numFiles = numel(Images);
+
+% Load in maps
+if iscellstr(Maps)
+    MapFiles = Maps;
+    Maps = imref2d();
+    for findex = 1:numFiles
+        load(MapFiles{findex}, 'Map', '-mat');
+        Maps(findex) = Map;
     end
 end
 
