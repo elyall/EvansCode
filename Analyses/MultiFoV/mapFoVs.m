@@ -115,6 +115,7 @@ end
 
 
 if nargout > 2
+    
     %% Index map
     indMap = false(H, W, numFiles);
     for findex = 1:numFiles
@@ -124,7 +125,7 @@ if nargout > 2
     end
     
     
-    %% Blend map
+    %% Other maps
     switch type
             
         case 'mean'

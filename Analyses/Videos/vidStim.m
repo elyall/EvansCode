@@ -1,5 +1,5 @@
 function [Filename, CLim, indMap, Dim, Map] = vidStim(Filename, Images, varargin)
-%vid Saves images to a video file
+%vidStim Saves average stimulus responses to a video file
 %   FILENAME = vidStim() prompts user to select a FILENAME to save to
 %   and select a .exp or .align file to load data from.
 %
@@ -13,19 +13,20 @@ function [Filename, CLim, indMap, Dim, Map] = vidStim(Filename, Images, varargin
 % Default parameters that can be adjusted
 
 % Stim specific
-StimIndex = [2,inf];        % vector specifying indices of stimuli to save
+StimIndex = [1,inf];        % vector specifying indices of stimuli to save
 ControlIndex = false;       % index of control stimulus within cell array after accounting stims removed due to StimIndex
 VarToLoad = 'AvgTrialdFoF'; % variable name to load from IMAGES if IMAGES is a char or cell array of strings
 StimFrameIndex = [];        % numStim x 2 array specifying frame indices of first and last frame within each stimulus
 
+% vid specific -> see: vid()
 % Overlays & colorbar
 Text = {};                  % cell array of text to overlay
 TextIndex = [];             % array of length numFrames indexing which text to display on each frame
 FontSize = 30;              % scalar specifying size of text
 Color = [1,1,1];            % color of overlays
 showColorBar = false;       % whether to display the colorbar
-CbLabel = 'dF/F'; 
-CbFontSize = 20; 
+cbLabel = 'dF/F'; 
+cbFontSize = 20; 
 
 % Specify data
 % MCdata = {[]};              % cell array of MCdata structures
@@ -88,11 +89,11 @@ while index<=length(varargin)
             case {'ColorBar','Colorbar','colorbar'}
                 showColorBar = varargin{index+1};
                 index = index + 2;
-            case 'CbLabel'
-                CbLabel = varargin{index+1};
+            case 'cbLabel'
+                cbLabel = varargin{index+1};
                 index = index + 2;
-            case 'CbFontSize'
-                CbFontSize = varargin{index+1};
+            case 'cbFontSize'
+                cbFontSize = varargin{index+1};
                 index = index + 2;
 %             case 'MCdata'
 %                 MCdata = varargin{index+1};
@@ -235,8 +236,8 @@ end
     'FontSize',         FontSize,...
     'Color',            Color,...
     'ColorBar',         showColorBar,...
-    'CbLabel',          CbLabel,...
-    'CbFontSize',       CbFontSize,...
+    'cbLabel',          cbLabel,...
+    'cbFontSize',       cbFontSize,...
     'Crop',             Crop,...
     'borderLims',       borderLims,...
     'Afilt',            Afilt,...

@@ -4,13 +4,11 @@ function [Filename, CLim, indMap, Dim, Map] = vid(Filename, Images, varargin)
 %   select one or more image files to load data from. Each frame will be
 %   merged across datasets, specified by the MAPS and MERGETYPE properties.
 %
-%   FILENAME = vidStim(FILENAME, IMAGES) saves IMAGES to the video file
+%   FILENAME = vid(FILENAME, IMAGES) saves IMAGES to the video file
 %   FILENAME. IMAGES can be a cell array of filenames to load data from, or
 %   a cell array 3-dimensional image data [H x W x F]. Each frame will be
 %   merged across datasets. To concatenate datasets in time, input a cell
 %   array of filenames as an element of the input cell array.
-
-% TO DO: use insertText to display StimIDs without displaying to figure.
 
 
 % Default parameters that can be adjusted
@@ -22,8 +20,8 @@ TextIndex = [];             % array of length numFrames indexing which text to d
 FontSize = 30;              % scalar specifying size of text
 Color = [1,1,1];            % color of overlays
 showColorBar = false;       % whether to display the colorbar
-CbLabel = 'Fluorescence (A.U.)'; 
-CbFontSize = 20;            
+cbLabel = 'Fluorescence (A.U.)'; % string specifying ylabel on colorbar
+cbFontSize = 20;            % scalar specifying size of colorbar text
 
 % Specify data
 MCdata = {[]};              % cell array of MCdata structures
@@ -77,11 +75,11 @@ while index<=length(varargin)
             case {'ColorBar','Colorbar','colorbar'}
                 showColorBar = varargin{index+1};
                 index = index + 2;
-            case 'CbLabel'
-                CbLabel = varargin{index+1};
+            case 'cbLabel'
+                cbLabel = varargin{index+1};
                 index = index + 2;
-            case 'CbFontSize'
-                CbFontSize = varargin{index+1};
+            case 'cbFontSize'
+                cbFontSize = varargin{index+1};
                 index = index + 2;
             case 'MCdata'
                 MCdata = varargin{index+1};
@@ -109,7 +107,7 @@ while index<=length(varargin)
                 Dim = varargin{index+2};
                 Map = varargin{index+3};
                 index = index + 4;
-            case 'CMap'
+            case {'CMap','Colormap','cmap','colormap'}
                 CMap = varargin{index+1};
                 index = index + 2;
             case 'CLim'
@@ -241,13 +239,13 @@ end
 % Build composite images
 if numFiles > 1
     if isempty(indMap)
-        [Dim, refMap, indMap] = mapFoVs(Maps, 'type', MergeType); % generate indexing array
+        [Dim, Map, indMap] = mapFoVs(Maps, 'type', MergeType); % generate indexing array
     end
     temp = Images;
-    Images = nan([refMap.ImageSize,numFrames]); % initialize output array
+    Images = nan([Map.ImageSize,numFrames]); % initialize output array
     for findex = 1:numFrames
         current = cellfun(@(x) x(:,:,findex), temp, 'UniformOutput', false); % pull out current frame from each dataset
-        Images(:,:,findex) = createImage(current, Maps, 'speed', MergeType, 'Map', indMap, Dim, refMap, 'OutputView', refMap); % build composite frame
+        Images(:,:,findex) = createImage(current, Maps, 'speed', MergeType, 'Map', indMap, Dim, Map, 'OutputView', Map); % build composite frame
     end
 else
     Images = Images{1};
@@ -303,10 +301,10 @@ if ischar(CMap)
             CMap = parula(128);
     end
 end
-N = size(CMap,1);
 
 % Scale and convert images to colormap
 if ~showColorBar
+    N = size(CMap,1);
     Images = (Images-CLim(1))/range(CLim); % scale by CLim (desired max becomes 1 and desired min becomes 0)
     Images = round(Images*(N-1)+1); % convert to colormap indexing
     Images(Images>N) = N;           % set upper limit to be within colormap
@@ -381,8 +379,8 @@ for findex = 1:numFrames
         set(hA,'DataAspectRatio',[1 1 1]);
         axis off; hold on;
         colormap(CMap);
-        cbH = colorbar('FontSize',CbFontSize/1.5);
-        ylabel(cbH,CbLabel,'FontSize',CbFontSize);
+        cbH = colorbar('FontSize',cbFontSize/1.5);
+        ylabel(cbH,cbLabel,'FontSize',cbFontSize);
         
         % Add stim marker
         if StimFrameIndex(findex)

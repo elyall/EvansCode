@@ -12,14 +12,14 @@ function [Image, hA, patchHandles] = spatialOverlay(ROIs, Maps, ROIindex, FileIn
 mergetype = 'quick'; % 'quick' or 'pretty'
 Crop = false;
 Title = '';
+pixelSize = [1,1];
 
 % Colobar Properties
 showColorBar = false;
-cbTitle = '';
+cbLabel = '';
 cbTick = [];
 cbTickLabel = {};
-FontSize_colorbarLabel = 15;
-FontSize_colorbarTicks = 15;
+cbFontSize = 15;
 flipColorbar = false;
 
 % ROI Properties
@@ -59,13 +59,16 @@ while index<=length(varargin)
             case 'Title'
                 Title = varargin{index+1};
                 index = index + 2;
+            case 'pixelSize'
+                pixelSize = varargin{index+1};
+                index = index + 2;
             
             % Colorbar Properties
             case 'showColorBar'
                 showColorBar = true;
                 index = index + 1;
-            case 'cbTitle'
-                cbTitle = varargin{index+1};
+            case 'cbLabel'
+                cbLabel = varargin{index+1};
                 index = index + 2;
             case 'cbTick'
                 cbTick = varargin{index+1};
@@ -110,7 +113,7 @@ while index<=length(varargin)
             case 'Image'
                 Image = varargin{index+1};
                 index = index + 2;
-            case 'axes'
+            case {'Axes','axes','axis','hA'}
                 hA = varargin{index+1};
                 index = index + 2;
             case 'Colormap'
@@ -197,13 +200,12 @@ if ~isempty(Image)
     end
     
     % Display Image
+    imagesc(Image);
     if ~isempty(CMap)
-        imagesc(Image);
         colormap(CMap);
-    else
-        imagesc(Image)
     end
-%     axis equal off
+    set(gca,'DataAspectRatio',[pixelSize,1]);
+    axis off;
     
 end
 
@@ -274,11 +276,18 @@ end
 
 %% Overlay ROIs
 patchHandles = overlayROIs(ROIs,...
-    'axes', hA, 'Maps', Maps, 'ROIindex', ROIindex, 'FileIndex', FileIndex,...
-    'roiType', roiType,...
-    'Radius', Radius, 'Color', Colors(ColorIndex,:), 'LineWidth', LineWidth,...
-    'FaceAlpha', FaceAlpha, 'EdgeAlpha', EdgeAlpha, 'FaceBrightness', FaceBrightness,...
-    'EdgeBrightness', EdgeBrightness);
+    'axes',             hA,...
+    'Maps',             Maps,...
+    'ROIindex',         ROIindex,...
+    'FileIndex',        FileIndex,...
+    'roiType',          roiType,...
+    'Radius',           Radius,...
+    'Color',            Colors(ColorIndex,:),...
+    'LineWidth',        LineWidth,...
+    'FaceAlpha',        FaceAlpha,...
+    'EdgeAlpha',        EdgeAlpha,...
+    'FaceBrightness',   FaceBrightness,...
+    'EdgeBrightness',   EdgeBrightness);
 
 
 %% Plot colorbar
@@ -305,11 +314,11 @@ if showColorBar
     end
         
     % Center desired colormap and display labels
-    set(cbH, 'Limits', NewYLim, 'FontSize', FontSize_colorbarTicks, 'Ticks', cbTick, 'YTickLabel', cbTickLabel);
+    set(cbH, 'Limits', NewYLim, 'FontSize', cbFontSize, 'Ticks', cbTick, 'YTickLabel', cbTickLabel);
         
     % Display colorbar title
-    if ~isempty(cbTitle)
-        ylabel(cbH, cbTitle, 'FontSize', FontSize_colorbarLabel);
+    if ~isempty(cbLabel)
+        ylabel(cbH, cbLabel, 'FontSize', cbFontSize);
     end
 end
 

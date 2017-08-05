@@ -1,6 +1,6 @@
 function [Data, Bounds, numSamples, tickLoc, tickLabel] = scaleContinuousData(Data, Bounds, varargin)
 
-numSamples = 100;
+numSamples = 128;
 normalized = false;
 FlipMap = false;
 exponent = 1;
@@ -47,10 +47,10 @@ end
 
 %% Determine Bounds
 if isnan(Bounds(1))
-    Bounds(1) = min(Data);
+    Bounds(1) = min(Data(:));
 end
 if isnan(Bounds(2))
-    Bounds(2) = max(Data);
+    Bounds(2) = max(Data(:));
 end
 
 if Bounds(2) < Bounds(1)

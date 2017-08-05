@@ -26,7 +26,7 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
-            case {'Axes', 'axes', 'axis'}
+            case {'Axes','axes','axis','hA'}
                 hA = varargin{index+1};
                 index = index + 2;
             case 'Maps'
@@ -79,7 +79,7 @@ while index<=length(varargin)
 end
 
 if ~exist('Data', 'var') || isempty(Data)
-    [Data, p] = uigetfile({'*.mat'},'Choose ROI file(s)', directory, 'MultiSelect', 'on');
+    [Data, p] = uigetfile({'*.rois;*.mat'},'Choose ROI file(s)', directory, 'MultiSelect', 'on');
     if isnumeric(Data)
         return
     end
@@ -102,8 +102,10 @@ if iscellstr(Data) || isstruct(Data) || (iscell(Data) && isstruct(Data{1}))
         case 'roi'
             [Data, FileIndex] = gatherROIdata(Data,'vertices',':','none',ROIindex,FileIndex,'outputFormat','cell');
             Data = cellfun(@(x) reshape(x, numel(x)/2, 2), Data, 'UniformOutput', false); % Reshape vertices
+            ROIindex = 1:numel(Data);
         case {'circle','arrow'}
             [Data, FileIndex] = gatherROIdata(Data,'centroid',':','none',ROIindex,FileIndex);
+            ROIindex = 1:size(Data,1);
     end
 end
 
@@ -207,9 +209,10 @@ end
 
 % Plot each ROI
 switch roiType
+    
     case {'roi','circle'}
         Handles = nan(numROIs,1);
-        for rindex = 1:numROIs
+        for rindex = ROIindex
             Handles(rindex) = patch(...
                 Data{rindex}(:,1),...
                 Data{rindex}(:,2),...
@@ -220,13 +223,13 @@ switch roiType
                 'EdgeColor',            EdgeColor(rindex,:)*EdgeBrightness(rindex),...
                 'LineWidth',            LineWidth(rindex),...
                 'UserData',             rindex);
-            
         end
-    case 'arrow'
         
-        % User-created method
+    case 'arrow'
         Handles = nan(numROIs,1);
-        for rindex = 1:numROIs
+        
+        % Script from mathworks forums
+        for rindex = ROIindex
             Handles(rindex) = arrow(Data(rindex,:),Data(rindex,:)+Radius(rindex,:),...
                 'FaceColor',    FaceColor(rindex,:)*FaceBrightness(rindex),...
                 'EdgeColor',    EdgeColor(rindex,:)*EdgeBrightness(rindex),...
@@ -236,15 +239,6 @@ switch roiType
                 'Length',       6);
         end
         
-%         % Annotation method (slow as shit)
-%         Handles = nan(numROIs,1);
-%         for rindex = 1:numROIs
-%             Handles(rindex) = annotation('arrow',...
-%                 'Units',    'pixels',...
-%                 'x',        [Data(rindex,1),Data(rindex,1)+Radius(rindex,1)],...
-%                 'y',        [Data(rindex,2),Data(rindex,2)+Radius(rindex,2)]);
-%         end
-
         % Quiver method
 %         Handles = quiver(Data(:,1),Data(:,2),Radius(:,1),Radius(:,2),...
 %             'Color',                    FaceColor(1,:)*FaceBrightness(1),...
