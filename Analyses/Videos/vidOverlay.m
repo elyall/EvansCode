@@ -25,6 +25,7 @@ FaceAlpha = 1;              % scalar between 0 and 1 specifying opacity of ROI f
 EdgeAlpha = 1;              % scalar between 0 and 1 specifying opacity of ROI outline
 FaceBrightness = 1;         % scalar specifying brightness of ROI face
 EdgeBrightness = 1;         % scalar specifying brightness of ROI edge
+EdgeColor = [0,0,0];        % 1x3 vector specifying outline color
 
 % Other overlays & colorbar
 StimFrameIndex = [];        % frame indices or logical vector of length numFrames specifying which frames to display a stimulus marker on
@@ -86,6 +87,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'EdgeBrightness'
                 EdgeBrightness = varargin{index+1};
+                index = index + 2;
+            case 'EdgeColor'
+                EdgeColor = varargin{index+1};
                 index = index + 2;
             case 'StimFrameIndex'
                 StimFrameIndex = varargin{index+1};
@@ -250,6 +254,11 @@ end
 % Convert data to index into colormap and determine tick marks
 [ColorIndex, ~, ~, cbTick, cbTickLabel] = scaleContinuousData(ColorIndex,CLim,'numSamples',N);
 
+% Determine whether to show ROI edges
+if isempty(EdgeColor)
+    EdgeAlpha = 0;
+end
+
 
 %% Determine overlay info
 
@@ -296,6 +305,7 @@ patchHandles = overlayROIs(Data,...
     'roiType',          roiType,...
     'Radius',           Radius,...
     'Color',            Colors(ColorIndex(:,1),:),...
+    'EdgeColor',        EdgeColor,...
     'LineWidth',        LineWidth,...
     'FaceAlpha',        FaceAlpha,...
     'EdgeAlpha',        EdgeAlpha,...
@@ -349,8 +359,8 @@ for findex = 1:numFrames
     % Set ROI colors
     if findex~=1
         for rindex = 1:numROIs
-            set(patchHandles(rindex),'FaceColor',Colors(ColorIndex(rindex,findex),:),...
-                'EdgeColor',Colors(ColorIndex(rindex,findex),:));
+            set(patchHandles(rindex),...
+                'FaceColor', Colors(ColorIndex(rindex,findex),:));
         end
     end
     

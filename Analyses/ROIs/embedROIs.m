@@ -1,4 +1,4 @@
-function img = embedROIs(Vertices, varargin)
+function [img, BW, Ind] = embedROIs(Vertices, varargin)
 
 showImg = false;
 
@@ -48,7 +48,7 @@ while index<=length(varargin)
 end
 
 if ~exist('Vertices', 'var') || isempty(Vertices)
-    [Vertices, p] = uigetfile({'*.mat'},'Choose ROI file(s)', directory, 'MultiSelect', 'on');
+    [Vertices, p] = uigetfile({'*.rois;*.mat'},'Choose ROI file(s)', directory, 'MultiSelect', 'on');
     if isnumeric(Vertices)
         return
     end
@@ -60,7 +60,7 @@ end
 
 
 %% Load ROIs
-if iscellstr(Vertices) || iscell(Vertices) || isstruct(Vertices)
+if iscellstr(Vertices) || isstruct(Vertices) || (iscell(Vertices) && isstruct(Vertices{1}))
     [Vertices, FileIndex] = gatherROIdata(Vertices, 'vertices', ':', 'none');
     Vertices = cellfun(@(x) reshape(x, numel(x)/2, 2), Vertices, 'UniformOutput', false); % Reshape vertices
 end
@@ -85,7 +85,7 @@ if ~isempty(Maps) % multiple files input
     
     % Translate ROIs
     for rindex = 1:numROIs
-        Vertices{rindex} = bsxfun(@plus, Vertices{rindex}, offsets(FileIndex(rindex), 1:2));
+        Vertices{rindex} = bsxfun(@plus, Vertices{rindex}, offsets(FileIndex(rindex),1:2));
     end
     
 else
@@ -106,11 +106,7 @@ else
         H = 512;
         W = 796;
     end
-end
-
-% Create image
-if isempty(img)
-    img = nan(H,W);
+    img = nan(H,W); % create image
 end
 
 % Determine ROI color
@@ -119,9 +115,17 @@ if numel(Color)==1
 end
 
 % Display each ROI
-for rindex = 1:numROIs
-    BW = poly2mask(Vertices{rindex}(:,1),Vertices{rindex}(:,2),H,W);
-    img(BW) = Color(rindex);
+BW = false(size(img,1),size(img,2),numROIs);
+for rindex = numROIs:-1:1 % ensure early ROIs are on top
+    BW(:,:,rindex) = poly2mask(Vertices{rindex}(:,1),Vertices{rindex}(:,2),H,W);
+    img(BW(:,:,rindex)) = Color(rindex);
+end
+
+% Convert large binary matrix to indexed array
+if nargout>2
+    temp = cat(3,false(H,W),BW);
+    [~,Ind] = max(temp,[],3);
+    Ind = Ind - 1;
 end
 
 
