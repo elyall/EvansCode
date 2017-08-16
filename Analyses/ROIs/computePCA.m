@@ -1,9 +1,11 @@
-function [eigVec,eigVal] = computePCA(ActivityMatrix, varargin)
+function [eigVec,eigVal,capVar] = computePCA(ActivityMatrix, varargin)
 
 verbose = false;
 ROIindex = [1 inf];
 TrialIndex = [1 inf];
 StimID = [];
+Labels = [];
+Colors = [];
 
 directory = cd;
 
@@ -23,6 +25,12 @@ while index<=length(varargin)
                 index = index + 1;
             case 'StimID'
                 StimID = varargin{index+1};
+                index = index + 2;
+            case 'Labels'
+                Labels = varargin{index+1};
+                index = index + 2;
+            case 'Colors'
+                Colors = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -75,6 +83,8 @@ end
 
 %% Compute PCA
 [eigVec,eigVal] = eig(cov(ActivityMatrix));
+capVar = diag(eigVal); 
+capVar = capVar/sum(capVar); % variance captured by each eigenvector
 
 
 %% Plot trials in PCA space
@@ -84,26 +94,41 @@ if verbose
     projPts = ActivityMatrix*eigVec(:,end-2:end);
     
     figure;
-    if isempty(StimID)
-        plot3(projPts(:,1),projPts(:,2),projPts(:,3),'.','MarkerSize',24);
-    else
-        hold on;
-        StimIDs = unique(StimID);
-        numStim = numel(StimIDs);
-        %stimMean = nan(numStim,3);
-        Colors = jet(numStim);
-        for sindex=1:numStim
-            ci = StimID==StimIDs(sindex);
-            plot3(projPts(ci,1),projPts(ci,2),projPts(ci,3),'.','MarkerSize',24,'MarkerEdgeColor',Colors(sindex,:));
-            %stimMean(sindex,:) = mean(projPts(ci,:));
+    if isempty(StimID) % plot as if single stimulus
+        if isempty(Colors)
+            Colors = [0,0,0];
         end
-        legend(strcat('Stim',{' '},cellstr(num2str(StimIDs))),'Location','BestOutside');
-        %plot3(stimMean(:,1),stimMean(:,2),stimMean(:,3),'k','LineWidth',2);
+        scatter3(projPts(:,1),projPts(:,2),projPts(:,3),24,Colors);
+        
+    else % stimuli info provided 
+        hold on;
+        
+        % Determine Stims
+        StimIDs = unique(StimID);
+        if isempty(Labels)
+            Labels = strcat('Stim',{' '},cellstr(num2str(StimIDs)));
+        end
+        numStim = numel(StimIDs);
+        if isempty(Colors)
+            Colors = jet(numStim);
+        end
+        
+        % Plot trials for each stimuli
+        stimMean = nan(numStim,3);
+        h = nan(numStim,1);
+        for sindex=1:numStim
+            ind = StimID==StimIDs(sindex);
+            h(sindex) = scatter3(projPts(ind,1),projPts(ind,2),projPts(ind,3),12,Colors(sindex,:),'filled');
+            stimMean(sindex,:) = mean(projPts(ind,:));
+%             h(sindex) = scatter3(stimMean(sindex,1),stimMean(sindex,2),stimMean(sindex,3),24,Colors(sindex,:),'*');
+        end
+        legend(h,Labels,'Location','BestOutside');
+        legend boxoff
+
     end
     xlabel('PC 1'); ylabel('PC 2'); zlabel('PC 3');
     grid on
-    capVar = diag(eigVal); % variance captured by each eigenvector
-    plotVar = sum(capVar(end-2:end)) / sum(capVar);
+    plotVar = sum(capVar(end-2:end));
     title(sprintf('Top 3 PCs that account for %.2f%% of variance',plotVar*100)); 
 end
 

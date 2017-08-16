@@ -64,7 +64,7 @@ while index<=length(varargin)
                 index = index + 2;
             
             % Colorbar Properties
-            case 'showColorBar'
+            case {'showColorbar','showColorBar'}
                 showColorBar = true;
                 index = index + 1;
             case 'cbLabel'
@@ -257,9 +257,7 @@ switch DataType
     case 'continuous'
         
         % Change continuous space to discrete space
-        if ~isequal(round(ColorIndex),ColorIndex)
-            [ColorIndex, ~, numSamples, cbTick, cbTickLabel] = scaleContinuousData(ColorIndex);
-        end
+        [ColorIndex, ~, numSamples, cbTick, cbTickLabel] = scaleContinuousData(ColorIndex);
         
         % Determine colors
         if ~exist('Colors', 'var') || isempty(Colors)
