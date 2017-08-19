@@ -1,4 +1,4 @@
-function [Filename, CLim, indMap, Dim, Map] = vidStim(Filename, Images, varargin)
+function [Filename, CLim, Dim, Map, indMap] = vidStim(Filename, Images, varargin)
 %vidStim Saves average stimulus responses to a video file
 %   FILENAME = vidStim() prompts user to select a FILENAME to save to
 %   and select a .exp or .align file to load data from.
@@ -42,9 +42,9 @@ Maps = [];                  % cell array or array of imref2d objects specifying 
 MergeType = 'mean';         % 'mean' or 'blend' specifying how to merge the datasets ('blend' takes a long time)
 % Only used if want to skip repeating long blend process when making
 % multiple videos (see: mapFoVs)
-indMap = [];                % H x W x numFiles indexing array (see: mapFoVs)
 Dim = [];                   % numFiles x 4 specifying the locations and size of each dataset (see: mapFoVs)
 Map = [];                   % imref2d object of the composite data (see: mapFoVs)
+indMap = [];                % H x W x numFiles indexing array (see: mapFoVs)
 
 % Display properties
 CMap = 'parula';            % Nx3 colormap, or string specifying the colormap of the video
@@ -95,9 +95,6 @@ while index<=length(varargin)
             case 'cbFontSize'
                 cbFontSize = varargin{index+1};
                 index = index + 2;
-%             case 'MCdata'
-%                 MCdata = varargin{index+1};
-%                 index = index + 2;
             case 'Crop'
                 Crop = varargin{index+1};
                 index = index + 2;
@@ -117,11 +114,11 @@ while index<=length(varargin)
                 MergeType = varargin{index+1};
                 index = index + 2;
             case 'Map'
-                indMap = varargin{index+1};
-                Dim = varargin{index+2};
-                Map = varargin{index+3};
+                Dim = varargin{index+1};
+                Map = varargin{index+2};
+                indMap = varargin{index+3};
                 index = index + 4;
-            case 'CMap'
+            case {'CMap','Colormap','cmap','colormap'}
                 CMap = varargin{index+1};
                 index = index + 2;
             case 'CLim'
@@ -229,7 +226,7 @@ end
 
 
 %% Save to video
-[Filename, CLim, indMap, Dim, Map] = vid(Filename, Images,...
+[Filename, CLim, Dim, Map, indMap] = vid(Filename, Images,...
     'StimFrameIndex',   StimFrameIndex,...
     'Text',             Text,...
     'TextIndex',        TextIndex,...
@@ -244,7 +241,7 @@ end
     'Tfilt',            Tfilt,...
     'Maps',             Maps,...
     'MergeType',        MergeType,...
-    'Map',              indMap,Dim,Map,...
+    'Map',              Dim,Map,indMap,...
     'CMap',             CMap,...
     'CLim',             CLim,...
     'frameRate',        frameRate,...

@@ -1,4 +1,4 @@
-function [Filename, CLim, indMap, Dim, Map] = vid(Filename, Images, varargin)
+function [Filename, CLim, Dim, Map, indMap] = vid(Filename, Images, varargin)
 %vid Saves images to a video file
 %   FILENAME = vid() prompts user to select a FILENAME to save to and then
 %   select one or more image files to load data from. Each frame will be
@@ -37,9 +37,9 @@ Maps = [];                  % cell array or array of imref2d objects specifying 
 MergeType = 'mean';         % 'mean' or 'blend' specifying how to merge the datasets ('blend' takes a long time)
 % Only used if want to skip repeating long blend process when making
 % multiple videos (see: mapFoVs)
-indMap = [];                % H x W x numFiles indexing array (see: mapFoVs)
 Dim = [];                   % numFiles x 4 specifying the locations and size of each dataset (see: mapFoVs)
 Map = [];                   % imref2d object of the composite data (see: mapFoVs)
+indMap = [];                % H x W x numFiles indexing array (see: mapFoVs)
 
 % Display properties
 CMap = 'parula';            % Nx3 colormap, or string specifying the colormap of the video
@@ -52,7 +52,7 @@ outputSize = [];            % 1x2 vector specifying the desired Height and Width
 % Placeholders
 directory = cd; % default directory when prompting user to select a file
 
-%% Check input arguments
+%% Parse input arguments
 index = 1;
 while index<=length(varargin)
     try
@@ -72,9 +72,9 @@ while index<=length(varargin)
             case 'Color'
                 Color = varargin{index+1};
                 index = index + 2;
-            case {'ColorBar','Colorbar','colorbar'}
-                showColorBar = varargin{index+1};
-                index = index + 2;
+            case {'ColorBar','Colorbar','colorbar','showColorbar'}
+                showColorBar = true;
+                index = index + 1;
             case 'cbLabel'
                 cbLabel = varargin{index+1};
                 index = index + 2;
@@ -103,9 +103,9 @@ while index<=length(varargin)
                 MergeType = varargin{index+1};
                 index = index + 2;
             case 'Map'
-                indMap = varargin{index+1};
-                Dim = varargin{index+2};
-                Map = varargin{index+3};
+                Dim = varargin{index+1};
+                Map = varargin{index+2};
+                indMap = varargin{index+3};
                 index = index + 4;
             case {'CMap','Colormap','cmap','colormap'}
                 CMap = varargin{index+1};
@@ -245,7 +245,7 @@ if numFiles > 1
     Images = nan([Map.ImageSize,numFrames]); % initialize output array
     for findex = 1:numFrames
         current = cellfun(@(x) x(:,:,findex), temp, 'UniformOutput', false); % pull out current frame from each dataset
-        Images(:,:,findex) = createImage(current, Maps, 'speed', MergeType, 'Map', indMap, Dim, Map, 'OutputView', Map); % build composite frame
+        Images(:,:,findex) = createImage(current, Maps, 'speed', MergeType, 'Map', Dim, Map, indMap, 'OutputView', Map); % build composite frame
     end
 else
     Images = Images{1};
@@ -318,7 +318,7 @@ end
 % Add overlay color to colormap and determine overlay location
 if any(StimFrameIndex) || any(TextIndex)
     [H, W, ~] = size(Images);
-    Dist = min(round(H/20),round(W/20));
+    Dist = min(round(H/15),round(W/15));
 end
 
 % Convert stim index to logical
@@ -328,7 +328,15 @@ if isnumeric(StimFrameIndex)
     StimFrameIndex(temp) = true;
 end
 
-% Conver numeric text to cellstr
+% Ensure TextIndex is proper size
+if numel(TextIndex)~=numFrames
+    if ~isempty(TextIndex)
+        error('numel(TextIndex) must be equal to the number of frames in the video');
+    end
+    TextIndex = false(1,numFrames);
+end
+
+% Convert numeric text to cellstr
 if isnumeric(Text)
     if isrow(Text)
         Text = Text';
@@ -341,8 +349,8 @@ end
 fprintf('Writing video: %s...', Filename);
 
 % Open video
-vidObj = VideoWriter(Filename,'Motion JPEG AVI');
-set(vidObj, 'FrameRate', frameRate);
+vidObj = VideoWriter(Filename,'Uncompressed AVI');
+set(vidObj, 'FrameRate',frameRate);
 open(vidObj);
 
 % Create figure
@@ -352,7 +360,7 @@ if showColorBar
 end
 
 % Save each frame to video
-parfor_progress(numFrames);
+% parfor_progress(numFrames);
 for findex = 1:numFrames
     Image = Images(:,:,findex);
 
@@ -405,14 +413,14 @@ for findex = 1:numFrames
     % Write to video
     writeVideo(vidObj, Image);
     
-    parfor_progress;
+%     parfor_progress;
 end
 
 if showColorBar
     close(hF);
 end
 close(vidObj);
-parfor_progress(0);
+% parfor_progress(0);
 
 fprintf('\tfinished\n');
 

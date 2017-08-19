@@ -1,4 +1,4 @@
-function [Filename, CLim, indMap, Dim, Map] = vidOverlay(Filename, Data, ColorIndex, varargin)
+function [Filename, CLim] = vidOverlay(Filename, Data, ColorIndex, varargin)
 %vidOverlay Saves time-varying images of patch objects to a video file
 %   FILENAME = vidOverlay() prompts user to select a FILENAME to save to,
 %   and then select one or more ROI files to load ROIdata from.

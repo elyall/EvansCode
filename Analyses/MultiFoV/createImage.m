@@ -1,4 +1,4 @@
-function [Image, Map, Images, Maps, indMap] = createImage(Images, Maps, varargin)
+function [Image, Map, Images, Maps, Dim, indMap] = createImage(Images, Maps, varargin)
 
 
 speed = 'quick'; % 'quick' or 'pretty'
@@ -13,7 +13,7 @@ Crop = false;
 filt = false;
 % filt = fspecial('gaussian', 5, 1);
 
-filler = 'mean'; % 'mean' or scalar
+filler = 0; % 'mean' or scalar
 
 outMap = []; % map of output view
 
@@ -44,13 +44,16 @@ while index<=length(varargin)
             case 'filter'
                 filt = varargin{index+1};
                 index = index + 2;
+            case 'filler'
+                filler = varargin{index+1};
+                index = index + 2;
             case 'OutputView'
                 outMap = varargin{index+1};
                 index = index + 2;
             case 'Map'
-                indMap = varargin{index+1};
-                Dim = varargin{index+2};
-                Map = varargin{index+3};
+                Dim = varargin{index+1};
+                Map = varargin{index+2};
+                indMap = varargin{index+3};
                 index = index + 4;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});

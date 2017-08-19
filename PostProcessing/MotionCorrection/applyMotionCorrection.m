@@ -1,9 +1,26 @@
-function Images = applyMotionCorrection(Images, MCdata, MCindex, frameIndex, depthIndex)
+function Images = applyMotionCorrection(Images, MCdata, MCindex, frameIndex, depthIndex,varargin)
 
-
+DataIndex = [];
 directory = cd;
 
 %% Parse input arguments
+index = 1;
+while index<=length(varargin)
+    try
+        switch varargin{index}
+            case 'MCdataIndex'
+                MCdataIndex = varargin{index+1};
+                index = index + 2;
+            otherwise
+                warning('Argument ''%s'' not recognized',varargin{index});
+                index = index + 1;
+        end
+    catch
+        warning('Argument %d not recognized',index);
+        index = index + 1;
+    end
+end
+
 if ~exist('Images','var') || isempty(Images) % Prompt for file selection
     [ImageFile,p] = uigetfile({'*.imgs;*.sbx;*.tif'},'Select images:',directory);
     if isnumeric(ImageFile)
@@ -14,7 +31,7 @@ if ~exist('Images','var') || isempty(Images) % Prompt for file selection
 elseif ischar(Images)
     [Images, loadObj] = load2P(Images, 'Type', 'Direct', 'Double');
 end
-[H,W, numDepth, numChannels, numFrames] = size(Images);
+[H, W, numDepth, numChannels, numFrames] = size(Images);
 
 if ~exist('MCdata','var') || isempty(MCdata)
     [ExperimentFile, p] = uigetfile({'*.mat'},'Choose Experiment file',directory);
@@ -43,20 +60,22 @@ end
 
 %% Determine frame indices
 if exist('loadObj', 'var')
+    
     % Determine ImageFiles in loadObj
     ImageFiles = {loadObj.files(:).FullFilename}; % gather filenames
     numFiles = numel(ImageFiles);
     
     % Match MCdata to ImageFiles
-    MCdataIndex = nan(numFiles, 1);
-    MCFiles = {MCdata(:).FullFilename};
-    for findex = 1:numFiles
-%         try
-%             MCdataIndex(findex) = find(strcmp(ImageFiles{findex}, MCFiles));
-%         catch
-%             warning('Image file not found in motion correction object. Assuming motion correction corresponds to first file input');
-            MCdataIndex(findex) = 1;
-%         end
+    if isempty(MCdataIndex)
+        MCdataIndex = nan(numFiles);
+        MCFiles = {MCdata(:).FullFilename};
+        for findex = 1:numFiles
+            try
+                MCdataIndex(findex) = find(strcmp(ImageFiles{findex}, MCFiles));
+            catch
+                MCdataIndex(findex) = 1;
+            end
+        end
     end
     
     % Create frame indices vector
@@ -111,23 +130,19 @@ switch MCdata(1).type
         end
         
         for iF = 1:numFrames
-            for iC = 1:numChannels
-                
-                try
-                    Images(:,:,1,iC,iF) = circshift(Images(:,:,1,iC,iF), MCdata(MCindex(iF,1)).T(MCindex(iF,2),1:2));
-                    if MCdata(MCindex(iF,1)).T(MCindex(iF,2),1)
-                        Images(MCdata(MCindex(iF,1)).T(MCindex(iF,2),1):MCdata(MCindex(iF,1)).T(MCindex(iF,2),3),:,1,iC,iF) = nan; % fill top-bottom non-sampled region with nans
-                    end
-                    if MCdata(MCindex(iF,1)).T(MCindex(iF,2),2)
-                        Images(:,MCdata(MCindex(iF,1)).T(MCindex(iF,2),2):MCdata(MCindex(iF,1)).T(MCindex(iF,2),4),1,iC,iF) = nan; % fill left-right non-sampled region with nans
-                    end
-                    % Images(:,:,1,iC,iF) = imtranslate(Images(:,:,1,iC,iF), MCdata(MCindex(iF,1)).T(MCindex(iF,2),[2,1]), 'FillValues',nan); % very slow
-                catch ME
-                    if MCindex(iF,2) ~= size(MCdata(MCindex(iF,1)).T,1)+1 % old bug where code doesn't motion correct last image
-                        rethrow(ME)
-                    end
+            try
+                Images(:,:,1,:,iF) = circshift(Images(:,:,1,:,iF), MCdata(MCindex(iF,1)).T(MCindex(iF,2),1:2));
+                if MCdata(MCindex(iF,1)).T(MCindex(iF,2),1)
+                    Images(MCdata(MCindex(iF,1)).T(MCindex(iF,2),1):MCdata(MCindex(iF,1)).T(MCindex(iF,2),3),:,1,:,iF) = nan; % fill top-bottom non-sampled region with nans
                 end
-                
+                if MCdata(MCindex(iF,1)).T(MCindex(iF,2),2)
+                    Images(:,MCdata(MCindex(iF,1)).T(MCindex(iF,2),2):MCdata(MCindex(iF,1)).T(MCindex(iF,2),4),1,:,iF) = nan; % fill left-right non-sampled region with nans
+                end
+                % Images(:,:,1,iC,iF) = imtranslate(Images(:,:,1,iC,iF), MCdata(MCindex(iF,1)).T(MCindex(iF,2),[2,1]), 'FillValues',nan); % very slow
+            catch ME
+                if MCindex(iF,2) ~= size(MCdata(MCindex(iF,1)).T,1)+1 % old bug where code doesn't motion correct last image
+                    rethrow(ME)
+                end
             end
         end
 end

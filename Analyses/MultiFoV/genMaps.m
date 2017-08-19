@@ -1,10 +1,36 @@
-function Maps = genMaps(Data)
+function Maps = genMaps(Data,varargin)
 
 Buffer = [1,1];
 H = 0;
 W = 0;
 outputType = 'array'; % 'array' or 'cell'
 
+%% Parse input arguments
+index = 1;
+while index<=length(varargin)
+    try
+        switch varargin{index}
+            case {'Buffer','buffer'}
+                Buffer = varargin{index+1};
+                index = index + 2;
+            case {'H','h','height','Height','y','Y'}
+                H = varargin{index+1};
+                index = index + 2;
+            case {'W','w','width','Width','x','X'}
+                W = varargin{index+1};
+                index = index + 2;
+            case 'outputType'
+                outputType = varargin{index+1};
+                index = index + 2;
+            otherwise
+                warning('Argument ''%s'' not recognized',varargin{index});
+                index = index + 1;
+        end
+    catch
+        warning('Argument %d not recognized',index);
+        index = index + 1;
+    end
+end
 
 %% Initialize maps
 if iscell(Data)
@@ -49,7 +75,7 @@ X = bsxfun(@times, X-1, w)+Buffer(2); % calculate x offset for each panel
 % Index = reshape(1:H*W,W,H);           % transposed location of each panel
 for ind = 1:numFiles
     [a,b] = ind2sub([W,H],ind);                               % determine current panel's location
-%     [a,b] = find(Index==ind,1);                               % determine current panel's location
+%     [a,b] = find(Index==ind,1);                             % determine current panel's location
     Maps(ind).YWorldLimits = Maps(ind).YWorldLimits + Y(a,b); % add y offset for that panel
     Maps(ind).XWorldLimits = Maps(ind).XWorldLimits + X(a,b); % add x offset for that panel
 end
