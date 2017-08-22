@@ -68,18 +68,24 @@ end
 AlignFiles = cell(numFiles,1);
 temp = struct('T',{},'type',{},'date',{},'FullFilename',{},'Channel2AlignFrom',{},'Parameters',{});
 for findex = 1:numFiles
-    if ischar(Tmats{findex})
-        fprintf('Converting T to MCdata: %s\n',Tmats{findex});
+    if ischar(Tmats{findex}) % assign to align files & determine variables within it
         AlignFiles{findex} = Tmats{findex};
-        ImageFile = closestFile(AlignFiles{findex}, '.sbx');
-        vars = whos(matfile(Tmats{findex}));
-        load(Tmats{findex}, 'T', '-mat');
-        Tmats{findex} = T;
-    else
-        fprintf('Converting T to MCdata\n');
-        ImageFile = '';
+        vars = whos(matfile(AlignFiles{findex}));
     end
-    if isempty(AlignFiles{findex}) || ~any(strcmp({vars(:).name},'MCdata')) || overwrite % create new MCdata structures if previous doesn't exist or overwrite is True
+    if ~isempty(AlignFiles{findex}) && any(strcmp({vars(:).name},'MCdata')) && ~overwrite % simply load in MCdata
+        fprintf('Loading MCdata from: %s\n',AlignFiles{findex});
+        load(AlignFiles{findex},'MCdata','-mat');
+        temp(findex) = MCdata;
+    else % convert T to MCdata
+        if ~isempty(AlignFiles{findex})
+            fprintf('Converting T to MCdata: %s\n',AlignFiles{findex});
+            ImageFile = closestFile(AlignFiles{findex}, '.sbx');
+            load(AlignFiles{findex}, 'T', '-mat');
+            Tmats{findex} = T;
+        else
+            fprintf('Converting T to MCdata\n');
+            ImageFile = '';
+        end
         temp(findex).T = Tmats{findex};
         temp(findex).type = 'Translation';
         temp(findex).date = datestr(now);
@@ -91,9 +97,6 @@ for findex = 1:numFiles
             save(AlignFiles{findex}, 'MCdata', '-append');
             fprintf('\tMCdata saved to: %s\n',AlignFiles{findex});
         end
-    else
-        load(Tmats{findex},'MCdata','-mat');
-        temp(findex) = MCdata;
     end
 end
 MCdata = temp;
