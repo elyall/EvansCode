@@ -34,7 +34,8 @@ while index<=length(varargin)
                 saveOut = true;
                 index = index + 1;
             case 'overwrite'
-                overwrite = ~overwrite;
+                overwrite = true;
+                saveOut = true;
                 index = index + 1;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -78,7 +79,7 @@ for findex = 1:numFiles
         fprintf('Converting T to MCdata\n');
         ImageFile = '';
     end
-    if isempty(AlignFiles{findex}) || ~any(strcmp({vars(:).name},'MCdata')) || overwrite
+    if isempty(AlignFiles{findex}) || ~any(strcmp({vars(:).name},'MCdata')) || overwrite % create new MCdata structures if previous doesn't exist or overwrite is True
         temp(findex).T = Tmats{findex};
         temp(findex).type = 'Translation';
         temp(findex).date = datestr(now);
@@ -87,7 +88,7 @@ for findex = 1:numFiles
         temp(findex).Parameters = [];
         if saveOut && ~isempty(AlignFiles{findex})
             MCdata = temp(findex);
-            save(AlignFiles{findex}, 'MCdata', '-append', '-mat');
+            save(AlignFiles{findex}, 'MCdata', '-append');
             fprintf('\tMCdata saved to: %s\n',AlignFiles{findex});
         end
     else
