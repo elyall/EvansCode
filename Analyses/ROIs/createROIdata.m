@@ -61,6 +61,9 @@ if ischar(ROIMasks)
 else
     ROIFile = '';
 end
+if ~isa(ROIMasks,'logical')
+    ROIMasks = logical(ROIMasks);
+end
 numROIs = size(ROIMasks, 3);
 
 
