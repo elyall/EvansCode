@@ -151,10 +151,10 @@ switch MCdata(1).type
         for iF = 1:numFrames
             cF = FrameIndex(iF);
             for iD = 1:numDepths
-                cD = DepthIndex(iD);
-                mind = ismember(MCdataIndex,[FileID(iF,1),cD],'rows');
-                if any(MCdata(mind).T(FileID(cF,2),:))
-                    try
+                try 
+                    cD = DepthIndex(iD);
+                    mind = ismember(MCdataIndex,[FileID(iF,1),cD],'rows');
+                    if any(MCdata(mind).T(FileID(cF,2),:))
                         Images(:,:,cD,:,cF) = circshift(Images(:,:,cD,:,cF), MCdata(mind).T(FileID(cF,2),1:2));
                         if MCdata(mind).T(FileID(cF,2),1)
                             Images(MCdata(mind).bounds(FileID(cF,2),1):MCdata(mind).bounds(FileID(cF,2),3),:,cD,:,iF) = nan; % fill top-bottom non-sampled region with nans
@@ -163,10 +163,10 @@ switch MCdata(1).type
                             Images(:,MCdata(mind).bounds(FileID(cF,2),2):MCdata(mind).bounds(FileID(cF,2),4),cD,:,iF) = nan; % fill left-right non-sampled region with nans
                         end
                         % Images(:,:,iD,:,iF) = imtranslate(Images(:,:,1,:,iF), MCdata(MCindex(iF,1)).T(MCindex(iF,2),[2,1]), 'FillValues',nan); % very slow
-                    catch ME
-                        if FileIndex(iF,2) ~= size(MCdata(mind).T,1)+1 % old bug where code doesn't motion correct last image
-                            rethrow(ME)
-                        end
+                    end
+                catch ME
+                    if FileID(cF,2) ~= size(MCdata(mind).T,1)+1 % bug where code doesn't motion correct last image -> leave last image as is
+                        rethrow(ME)
                     end
                 end
             end
