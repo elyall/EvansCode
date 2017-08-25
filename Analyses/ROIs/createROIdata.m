@@ -6,6 +6,8 @@ saveFile = '';
 ImageFile = {''};
 Depth = 1;
 ROIdata = [];
+rawdata = [];
+rawneuropil = [];
 
 %% Parse input arguments
 index = 1;
@@ -17,6 +19,12 @@ while index<=length(varargin)
                 index = index + 2;
             case 'Depth'
                 Depth = varargin{index+1};
+                index = index + 2;
+            case 'data'
+                rawdata = varargin{index+1};
+                index = index + 2;
+            case 'neuropil'
+                rawneuropil = varargin{index+1};
                 index = index + 2;
             case 'ROIdata'
                 ROIdata = varargin{index+1};
@@ -79,8 +87,12 @@ if isempty(ROIdata)
     ROIdata.offset = zeros(1,3);
     ROIdata.imagefiles = ImageFile;
     if exist(ImageFile{1},'file')
-        Config = load2PConfig(ImageFile{1});
-        ROIdata.Config = Config;
+        try
+            Config = load2PConfig(ImageFile{1});
+            ROIdata.Config = Config;
+        catch
+            ROIdata.Config = nan;
+        end
     else
         warning('Image file ''%s'' not found',ImageFile{1});
         ROIdata.Config = nan;
@@ -114,6 +126,14 @@ for rindex = 1:numROIs
     ROIdata.rois(offset+rindex).pixels = sparse(ROIMasks(:,:,rindex));
     temp = regionprops(ROIMasks(:,:,rindex), 'Centroid');
     ROIdata.rois(offset+rindex).centroid = temp.Centroid;
+    
+    % ROI data
+    if ~isempty(rawdata)
+        ROIdata.rois(offset+rindex).rawdata = rawdata(rindex,:);
+    end
+    if ~isempty(rawneuropil)
+        ROIdata.rois(offset+rindex).rawneuropil = rawneuropil(rindex,:);
+    end
     
 end
 
