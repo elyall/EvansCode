@@ -12,7 +12,7 @@ if exist('Images', 'var') && ~isempty(Images)
     
     if isnumeric(Images)
         temp = Images;
-        Images = cell(size(temp,3));
+        Images = cell(size(temp,3),1);
         for iindex = 1:size(temp,3)
             Images{iindex} = temp(:,:,iindex);
         end
