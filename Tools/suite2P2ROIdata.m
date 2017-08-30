@@ -83,7 +83,7 @@ if saveOut
     if isempty(saveFile)
         saveFile = [Ffile(1:end-3),'rois'];
     end
-    if ~exist(saveFile, file)
+    if ~exist(saveFile, 'file')
         save(saveFile,'ROIdata','-v7.3');
     else
         save(saveFile,'ROIdata','-append');
