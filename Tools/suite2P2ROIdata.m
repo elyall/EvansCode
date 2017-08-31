@@ -72,7 +72,10 @@ numROIs = numel(ROIindex);
 % Pull out masks
 ROIMasks = false(ops.Ly,ops.Lx,numROIs);
 for rindex = 1:numROIs
-    ROIMasks(stat(ROIindex(rindex)).ypix,stat(ROIindex(rindex)).xpix,rindex) = true;
+    temp = false(ops.Ly,ops.Lx);
+    ind = sub2ind([ops.Ly,ops.Lx],stat(ROIindex(rindex)).ypix,stat(ROIindex(rindex)).xpix);
+    temp(ind) = true;
+    ROIMasks(:,:,rindex) = temp;
 end
 
 % Save data
