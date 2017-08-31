@@ -17,8 +17,8 @@ saveOut = false;            % save ROIs to files
 saveFile = {''};            % files to save to
 saveType = 'new';           % 'new' or 'all' (determines which files will be written to)
 
-distanceThreshold = 10;     % pixels
-overlapThreshold = .7;      % percentage
+distanceThreshold = 50;     % pixels
+overlapThreshold = .1;      % percentage
 addNewROIs = false;         % add ROIs that don't match across files
 
 directory = cd;
@@ -57,23 +57,13 @@ if ~exist('ROIMasks', 'var') || isempty(ROIMasks)
     [ROIMasks,p] = uigetfile({'*.rois;*.mat'}, 'Select ROI files:', directory, 'MultiSelect', 'on');
     if isnumeric(ROIMasks)
         return
-    elseif iscellstr(ROIMasks)
-        ROIMasks = fullfile(p, ROIMasks);
-    else
-        ROIMasks = {fullfile(p, ROIMasks)};
     end
+    ROIMasks = fullfile(p,ROIMasks);
 end
 numFiles = numel(ROIMasks);
 
 if ~exist('Maps', 'var')
-    [Maps,p] = uigetfile({'*.exp;*.align'}, 'Select files containing maps:', directory, 'MultiSelect', 'on');
-    if isnumeric(Maps)
-        return
-    elseif iscellstr(Maps)
-        Maps = fullfile(p, Maps);
-    else
-        Maps = {fullfile(p, Maps)};
-    end
+    Maps = [];
 end
 
 
@@ -106,7 +96,7 @@ if iscellstr(ROIMasks) % cell array of files input
         end
     end
 elseif iscell(ROIMasks) && isstruct(ROIMasks{1}) % cell array of ROIdata input
-    ROIFiles = strcat('file', {' '}, num2str((1:numFiles)'));
+    ROIFiles = strcat('file', {' '}, num2str((1:numFiles)'))';
     InitialROIdata = ROIMasks;
     ROIMasks = cell(numFiles, 1);
     Centroids = cell(numFiles, 1);
@@ -115,7 +105,7 @@ elseif iscell(ROIMasks) && isstruct(ROIMasks{1}) % cell array of ROIdata input
         Centroids{findex} = reshape([InitialROIdata{findex}.rois(:).centroid], 2, numel(InitialROIdata{findex}.rois))';
     end
 else
-    ROIFiles = strcat('file', {' '}, num2str((1:numFiles)')); % create default file name for reporting
+    ROIFiles = strcat('file', {' '}, num2str((1:numFiles)'))'; % create default file name for reporting
 end
 [Height,Width,numROIs] = cellfun(@size, ROIMasks);
 
@@ -133,14 +123,21 @@ end
 
 fprintf('Matching ROIs between %d files\t(', numFiles);
 if ~addNewROIs
-    fprintf('not');
+    fprintf('not ');
 end
 fprintf('adding missing ROIs across files)\n');
-temp = strcat(num2str(numROIs), {' rois from '}, ROIFiles);
+temp = strcat(num2str(numROIs), {' rois from '}, ROIFiles');
 fprintf('\t%s\n', temp{:});
 
 
 %% Load in Maps
+if isequal(Maps,true)
+    [Maps,p] = uigetfile({'*.exp;*.align'}, 'Select files containing maps:', directory, 'MultiSelect', 'on');
+    if isnumeric(Maps)
+        return
+    end
+    Maps = fullfile(p,Maps);
+end
 if iscellstr(Maps)
     MapFiles = Maps;
     Maps = imref2d();
@@ -155,7 +152,7 @@ if iscellstr(Maps)
     end
 elseif isempty(Maps)
     warning('No maps input, assuming all files start at origin');
-    Maps = cell(numFiles, 1);
+    Maps = imref2d();
     for findex = 1:numFiles
         Maps(findex) = imref2d([Height(findex), Width(findex)]);
     end

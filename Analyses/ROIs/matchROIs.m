@@ -41,6 +41,7 @@ if numel(Images) ~= gd.Internal.numFiles
 end
 
 if ~exist('Maps','var') || isempty(Maps)
+    Maps = [];
 end
 if numel(Maps) ~= gd.Internal.numFiles
     error('Number of Maps needs to match number of ROI files input');
