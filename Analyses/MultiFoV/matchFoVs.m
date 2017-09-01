@@ -127,7 +127,11 @@ if nargout
     uiwait(gd.fig);
     gd = guidata(gd.fig);
     if isfield(gd, 'DataSets')
-        Maps = {gd.DataSets(:).Map};
+        temp = {gd.DataSets(:).Map};
+        Maps = imref2d();
+        for f = 1:numel(temp)
+            Maps(f) = temp{f};
+        end
         Images = {gd.DataSets(:).filename};
     else
         Maps = {};

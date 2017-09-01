@@ -9,25 +9,24 @@ if ~exist('ROIs', 'var')
     [ROIs,p] = uigetfile({'*.rois;*.mat'},'Choose ROI files','MultiSelect','on');
     if isnumeric(ROIs)
         return
-    elseif ischar(ROIs)
-        ROIs = {fullfile(p,ROIs)};
-    else
-        ROIs = fullfile(p, ROIs);
     end
+    ROIs = fullfile(p,ROIs);
 end
+if ischar(ROIs) || isstruct(ROIs)
+    ROIs = {ROIs};
+end
+numFiles = numel(ROIs);
 
 if ~exist('Maps', 'var')
     [Maps,p] = uigetfile({'*.exp;*.align'}, 'Select files containing maps:', directory, 'MultiSelect', 'on');
     if isnumeric(Maps)
         return
-    elseif iscellstr(Maps)
-        Maps = fullfile(p, Maps);
-    else
-        Maps = {fullfile(p, Maps)};
     end
+    Maps = fullfile(p,Maps);
 end
-
-numFiles = numel(ROIs);
+if ischar(Maps)
+    Maps = {Maps};
+end
 
 
 %% Load in data
@@ -45,14 +44,16 @@ numROIs = cellfun(@(x) numel(x.rois), ROIs);
 
 % Load in maps
 if iscellstr(Maps)
-    MapFiles = Maps;
+    for findex = 1:numFiles
+        temp = load(Maps{findex}, 'Map', '-mat');
+        Maps{findex} = temp.Map;
+    end
+end
+if iscell(Maps)
+    temp = Maps;
     Maps = imref2d();
     for findex = 1:numFiles
-        temp = load(MapFiles{findex}, 'Map', '-mat');
-        if isfield(temp,'Map')
-            Maps(findex) = temp.Map;
-        end
-        clear temp;
+        Maps(findex) = temp{findex};
     end
 end
 
@@ -65,7 +66,7 @@ end
 Centroids = cell(numFiles, 1); % initialize output
 for findex = 1:numFiles
     Centroids{findex} = reshape([ROIs{findex}.rois(:).centroid], 2, numROIs(findex))';  % gather centroids
-    Centroids{findex} = bsxfun(@plus, Centroids{findex}, Offsets(findex,[1,2]));            % translate centroids
+    Centroids{findex} = bsxfun(@plus, Centroids{findex}, Offsets(findex,[1,2]));        % translate centroids
 end
 
 
@@ -87,6 +88,8 @@ if nargout > 2
         ROIMasks{findex} = false(refMap.ImageExtentInWorldY, refMap.ImageExtentInWorldX, numROIs(findex));
         for rindex = 1:numROIs(findex)
             ROIMasks{findex}(:,:,rindex) = imwarp(ROIs{findex}.rois(rindex).mask, Maps{findex}, affine2d(), 'OutputView', refMap);
+%             ROIs{findex}.rois(rindex).pixels
+%             ROIs{findex}.rois(rindex).neuropilmask
         end
     end
 end
