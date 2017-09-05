@@ -51,7 +51,8 @@ end
 for findex = numel(Tmats):-1:1
     if ischar(Tmats{findex}) && ~strcmp(Tmats{findex}(end-4:end),'align')
         temp = dir([Tmats{findex},'*.align']);
-        temp = fullfile(temp(1).folder,{temp(:).name});
+        [p,~,~] = fileparts(Tmats{findex});
+        temp = fullfile(p,{temp(:).name});
         Tmats = [Tmats,temp];
         Tmats(findex) = [];
     end
