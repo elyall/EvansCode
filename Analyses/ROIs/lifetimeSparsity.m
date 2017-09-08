@@ -4,7 +4,7 @@ function s = lifetimeSparsity(Data,StimIndex)
 % See: Froudarakis et al 2014 Nature; Vinje & Gallant 2008 Science
 
 subtractMin = true;
-verbose = true;
+verbose = false;
 
 %% Parse input arguments
 if isstruct(Data)
@@ -45,11 +45,11 @@ end
 s = (1-1/nS*sum(Data,2).^2./sum(Data.^2,2))/(1-1/nS);
 
 
+%% Display results ordered from largest to smallest sparseness
 if verbose
     [~,order] = sort(s,'descend');
     figure;
     imagesc(zscore(Data(order,:),[],2));
     xlabel('Stimulus'); ylabel('ROI');
     hCb = colorbar; ylabel(hCb,'z-score');
-    figure; plot(sum(zscore(Data(order,:),[],2),2));
 end
