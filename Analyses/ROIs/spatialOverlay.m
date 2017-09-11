@@ -167,15 +167,18 @@ end
 
 % Load Maps
 if iscellstr(Maps)
-    MapFiles = Maps;
+    for findex = 1:numFiles
+        temp = load(Maps{findex}, 'Map', '-mat');
+        if isfield(temp,'Map')
+            Maps{findex} = temp.Map;
+        end
+    end
+end
+if iscell(Maps)
+    temp = Maps;
     Maps = imref2d();
     for findex = 1:numFiles
-        Maps(findex) = imref2d();
-        temp = load(MapFiles{findex}, 'Map', '-mat');
-        if isfield(temp,'Map')
-            Maps(findex) = temp.Map;
-        end
-        clear temp;
+        Maps(findex) = temp{findex};
     end
 end
 
