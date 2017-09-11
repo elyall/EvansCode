@@ -1,4 +1,4 @@
-function [hA,Data,NormalizeBy] = plotExperiment(Data, Neuropil, varargin)
+function [hA,Data,NormalizeBy,SubtractOff] = plotExperiment(Data, Neuropil, varargin)
 
 % Data
 ROIindex = [1 inf];
@@ -10,16 +10,18 @@ NeuropilWeight = false;
 baselinePrctile = 0;
 adjustment = ''; % '', 'zscore', 'normalize'
 NormalizeBy = [];
+SubtractOff = [];
 smoothType = ''; % '', 'moving', 'lowess', 'loess', 'sgolay', 'rlowess', or 'rloess'
 
 % Display
 Type = '2Dlines'; % '2Dlines', '3Dlines', or 'image'
 spacing = 1;
 XLabel = 'Time (sec)';
-frameRate = 15.45;
+frameRate = 15.45/4;
 Colors = [];
 
 hA = [];
+directory = cd;
 
 %% Parse input arguments
 index = 1;
@@ -52,6 +54,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'NormalizeBy'
                 NormalizeBy = varargin{index+1};
+                index = index + 2;
+            case 'SubtractOff'
+                SubtractOff = varargin{index+1};
                 index = index + 2;
             case 'hA'
                 hA = varargin{index+1};
@@ -103,7 +108,7 @@ if isstruct(Data)
     Data = reshape([Data.rois(ROIindex).rawdata], totalFrames, numROIs);
 else
     Data = Data(:,ROIindex);
-    if ~isempty(Neuropil)
+    if exist('Neuropil','var') && ~isempty(Neuropil)
         Neuropil = Neuropil(:,ROIindex);
     end
 end
@@ -170,13 +175,14 @@ if ~isempty(adjustment)
         case 'zscore'
             Data = zscore(Data);
         case 'normalize'
-            Data = bsxfun(@minus, Data, min(Data));   % subtract off minimum
-            if isempty(NormalizeBy)
-                NormalizeBy = max(Data);
-                Data = bsxfun(@rdivide, Data, NormalizeBy); % normalize by maximum
-            else
-                Data = bsxfun(@rdivide, Data, NormalizeBy);
+            if isempty(SubtractOff)
+                SubtractOff = min(Data); % subtract off minimum
             end
+            Data = bsxfun(@minus, Data, SubtractOff);
+            if isempty(NormalizeBy)
+                NormalizeBy = max(Data); % normalize by maximum
+            end
+            Data = bsxfun(@rdivide, Data, NormalizeBy);
     end
 end
 
@@ -186,7 +192,7 @@ if isempty(hA)
     figure;
     hA = axes();
 else
-    axes(hA);
+    axes(hA); hold on;
 end
 
 switch Type
