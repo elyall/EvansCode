@@ -9,6 +9,7 @@ showDataPoints = false;
 showStimStars = true;
 showN = false;
 showPValues = false;
+ErrorBars = 'std'; % 'SE', 'std', 'var', or '95CI'
 
 % Plot colors & display options
 normalize = false;
@@ -243,15 +244,25 @@ for index = 1:numel(ROIindex)
     end
     
     % Plot tuning curves
+    data = rois(rindex).curve;
+    switch ErrorBars
+        case 'SE'
+            se = rois(rindex).StdError;
+            % se = cellfun(@std,rois(rindex).Raw)./cellfun(@numel,rois(rindex).Raw); % same thing
+        case 'std'
+            se = cellfun(@std,rois(rindex).Raw);
+        case 'var'
+            se = cellfun(@var,rois(rindex).Raw);
+            % se = cellfun(@std,rois(rindex).Raw).^2; % same thing
+        case '95CI'
+            se = 1.96*cellfun(@std,rois(rindex).Raw); % assumes normally distributed
+    end
     if normalize(index)
         if isequal(normalize(index),1)
             normalize(index) = max(abs(rois(rindex).curve(2:end)));
         end
-        data = rois(rindex).curve/normalize(index);
-        se = rois(rindex).StdError/normalize(index);
-    else
-        data = rois(rindex).curve;
-        se = rois(rindex).StdError;
+        data = data/normalize(index);
+        se = se/normalize(index);
     end
     for s = 1:numStimuli
         h(s,index) = errorbar(s,data(StimIndex(s)),se(StimIndex(s)),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize); %plot curve
