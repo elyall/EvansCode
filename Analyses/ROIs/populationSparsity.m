@@ -24,14 +24,14 @@ end
 %% Compute population sparsity for each stimulus
 
 % Compute mean across all trials for each stimulus
-if exist('StimIndex','var') && ~isempty(StimIndex)
+if exist('StimIndex','var') && ~isempty(StimIndex) % average across trials, otherwise assumes each column represents the trial-averaged response to that stimulus
     [StimIDs,~,StimIndex] = unique(StimIndex);
     Data = arrayfun(@(x) mean(Data(:,StimIndex==x),2),1:numel(StimIDs),'UniformOutput',false);
     Data = cat(2,Data{:});
 end
 
 % Min-subtract tuning curves
-if subtractMin
+if isequal(subtractMin,true)
     Data = bsxfun(@minus,Data,min(Data,[],2)); % subtract off minimum value
     % neg = any(Data<0,2);                                            % determine units that have negative responses
     % Data(neg,:) = bsxfun(@minus,Data(neg,:),min(Data(neg,:),[],2)); % subtract off minimum value for units that have responses below 0
