@@ -1,8 +1,9 @@
-function [Data, StimID] = ROIs2AvgMat(ROIdata, varargin)
+function [Data, StimID] = ROIs2AvgMat(ROIs, varargin)
 
 
 FrameIndex = [];
-ROIindex = [1 inf];
+ROIindex = [];
+FileIndex = [];
 TrialIndex = [1 inf];
 
 saveOut = false;
@@ -22,6 +23,9 @@ while index<=length(varargin)
             case {'ROIindex', 'ROIs', 'rois'}
                 ROIindex = varargin{index+1};
                 index = index + 2;
+            case 'FileIndex'
+                FileIndex = varargin{index+1};
+                index = index + 2;
             case {'Save', 'save'}
                 saveOut = true;
                 index = index + 1;
@@ -38,44 +42,32 @@ while index<=length(varargin)
     end
 end
 
-if ~exist('ROIdata', 'var')
-    [ROIdata, p] = uigetfile({'*.rois;*.mat'}, 'Select ROI file', directory);
-    if ~ROIdata
+if ~exist('ROIs', 'var')
+    [ROIs, p] = uigetfile({'*.rois;*.mat'},'Select ROI file',directory,'MultiSelect','on');
+    if ~ROIs
         return
-    else
-        ROIdata = fullfile(p, ROIdata);
     end
+    ROIs = fullfile(p, ROIs);
 end
 
 
-%% Load file
-if ischar(ROIdata)
-    ROIFile = ROIdata;
-    load(ROIFile, 'ROIdata', '-mat');
-end
+%% Gather data
+Data = gatherROIdata(ROIs, 'dFoF', 'ROIindex', ROIindex, 'FileIndex', FileIndex); % pull out data
 
 
-%% Determine parameters
-if ROIindex(end) == inf
-    ROIindex = [ROIindex(1:end-1), ROIindex(end-1)+1:numel(ROIdata.rois)];
-end
-numROIs = numel(ROIindex);
+%% Perform average and keep only specified trials
 
+% Determine parameters
 if TrialIndex(end) == inf
-    TrialIndex = [TrialIndex(1:end-1), TrialIndex(end-1)+1:numel(ROIdata.DataInfo.StimID)];
+    TrialIndex = [TrialIndex(1:end-1), TrialIndex(end-1)+1:numel(ROIs{1}.DataInfo.StimID)]; % set trials to save
 end
-
 if isempty(FrameIndex)
-    FrameIndex = [ROIdata.DataInfo.numFramesBefore+1, ROIdata.DataInfo.numFramesBefore+mode(ROIdata.DataInfo.numStimFrames(TrialIndex))];
+    FrameIndex = [ROIs{1}.DataInfo.numFramesBefore+1, ROIs{1}.DataInfo.numFramesBefore+mode(ROIs{1}.DataInfo.numStimFrames(TrialIndex))];
 end
 
-
-%% Format data
-[H, W] = size(ROIdata.rois(ROIindex(1)).dFoF);
-Data = reshape([ROIdata.rois(ROIindex).dFoF], H, W, numROIs);
-Data = mean(Data(TrialIndex,FrameIndex(1):FrameIndex(2),:), 2);
-Data = permute(Data, [3,1,2]);
-StimID = ROIdata.DataInfo.StimID(TrialIndex)';
+% Perform average across specified frames
+Data = mean(Data(:,TrialIndex,FrameIndex(1):FrameIndex(2)), 2);
+StimID = ROIs{1}.DataInfo.StimID(TrialIndex)'; % pull out StimID
 
 
 %% Save output

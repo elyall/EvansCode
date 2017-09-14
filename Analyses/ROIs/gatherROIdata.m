@@ -1,20 +1,30 @@
-function [Data, FileIndex, ROIindex, Labels, Tag, ROIs] = gatherROIdata(ROIs, FieldName, Index, Label, ROIindex, FileIndex, varargin)
+function [Data, FileIndex, ROIindex, Labels, Tag, ROIs] = gatherROIdata(ROIs, FieldName, varargin)
 % ROIs is a cell array of strings specifying the filenames of the ROI
 % files, or it is a cell array of ROIdata objects
 % FieldName is a field name of 'ROIdata.rois'
-% Index is a number indexing in that field (e.g. '1' or use '':'' for all elements)
-% Label is a cell array of strings of ROIs to gather data from, or false if
-% gathering data from ROIs with any label (use 'none' for unlabeled)
-% ROIindex is a list of roi indices, correspondings to the files listed in
-% FileIndex
 
-outputFormat = [];
+
+ROIindex = 'all';   % ROIindex is a list of ROI indices corresponding to which ROIs to pull data from
+FileIndex = [];     % FileIndex is a list of file indices corresponding to which files the ROIs to pull from are in
+Label = false;      % string or cell array of strings of ROI labels to gather data from, or false if gathering data from ROIs with any label (use 'none' for unlabeled)
+outputFormat = [];  % 'numeric' or 'cell' specifying what format the output should be in
+
+directory = cd;
 
 %% Parse input arguments
 index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
+            case {'ROIindex', 'ROIs', 'rois'}
+                ROIindex = varargin{index+1};
+                index = index + 2;
+            case 'FileIndex'
+                FileIndex = varargin{index+1};
+                index = index + 2;
+            case 'Label'
+                Label = varargin{index+1};
+                index = index + 2;
             case 'outputFormat'
                 outputFormat = varargin{index+1};
                 index = index + 2;
@@ -29,48 +39,26 @@ while index<=length(varargin)
 end
 
 if ~exist('ROIs', 'var') || isempty(ROIs)
-    directory = cd;
-    [ROIs, p] = uigetfile({'*.mat'},'Choose ROI file(s)', directory, 'MultiSelect', 'on');
+    [ROIs,p] = uigetfile({'*.mat'},'Choose ROI file(s)', directory, 'MultiSelect', 'on');
     if isnumeric(ROIs)
         return
-    elseif iscell(ROIs)
-        for findex = 1:numel(ROIs)
-            ROIs{findex} = fullfile(p, ROIs{findex});
-        end
-    elseif ischar(ROIs)
-        ROIs = {fullfile(p, ROIs)};
     end
-elseif ~iscell(ROIs)
+    ROIs = fullfile(p,ROIs);
+end
+if ~iscell(ROIs)
     ROIs = {ROIs};
 end
 
 if ~exist('FieldName', 'var') || isempty(FieldName)
-    error('Requires specific field name to be specified to extract information');
+    FieldName = 'dFoF'; % defaults to dFoF field
 end
 
-if ~exist('Index', 'var') || isempty(Index)
-    Index = ':';
-end
-
-if ~exist('Label', 'var') || isempty(Label)
-    Label = false;
-end
-
-if ~exist('ROIindex', 'var') || isempty(ROIindex)
-    ROIindex = 'all';
-end
-
-if ~exist('FileIndex', 'var')
-    FileIndex = [];
-end
 
 %% Load data
 numFiles = numel(ROIs);
 if iscellstr(ROIs)
-    ROIFiles = ROIs;
-    ROIs = cell(numFiles, 1);
     for findex = 1:numFiles
-        load(ROIFiles{findex}, 'ROIdata', '-mat');
+        load(ROIs{findex}, 'ROIdata', '-mat');
         ROIs{findex} = ROIdata;
     end
 end
@@ -86,28 +74,26 @@ end
 
 
 %% Determine ROIs to gather data from
-numROIs = zeros(numFiles, 1);
 if (isnumeric(ROIindex) && isequal(ROIindex, [1,inf])) || (ischar(ROIindex) && strcmp(ROIindex, 'all'))
-    numROIs = cellfun(@(x) (numel(x.rois)), ROIs); % vector of number of rois in each element of cell array
-    ROIindex = [];
-    FileIndex = [];
-    for findex = 1:numFiles
-        ROIindex = cat(2, ROIindex, 1:numROIs(findex));
-        FileIndex = cat(2, FileIndex, findex*ones(1,numROIs(findex)));
-    end
-else
-    for findex = 1:numFiles
-        numROIs(findex) = sum(FileIndex==findex);
-    end
+    numROIsPerFile = cellfun(@(x) numel(x.rois), ROIs);
+    ROIindex = arrayfun(@(x) 1:x, numROIsPerFile, 'UniformOutput', false);
+    ROIindex = cat(2,ROIindex{:})';
+    FileIndex = repelem(1:numFiles,numROIsPerFile)';
 end
-totalROIs = sum(numROIs);
+numROIs = numel(ROIindex);
+
+if isempty(FileIndex)
+    FileIndex = ones(numROIs,1); % assume all come from the first file
+end
+FileIDs = unique(FileIndex);
+numROIsPerFile = arrayfun(@(x) nnz(FileIndex==x), FileIDs)';
 
 
 %% Determine data size & initialize outputs
-temp = ROIs{FileIndex(1)}.rois(ROIindex(1)).(FieldName)(Index);
 if isempty(outputFormat)
+    temp = ROIs{FileIndex(1)}.rois(ROIindex(1)).(FieldName);
     if ~iscell(temp)
-        if isequal(size(ROIs{FileIndex(1)}.rois(ROIindex(1)).(FieldName)(Index)),size(ROIs{FileIndex(end)}.rois(ROIindex(end)).(FieldName)(Index)));
+        if isequal(size(ROIs{FileIndex(1)}.rois(ROIindex(1)).(FieldName)),size(ROIs{FileIndex(end)}.rois(ROIindex(end)).(FieldName)));
             outputFormat = 'numeric';
         else
             outputFormat = 'cell';
@@ -116,44 +102,46 @@ if isempty(outputFormat)
         if ischar(temp) || (iscell(temp) && numel(temp)>1)
             outputFormat = 'cell';
         elseif iscell(temp)
-            outputFormat = 'numeric';
+            outputFormat = 'numeric'; % ensures not a cell within a 1x1 cell
         end
     end
 end
 
-switch outputFormat
-    case 'numeric'
-        Data = nan(totalROIs, numel(temp));
-    case 'cell'
-        Data = cell(totalROIs, 1);
-end
-
 
 %% Pull out data
-Labels = cell(totalROIs, 1);
-Tag = cell(totalROIs, 1);
-for rindex = 1:totalROIs
-    switch outputFormat
-        case 'numeric'
-            Data(rindex,:) = ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).(FieldName)(Index);
-        case 'cell'
-            Data{rindex} = ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).(FieldName)(Index);
+
+% Pull out labels
+if nargout>3 || ~isequal(Label,false)
+    Labels = cell(numROIs, 1);
+    Tag = cell(numROIs, 1);
+    for rindex = 1:numROIs
+        Labels{rindex} = ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).label{1};
+        Tag{rindex} = ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).tag;
     end
-    Labels{rindex} = ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).label{1};
-    Tag{rindex} = ROIs{FileIndex(rindex)}.rois(ROIindex(rindex)).tag;
 end
 
-%% Remove unwanted ROIs
-if ~islogical(Label)
-    unwanted = ~strcmp(Labels, Label);
-    switch outputFormat
-        case 'numeric'
-            Data(unwanted,:) = [];
-        case 'cell'
-            Data(unwanted) = [];
-    end
-    FileIndex(unwanted) = [];
+% Remove unwanted ROIs
+if ~isequal(Label,false)
+    unwanted = ~ismember(Labels, Label);
     ROIindex(unwanted) = [];
+    FileIndex(unwanted) = [];
     Labels(unwanted) = [];
     Tag(unwanted) = [];
 end
+
+% Grab relevant data into cell array
+Data = cell(numROIs,1);
+ind = [0,cumsum(numROIsPerFile)];
+for findex = 1:numFiles
+    [Data{ind(findex)+1:ind(findex+1)}] = deal(ROIs{FileIDs(findex)}.rois(ROIindex(FileIndex==FileIDs(findex))).(FieldName)); % deal all data from current file to the cell array
+end
+if strcmp(outputFormat,'numeric')
+    try
+        N = ndims(Data{1})+1;      % determine dimension along which to concatenate
+        Data = cat(N,Data{:});     % concatenate data
+        Data = shiftdim(Data,N-1); % move ROI dimension to the first dimension
+    catch
+        warning('Failed to output as matrix. Will output as cell.');
+    end
+end
+
