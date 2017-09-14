@@ -65,6 +65,9 @@ while index<=length(varargin)
             case 'showPValues'
                 showPValues = true;
                 index = index + 1;
+            case 'ErrorBars'
+                ErrorBars = varargin{index+1};
+                index = index + 2;
             case 'normalize'
                 normalize = varargin{index+1};
                 index = index + 2;
@@ -248,7 +251,7 @@ for index = 1:numel(ROIindex)
     switch ErrorBars
         case 'SE'
             se = rois(rindex).StdError;
-            % se = cellfun(@std,rois(rindex).Raw)./cellfun(@numel,rois(rindex).Raw); % same thing
+            % se = cellfun(@std,rois(rindex).Raw)./sqrt(cellfun(@numel,rois(rindex).Raw)); % same thing
         case 'std'
             se = cellfun(@std,rois(rindex).Raw);
         case 'var'
