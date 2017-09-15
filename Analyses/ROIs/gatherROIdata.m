@@ -4,7 +4,7 @@ function [Data, FileIndex, ROIindex, Labels, Tag, ROIs] = gatherROIdata(ROIs, Fi
 % FieldName is a field name of 'ROIdata.rois'
 
 
-ROIindex = 'all';   % ROIindex is a list of ROI indices corresponding to which ROIs to pull data from
+ROIindex = [];      % ROIindex is a list of ROI indices corresponding to which ROIs to pull data from
 FileIndex = [];     % FileIndex is a list of file indices corresponding to which files the ROIs to pull from are in
 Label = false;      % string or cell array of strings of ROI labels to gather data from, or false if gathering data from ROIs with any label (use 'none' for unlabeled)
 outputFormat = [];  % 'numeric' or 'cell' specifying what format the output should be in
@@ -74,7 +74,7 @@ end
 
 
 %% Determine ROIs to gather data from
-if (isnumeric(ROIindex) && isequal(ROIindex, [1,inf])) || (ischar(ROIindex) && strcmp(ROIindex, 'all'))
+if isempty(ROIindex)
     numROIsPerFile = cellfun(@(x) numel(x.rois), ROIs);
     ROIindex = arrayfun(@(x) 1:x, numROIsPerFile, 'UniformOutput', false);
     ROIindex = cat(2,ROIindex{:})';
@@ -86,26 +86,6 @@ if isempty(FileIndex)
     FileIndex = ones(numROIs,1); % assume all come from the first file
 end
 FileIDs = unique(FileIndex);
-numROIsPerFile = arrayfun(@(x) nnz(FileIndex==x), FileIDs)';
-
-
-%% Determine data size & initialize outputs
-if isempty(outputFormat)
-    temp = ROIs{FileIndex(1)}.rois(ROIindex(1)).(FieldName);
-    if ~iscell(temp)
-        if isequal(size(ROIs{FileIndex(1)}.rois(ROIindex(1)).(FieldName)),size(ROIs{FileIndex(end)}.rois(ROIindex(end)).(FieldName)));
-            outputFormat = 'numeric';
-        else
-            outputFormat = 'cell';
-        end
-    else
-        if ischar(temp) || (iscell(temp) && numel(temp)>1)
-            outputFormat = 'cell';
-        elseif iscell(temp)
-            outputFormat = 'numeric'; % ensures not a cell within a 1x1 cell
-        end
-    end
-end
 
 
 %% Pull out data
@@ -131,17 +111,31 @@ end
 
 % Grab relevant data into cell array
 Data = cell(numROIs,1);
-ind = [0,cumsum(numROIsPerFile)];
 for findex = 1:numFiles
-    [Data{ind(findex)+1:ind(findex+1)}] = deal(ROIs{FileIDs(findex)}.rois(ROIindex(FileIndex==FileIDs(findex))).(FieldName)); % deal all data from current file to the cell array
+    [Data{FileIndex==FileIDs(findex)}] = deal(ROIs{FileIDs(findex)}.rois(ROIindex(FileIndex==FileIDs(findex))).(FieldName)); % deal all data from current file to the cell array
 end
-if strcmp(outputFormat,'numeric')
-    try
-        N = ndims(Data{1})+1;      % determine dimension along which to concatenate
-        Data = cat(N,Data{:});     % concatenate data
-        Data = shiftdim(Data,N-1); % move ROI dimension to the first dimension
-    catch
-        warning('Failed to output as matrix. Will output as cell.');
+
+% If cells within cells, pull out and concatenate cells
+while all(cellfun(@iscell,Data))
+    if all(cellfun(@isrow,Data))
+        Data = cat(1,Data{:}); 
+    elseif all(cellfun(@iscolumn,Data))
+        Data = cat(2,Data{:})';
+    else
+        break
     end
+end
+
+        
+%% Convert to numeric array if desired/possible
+
+% Convert output to matrix if possible & desired or not specified
+if (strcmp(outputFormat,'numeric') || isempty(outputFormat)) && all(cellfun(@isnumeric, Data(:))) &&  all(cellfun(@(x) isequal(size(Data{1}),size(x)), Data(2:end))) % elements are all numeric and have the same size
+    N = ndims(Data{1})+1;      % determine dimension along which to concatenate
+    Data = cat(N,Data{:});     % concatenate data
+    Data = shiftdim(Data,N-1); % move ROI dimension to the first dimension
+    Data = squeeze(Data);      % remove excess dimensions
+elseif strcmp(outputFormat,'numeric')
+    warning('Outputting as matrix is not possible due to difference in matrix sizes or data types. Will output as cell.');
 end
 
