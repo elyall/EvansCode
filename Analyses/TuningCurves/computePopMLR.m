@@ -1,12 +1,17 @@
-function [Weights, confusionMatrix, stats] = computePopMLR(ROIdata, varargin)
+function [Weights, confusionMatrix, stats] = computePopMLR(Data, StimIndex, varargin)
+% Data is numROIs by numTrials
 
-numKFolds = 10;
-numRepeats = 100;
-
-FrameIndex = [];
-TrialIndex = [1 inf];
-ROIindex = [1 inf];
+numKFolds = 5;
+numRepeats = 1;
 ControlID = [];
+
+% For loading only
+FrameIndex = [];
+TrialIndex = [];
+ROIindex = [];      % ROIindex is a list of ROI indices corresponding to which ROIs to pull data from
+FileIndex = [];     % FileIndex is a list of file indices corresponding to which files the ROIs to pull from are in
+
+directory = cd;
 
 %% Parse input arguments
 index = 1;
@@ -19,6 +24,9 @@ while index<=length(varargin)
             case 'numRepeats'
                 numRepeats = varargin{index+1};
                 index = index + 2;
+            case 'ControlID'
+                ControlID = varargin{index+1};
+                index = index + 2;
             case {'FrameIndex', 'Frames', 'frames'}
                 FrameIndex = varargin{index+1};
                 index = index + 2;
@@ -27,6 +35,9 @@ while index<=length(varargin)
                 index = index + 2;
             case {'ROIindex', 'ROIs', 'rois'}
                 ROIindex = varargin{index+1};
+                index = index + 2;
+            case 'FileIndex'
+                FileIndex = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -38,114 +49,80 @@ while index<=length(varargin)
     end
 end
 
-if ~exist('ROIdata', 'var')
-    [ROIdata, p] = uigetfile({'*.rois;*.mat'}, 'Select ROI file', directory);
-    if ~ROIdata
+if ~exist('Data', 'var') || isempty(Data)
+    [Data, p] = uigetfile({'*.rois;*.mat'},'Select ROI file',directory,'MultiSelect','on');
+    if ~Data
         return
-    else
-        ROIdata = fullfile(p, ROIdata);
+    end
+    Data = fullfile(p, Data);
+end
+
+
+%% Load data
+if ~isnumeric(Data)
+    [Data, StimIndex] = ROIs2AvgMat(Data,...
+        'ROIindex',     ROIindex,...
+        'FileIndex',    FileIndex,...
+        'FrameIndex',   FrameIndex,...
+        'TrialIndex',   TrialIndex);
+else
+    if ~isempty(ROIindex)
+        Data = Data(ROIindex,:);
+    end
+    if ~isempty(TrialIndex)
+        Data = Data(:,TrialIndex);
+        StimIndex = StimIndex(TrialIndex);
     end
 end
-
-
-%% Load file
-if ischar(ROIdata)
-    ROIFile = ROIdata;
-    load(ROIFile, 'ROIdata', '-mat');
-end
-
-
-%% Determine parameters
-if ROIindex(end) == inf
-    ROIindex = [ROIindex(1:end-1), ROIindex(end-1)+1:numel(ROIdata.rois)];
-end
-numROIs = numel(ROIindex);
-
-if TrialIndex(end) == inf
-    TrialIndex = [TrialIndex(1:end-1), TrialIndex(end-1)+1:numel(ROIdata.DataInfo.StimID)];
-end
-
-if isempty(FrameIndex)
-    FrameIndex = [ROIdata.DataInfo.numFramesBefore+1, ROIdata.DataInfo.numFramesBefore+mode(ROIdata.DataInfo.numStimFrames(TrialIndex))];
-end
+numROIs = size(Data,1);
 
 
 %% Initialize output
 
-% Set control trials to be last stimulus (mnrfit assumes last category as
-% reference)
+% Set control trials to be last stimulus (mnrfit assumes last category as reference)
 if isempty(ControlID)
-    ControlID = min(ROIdata.DataInfo.StimID(TrialIndex));
+    ControlID = min(StimIndex);
 end
-ROIdata.DataInfo.StimID(ROIdata.DataInfo.StimID==ControlID) = max(ROIdata.DataInfo.StimID) + 1;
+StimIndex(StimIndex==ControlID) = max(StimIndex) + 1;
+[StimIDs,~,StimIndex] = unique(StimIndex);
 
 % Initialize outputs
-[StimIDs,~,StimIndex] = unique(ROIdata.DataInfo.StimID(TrialIndex));
 numStims = numel(StimIDs);
 Weights = zeros(numROIs+1, numStims-1);
 confusionMatrix = zeros(numStims, numStims);
 
 
-%% Format data
-Data = ROIs2AvgMat(ROIdata, 'Frames', FrameIndex, 'ROIs', ROIindex);
-% [~,order] = sort(Data(:,1), 'descend');
-% Data = Data(order,:);
-
-
 %% Perform analysis
-tic
-parfor_progress(numRepeats);
-parfor bindex = 1:numRepeats
-    warning('off', 'stats:mnrfit:IterOrEvalLimit');
-    warning('off', 'MATLAB:nearlySingularMatrix');
+parfor_progress(numRepeats*numKFolds);
+for n = 1:numRepeats
+%     warning('off', 'stats:mnrfit:IterOrEvalLimit');
+%     warning('off', 'MATLAB:nearlySingularMatrix');
     
-    %% Determine indices for k-means cross validation
-    KFoldIndices = nan(numel(TrialIndex), 2);
-    for sindex = 1:numStims
-        
-        % Determine in what trials current stimulus was shown
-        currentIndices = find(StimIndex==sindex);
-        numTrials = numel(currentIndices);
-        
-        % Determine number of trials that should exist in each fold
-        numPerFold = diff(round(linspace(1,numTrials+1,numKFolds+1)));
-        % numPerFold = numPerFold(randperm(numKFolds)); % randomize order of fold sizes (not necessary I believe)
-        if any(numPerFold==0)
-            warning('Requesting more folds than observations for a given stimulus -> some folds will not have a certain stimulus type.');
-        end
-        
-        % Distribute the trials to the folds
-        for kindex = 1:numKFolds
-            temp = randsample(numTrials-sum(numPerFold(1:kindex-1)), numPerFold(kindex)); % select random trial(s) for current fold
-            KFoldIndices(currentIndices(temp),:) = repmat([kindex, sindex], numPerFold(kindex), 1);
-            currentIndices(temp) = [];
-        end
-        
-    end
+    % Determine indices for k-means cross validation
+    KFoldIndices = crossvalind('KFold', StimIndex, numKFolds);
     
-    %% Compute
+    % Compute MLR
     currentWeights = zeros(numROIs+1, numStims-1, numKFolds);
     currentMatrix = nan(numStims, numStims, numKFolds);
     for kindex = 1:numKFolds
         
         % Compute logistic regression
-        [currentWeights(:,:,kindex),~,stats] = mnrfit(Data(:,TrialIndex(KFoldIndices(:,1)~=kindex))', KFoldIndices(KFoldIndices(:,1)~=kindex,2));
+        [currentWeights(:,:,kindex),~,stats] = mnrfit(Data(:,KFoldIndices~=kindex)', StimIndex(KFoldIndices~=kindex));
         
         % Validate & generate confusion matrix
-        [pihat,~,~] = mnrval(currentWeights(:,:,kindex), Data(:,TrialIndex(KFoldIndices(:,1)==kindex))', stats);
+        [pihat,~,~] = mnrval(currentWeights(:,:,kindex), Data(:,KFoldIndices==kindex)', stats);
         for sindex = 1:numStims
-            currentMatrix(sindex,:,kindex) = mean(pihat(KFoldIndices(KFoldIndices(:,1)==kindex, 2)==sindex,:),1);
+            currentMatrix(sindex,:,kindex) = mean(pihat(StimIndex(KFoldIndices==kindex)==sindex,:),1);
         end
         
+        parfor_progress;
     end
     
-    confusionMatrix = confusionMatrix + mean(currentMatrix,3)/numRepeats;
-    Weights = Weights + mean(currentWeights,3)/numRepeats;
+    confusionMatrix = confusionMatrix*(n-1)/n + mean(currentMatrix,3)/n; % compute running average of confusion matrix
+    Weights = Weights*(n-1)/n + mean(currentWeights,3)/n;                % compute running average of weights
     
-    parfor_progress;
 end
 parfor_progress(0);
-toc
 
 
 %% Compute stats
