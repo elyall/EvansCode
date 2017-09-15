@@ -2,9 +2,9 @@ function [Data, StimID] = ROIs2AvgMat(ROIs, varargin)
 
 
 FrameIndex = [];
+TrialIndex = [];
 ROIindex = [];
 FileIndex = [];
-TrialIndex = [1 inf];
 
 saveOut = false;
 saveFile = '';
@@ -51,14 +51,16 @@ if ~exist('ROIs', 'var')
 end
 
 
-%% Gather data
+%% Grab trial data
 Data = gatherROIdata(ROIs, 'dFoF', 'ROIindex', ROIindex, 'FileIndex', FileIndex); % pull out data
 
 
 %% Perform average and keep only specified trials
 
 % Determine parameters
-if TrialIndex(end) == inf
+if isempty(TrialIndex)
+    TrialIndex = 1:numel(ROIs{1}.DataInfo.StimID);
+elseif TrialIndex(end) == inf
     TrialIndex = [TrialIndex(1:end-1), TrialIndex(end-1)+1:numel(ROIs{1}.DataInfo.StimID)]; % set trials to save
 end
 if isempty(FrameIndex)
@@ -66,7 +68,7 @@ if isempty(FrameIndex)
 end
 
 % Perform average across specified frames
-Data = mean(Data(:,TrialIndex,FrameIndex(1):FrameIndex(2)), 2);
+Data = mean(Data(:,TrialIndex,FrameIndex(1):FrameIndex(2)), 3);
 StimID = ROIs{1}.DataInfo.StimID(TrialIndex)'; % pull out StimID
 
 
