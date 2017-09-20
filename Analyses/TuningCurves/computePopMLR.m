@@ -1,9 +1,9 @@
 function [Weights, confusionMatrix, stats] = computePopMLR(Data, StimIndex, varargin)
 % Data is numROIs by numTrials
 
-numKFolds = 5;
+numKFolds = 4;
 numRepeats = 1;
-ControlID = [];
+% ControlID = [];
 
 % For loading only
 FrameIndex = [];
@@ -24,9 +24,9 @@ while index<=length(varargin)
             case 'numRepeats'
                 numRepeats = varargin{index+1};
                 index = index + 2;
-            case 'ControlID'
-                ControlID = varargin{index+1};
-                index = index + 2;
+%             case 'ControlID'
+%                 ControlID = varargin{index+1};
+%                 index = index + 2;
             case {'FrameIndex', 'Frames', 'frames'}
                 FrameIndex = varargin{index+1};
                 index = index + 2;
@@ -74,25 +74,25 @@ else
         StimIndex = StimIndex(TrialIndex);
     end
 end
-numROIs = size(Data,1);
+[numROIs,numTrials] = size(Data);
 
+% % Set control trials to be last stimulus (mnrfit assumes last category as reference)
+% if isempty(ControlID)
+%     ControlID = min(StimIndex);
+% end
+% StimIndex(StimIndex==ControlID) = max(StimIndex) + 1;
 
-%% Initialize output
-
-% Set control trials to be last stimulus (mnrfit assumes last category as reference)
-if isempty(ControlID)
-    ControlID = min(StimIndex);
-end
-StimIndex(StimIndex==ControlID) = max(StimIndex) + 1;
+% Determine stimuli indices
 [StimIDs,~,StimIndex] = unique(StimIndex);
-
-% Initialize outputs
 numStims = numel(StimIDs);
-Weights = zeros(numROIs+1, numStims-1);
-confusionMatrix = zeros(numStims, numStims);
 
 
 %% Perform analysis
+
+% Initialize output
+Weights = zeros(numROIs+1, numStims-1, numRepeats);
+confusionMatrix = zeros(numStims, numStims, numRepeats);
+
 parfor_progress(numRepeats*numKFolds);
 for n = 1:numRepeats
 %     warning('off', 'stats:mnrfit:IterOrEvalLimit');
@@ -100,41 +100,49 @@ for n = 1:numRepeats
     
     % Determine indices for k-means cross validation
     KFoldIndices = crossvalind('KFold', StimIndex, numKFolds);
+    numPerFold = arrayfun(@(x) nnz(KFoldIndices==x), 1:numKFolds);
+    N = max(numPerFold);
     
     % Compute MLR
     currentWeights = zeros(numROIs+1, numStims-1, numKFolds);
-    currentMatrix = nan(numStims, numStims, numKFolds);
-    for kindex = 1:numKFolds
+    predictions = nan(N,numKFolds);
+    parfor k = 1:numKFolds
         
         % Compute logistic regression
-        [currentWeights(:,:,kindex),~,stats] = mnrfit(Data(:,KFoldIndices~=kindex)', StimIndex(KFoldIndices~=kindex));
+        [currentWeights(:,:,k),~,stats] = mnrfit(Data(:,KFoldIndices~=k)', StimIndex(KFoldIndices~=k));
         
         % Validate & generate confusion matrix
-        [pihat,~,~] = mnrval(currentWeights(:,:,kindex), Data(:,KFoldIndices==kindex)', stats);
-        for sindex = 1:numStims
-            currentMatrix(sindex,:,kindex) = mean(pihat(StimIndex(KFoldIndices==kindex)==sindex,:),1);
-        end
+        pihat = mnrval(currentWeights(:,:,k), Data(:,KFoldIndices==k)', stats);
+        [~,est] = max(pihat,[],2); % determine best guess for each test trial
+        predictions(:,k) = [est;nan(N-numPerFold(k),1)];
         
         parfor_progress;
     end
     
-    confusionMatrix = confusionMatrix*(n-1)/n + mean(currentMatrix,3)/n; % compute running average of confusion matrix
-    Weights = Weights*(n-1)/n + mean(currentWeights,3)/n;                % compute running average of weights
+    pred = zeros(numTrials,1); % reorder predictions to match StimIndex
+    for k = 1:numKFolds
+        pred(KFoldIndices==k) = predictions(1:numPerFold(k),k);
+    end
+    confusionMatrix(:,:,n) = confusionmat(pred,StimIndex); % compute confusion matrix
+    Weights(:,:,n) = mean(currentWeights,3);               % take mean of weights over k-folds
     
 end
 parfor_progress(0);
 
+% Take mean over repeats
+confusionMatrix = mean(confusionMatrix,3);
+Weights = mean(Weights,3);
+
 
 %% Compute stats
 stats = struct();
+normCM = bsxfun(@rdivide, confusionMatrix, sum(confusionMatrix,1));
 
 % Compute percent correct
-stats.PCC = trace(confusionMatrix)/numStims;
+stats.PCC = trace(normCM)/numStims;
 
 % Compute selectivity (Elie & Theunissen 2015)
-d = diag(confusionMatrix);
-[Sel, temp1] = max(d);
-temp2 = false(numStims,1);
-temp2(temp1) = true;
-stats.Sel = log2(Sel*(numStims-1))/sum(d(~temp2)); % equal to log2(Sel(rindex)/mean(d(~temp2)));
+d = diag(normCM);
+[Max, maxS] = max(d);
+stats.Sel = log2(Max*(numStims-1))/sum(d(setdiff(1:numStims, maxS))); % equal to log2(Sel(rindex)/mean(d(~temp2)));
 

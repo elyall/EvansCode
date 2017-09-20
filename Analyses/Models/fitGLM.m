@@ -2,14 +2,13 @@ function [beta,mdl,combinations] = fitGLM(stim,data,varargin)
 % data is a vector of length number of trials (T) or a matrix that is T by
 % number of time points to be meaned over.
 %
-% stim is a binary matrix of length number of trials by number of
-% conditions, or a dict of length number of stimuli by number of
-% conditions, with a TrialIndex passed in to define when each stimulus was
-% presented.
+% stim is a binary matrix of length number of trials by number of stimuli,
+% or a dict of length number of conditions by number of stimuli, with a
+% TrialIndex passed in to define when each stimulus was presented.
 
 InteractionTerms = 1; % order of interactions to include
 StimIndex = [];
-verbose = false;
+verbose = true;
 
 %% Parse input arguments
 index = 1;
@@ -35,9 +34,9 @@ while index<=length(varargin)
     end
 end
 
-if size(data,2)>1
-    data = mean(data,2);
-end
+% if size(data,2)>1
+%     data = mean(data,2);
+% end
 if size(stim,1)~=size(data,1) % assume stim dict input
     if any(StimIndex==0)
         StimIndex = StimIndex+1;
@@ -81,16 +80,25 @@ end
 beta = glmfit(x,data,'normal');
 mdl = fitglm(x,data);
 
+pred = [~any(x,2),x]*beta; %% Compute prediction
+mse = mean((pred-data).^2);
+
+
+%% Display output
 if verbose
     figure;
+    subplot(2,1,1);
     plot(beta);
     set(gca,'XTick',1:numCombs,'Xticklabel',Labels,'XTickLabelRotation',90);
+    subplot(2,1,2);
+    plot(data); hold on; plot(pred);
+    legend('Data','Prediction');
+else
+    fprintf('mse = %f\n', mse);
 end
 
-%% Compute prediction
 
-pred = [~any(x,2),x]*beta;
-mse = mean((pred-data).^2);
-fprintf('mse = %f\n', mse);
+
+
 
 
