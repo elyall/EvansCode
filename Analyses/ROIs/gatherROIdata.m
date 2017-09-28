@@ -8,6 +8,8 @@ ROIindex = [];      % ROIindex is a list of ROI indices corresponding to which R
 FileIndex = [];     % FileIndex is a list of file indices corresponding to which files the ROIs to pull from are in
 Label = false;      % string or cell array of strings of ROI labels to gather data from, or false if gathering data from ROIs with any label (use 'none' for unlabeled)
 outputFormat = [];  % 'numeric' or 'cell' specifying what format the output should be in
+Index = [];         % vector of linear indices specifying which data to keep
+Shape = [];         % vector specifying how to shape the data for each ROI prior to concatenation
 
 directory = cd;
 
@@ -27,6 +29,12 @@ while index<=length(varargin)
                 index = index + 2;
             case 'outputFormat'
                 outputFormat = varargin{index+1};
+                index = index + 2;
+            case 'Index'
+                Index = varargin{index+1};
+                index = index + 2;
+            case 'Shape'
+                Shape = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -123,6 +131,22 @@ while all(cellfun(@iscell,Data))
         Data = cat(2,Data{:})';
     else
         break
+    end
+end
+
+% Keep only requested data & shape as desired
+if ~isempty(Index)
+    try
+        Data = cellfun(@(x) x(Index), Data, 'UniformOutput',false);
+    catch
+        warning('Failed to grab requested Indices; likely Index exceeds matrix dimensions.');
+    end
+end
+if ~isempty(Shape)
+    try
+        Data = cellfun(@(x) reshape(x,Shape), Data, 'UniformOutput',false);
+    catch
+        warning('Failed to reshape as desired; likely the number of elements does not equal the product of the dimensions');
     end
 end
 

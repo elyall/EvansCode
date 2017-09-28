@@ -100,7 +100,7 @@ end
 if iscellstr(Data) || isstruct(Data) || (iscell(Data) && isstruct(Data{1}))
     switch roiType
         case 'roi'
-            [Data, FileIndex] = gatherROIdata(Data,'vertices',':','none',ROIindex,FileIndex,'outputFormat','cell');
+            [Data, FileIndex] = gatherROIdata(Data,'vertices','ROIindex',ROIindex,'FileIndex',FileIndex,'outputFormat','cell');
             Data = cellfun(@(x) reshape(x, numel(x)/2, 2), Data, 'UniformOutput', false); % Reshape vertices
             ROIindex = 1:numel(Data);
         case {'circle','arrow'}
