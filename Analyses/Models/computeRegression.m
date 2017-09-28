@@ -3,8 +3,9 @@ function [Filter,pred] = computeRegression(Data, Stim, numLags, varargin)
 % Stim is numStim x numSamples
 
 Labels = {};
-interactions = false;
+InteractionTerms = 1; % order of interactions to include, or true for all possible interactions
 verbose = true;
+RunSpeed = [];
 
 
 %% Parse input arguments
@@ -15,8 +16,11 @@ while index<=length(varargin)
             case 'Labels'
                 Labels = varargin{index+1};
                 index = index + 2;
-            case {'Interactions','interactions'}
-                interactions = varargin{index+1};
+            case {'InteractionTerms','Terms'}
+                InteractionTerms = varargin{index+1};
+                index = index + 2;
+            case 'RunSpeed'
+                RunSpeed = varargin{index+1};
                 index = index + 2;
             case 'verbose'
                 verbose = true;
@@ -42,14 +46,17 @@ end
 if isempty(Labels)
     Labels = cellstr(num2str((1:numCond)'));
 end
-LagStim = cat(1, Stim, zeros(numCond*numLags,numSamples));
-for index = 1:numLags
-    LagStim(index*numCond+1:(index+1)*numCond,:) = cat(2, zeros(numCond,index), Stim(:,1:end-index));
+
+LagStim = lagmatrix(Stim',0:numLags)'; % create lagged stimuli
+
+
+%% Create interaction terms
+if isequal(InteractionTerms,true)
+    LagStim = LagStim'*LagStim;
+else
+    LagStim = designStimMatrix(LagStim,InteractionTerms,RunSpeed);
 end
 
-if interactions
-    LagStim = LagStim'*LagStim;
-end
 
 %% Compute regression
 
