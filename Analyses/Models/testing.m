@@ -64,3 +64,46 @@ p2 = mdl.predict;
 mse2 = sum((p2-a').^2)/var(a)
 % y=exp_nonlin(mdl,x);
 
+
+
+%%
+
+Index = Max>1.2 & sigTuned;
+InteractionTerms = 1:2;
+numLags = 20;
+
+% Gather data
+Data = gatherROIdata(ROIs,'rawdata');
+Neuropil = gatherROIdata(ROIs,'rawneuropil');
+NeuropilWeight = cellfun(@(x) x.DataInfo.NeuropilWeight, ROIs, 'UniformOutput',false);
+NeuropilWeight = cat(1,NeuropilWeight{:});
+Data = Data - bsxfun(@times, NeuropilWeight, Neuropil);
+
+% Create logical stimulus matrix
+load([Files{1},'.exp'],'frames','-mat')
+nFrames = numel(frames.Stimulus)/numDepths;
+% StimMat = createStimMatrix(frames.Stimulus);                % each condition is a unique stimulus
+StimMat = createStimMatrix(frames.Stimulus,'Dict',StimLog); % account for interacting stimuli
+StimMat = permute(reshape(StimMat,numDepths,nFrames,size(StimMat,2)),[2,3,1]);
+StimMat = any(StimMat,3);
+
+% Determine trials to keep
+Trial = reshape(frames.Trial,numDepths,nFrames);
+Trial = ismember(Trial,TrialIndex{1});
+Trial = any(Trial,1);
+% Trial = true(numel(frames.Trial),1);
+
+% % Gather run speed
+% RunSpeed = mean(reshape(frames.RunningSpeed,numDepths,nFrames));
+
+% Compute GLM
+[beta,~,mse,mdl,Filter,~] = fitGLM(StimMat(Trial,:),Data(Index,Trial)',numLags,...
+    'InteractionTerms',InteractionTerms,'verbose'); %,...
+%             'RunSpeed',AnalysisInfo.onlineRunSpeed(TrialIndex{1}));
+
+rsq=nan(1,nnz(Index));
+for ind = 1:nnz(Index)
+    rsq(ind) = mdl{ind}.Rsquared.Adjusted;
+end
+rsq
+mse

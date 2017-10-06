@@ -1,4 +1,4 @@
-function newStimMat = designStimMatrix(StimMat,InteractionTerms,ExtraVar)
+function [newStimMat,combinations] = designStimMatrix(StimMat,InteractionTerms,ExtraVar)
 
 [numObs,numStim] = size(StimMat);
 
