@@ -17,7 +17,7 @@ saveOut = false;            % save ROIs to files
 saveFile = {''};            % files to save to
 saveType = 'new';           % 'new' or 'all' (determines which files will be written to)
 
-distanceThreshold = 50;     % pixels
+distanceThreshold = 100;     % pixels
 overlapThreshold = .1;      % percentage
 addNewROIs = false;         % add ROIs that don't match across files
 

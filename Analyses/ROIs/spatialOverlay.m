@@ -242,7 +242,7 @@ switch DataType
         
         % Determine colors
         if ~exist('Colors', 'var') || isempty(Colors)
-            N = numel(unique(ColorIndex));
+            N = max(ColorIndex);
             switch defaultColorMap
                 case 'parula'
                     Colors = parula(N);

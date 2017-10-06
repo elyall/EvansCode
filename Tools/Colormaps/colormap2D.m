@@ -1,6 +1,6 @@
 function [cmap,dim] = colormap2D(Colors,pts,dim)
 
-verbose = true;
+verbose = false;
 
 if ~exist('Colors','var') || isempty(Colors)
     Colors = [0,0,0;1,0,0;1,1,1;0,0,1]; % black, red, white, blue
