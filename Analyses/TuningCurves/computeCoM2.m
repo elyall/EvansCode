@@ -7,7 +7,7 @@ yDist = 1;
 [H,W,numROIs] = size(Curves);
 CoM = nan(numROIs,2);
 
-for rindex = 1:numROIs
+parfor rindex = 1:numROIs
     
     % Select current ROI
     if ~iscell(Curves)
@@ -17,11 +17,16 @@ for rindex = 1:numROIs
     end
     
     % Take magnitude of curve
-    current = current>0;
+    current = abs(current);
+    
+    % Compute projections
+    currentx = mean(current);
+    currenty = mean(current,2)';
     
     % Compute center of mass (preference)
-    [X,Y] = meshgrid(xDist:xDist:W*xDist, yDist:yDist:H*yDist);
-    CoM(rindex,:) = [sum(X(:).*current(:))/sum(current(:)), sum(Y(:).*current(:))/sum(current(:))];
+    CoM(rindex,:) = [sum(currentx.*(1:W))/sum(currentx),sum(currenty.*(1:H))/sum(currenty)];
+%     [X,Y] = meshgrid(xDist:xDist:W*xDist, yDist:yDist:H*yDist);
+%     CoM(rindex,:) = [sum(X(:).*current(:))/sum(current(:)), sum(Y(:).*current(:))/sum(current(:))];
 
     
 end

@@ -49,7 +49,7 @@ OutputNames = DAQChannels(~cellfun(@isempty,strfind(DAQChannels, 'O_')));
 
 % Create output triggers
 Trigger = false(numDelayScans,1);
-Trial = logical(Experiment.Triggers(:,strcmp(OutputNames,'O_2PTrigger'),1));
+Trial = logical(Experiment.Triggers(:,strcmp(OutputNames,'O_EventTrigger'),1));
 for tindex = 1:numTrials
     Trigger = cat(1,Trigger,Trial);
     if isfield(TrialInfo,'numRandomScansPost')

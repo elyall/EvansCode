@@ -94,6 +94,7 @@ if isempty(FileIndex)
     FileIndex = ones(numROIs,1); % assume all come from the first file
 end
 FileIDs = unique(FileIndex);
+numFiles = numel(FileIDs);
 
 
 %% Pull out data

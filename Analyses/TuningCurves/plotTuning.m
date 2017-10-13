@@ -9,7 +9,7 @@ showDataPoints = false;
 showStimStars = true;
 showN = false;
 showPValues = false;
-ErrorBars = 'std'; % 'SE', 'std', 'var', or '95CI'
+ErrorBars = 'SE'; % 'SE', 'std', 'var', or '95CI'
 
 % Plot colors & display options
 normalize = false;
@@ -18,6 +18,7 @@ labelAxes = true;
 XTick = [];
 XTickLabel = {};
 XTickLabelRotation = 90;
+YLabel = 'Average Stimulus-Evoked dF/F';
 
 % Lines
 HorzLines = [];
@@ -82,6 +83,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'XTickLabel'
                 XTickLabel = varargin{index+1};
+                index = index + 2;
+            case 'YLabel'
+                YLabel = varargin{index+1};
                 index = index + 2;
             case 'HorzLines'
                 HorzLines = varargin{index+1};
@@ -288,7 +292,7 @@ for index = 1:numel(ROIindex)
     set(gca,'XTickLabelRotation',XTickLabelRotation);
     if labelAxes
         xlabel('Stimulus');
-        ylabel('Average Stimulus-Evoked dF/F');
+        ylabel(YLabel);
     end
     
     % Set Title
@@ -329,7 +333,7 @@ for index = 1:numel(ROIindex)
     if ~isempty(HorzLines)
         XLim = get(gca,'XLim');
         for l = 1:numel(HorzLines)
-            plot(XLim, [HorzLines(l) HorzLines(l)], 'k--');
+            plot(XLim, [HorzLines(l) HorzLines(l)], 'b-');
         end
         set(gca,'XLim',XLim);
     end

@@ -16,7 +16,7 @@ if ischar(distance)
     distance = fread(file,Inf,'uint8');
 end
 if max(distance) == 1 || max(distance) == 0
-    distance = cumsum([distance(1);distance]);
+    distance = cumsum(distance);
 end
 
 if ~exist('Fs', 'var') || isempty(Fs)

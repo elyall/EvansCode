@@ -1,5 +1,5 @@
 function [eigVec,eigVal,capVar] = computePCA(ActivityMatrix, varargin)
-
+% ActivityMatrix is 
 verbose = false;
 ROIindex = [1 inf];
 TrialIndex = [1 inf];

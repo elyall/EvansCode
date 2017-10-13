@@ -234,7 +234,7 @@ if gd.Selection.Value==1 % imagesc
                 imagesc(img, gd.CLim);
             end
     end
-    axis equal tight
+    axis tight %equal
 elseif gd.Selection.Value==2 % bar3
     gd.histeq.Enable = 'off';
     temp = bar3(img);

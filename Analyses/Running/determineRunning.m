@@ -96,6 +96,12 @@ if iscellstr(RunData)
             StimID = [StimID;temp];
         end
     end
+else
+    for f = 1:numFiles
+        if TrialIndex{f}(end) == inf
+            TrialIndex{f} = [TrialIndex{f}(1:end-1),TrialIndex{f}(1:end-1)+1:size(RunData{f},1)];
+        end
+    end
 end
 
 nT = cellfun(@numel,TrialIndex);
