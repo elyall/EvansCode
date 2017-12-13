@@ -9,7 +9,7 @@ showDataPoints = false;
 showStimStars = true;
 showN = false;
 showPValues = false;
-ErrorBars = 'SE'; % 'SE', 'std', 'var', or '95CI'
+ErrorBars = 'BS95CI'; % 'SE', 'std', 'var', '95CI', or 'BS95CI'
 
 % Plot colors & display options
 normalize = false;
@@ -243,13 +243,6 @@ for index = 1:numel(ROIindex)
     end
     hold on
     
-    % Plot each trial's average dF/F for each stimulus
-    if showDataPoints
-        for s = 1:numStimuli
-            plot(s*ones(rois(rindex).nTrials(s),1), rois(rindex).Raw{StimIndex(s)}, 'k.') %plot raw data points for all stimuli
-        end
-    end
-    
     % Plot tuning curves
     data = rois(rindex).curve;
     switch ErrorBars
@@ -257,12 +250,14 @@ for index = 1:numel(ROIindex)
             se = rois(rindex).StdError;
             % se = cellfun(@std,rois(rindex).Raw)./sqrt(cellfun(@numel,rois(rindex).Raw)); % same thing
         case 'std'
-            se = cellfun(@std,rois(rindex).Raw);
+            se = cellfun(@std,rois(rindex).Raw');
         case 'var'
-            se = cellfun(@var,rois(rindex).Raw);
+            se = cellfun(@var,rois(rindex).Raw');
             % se = cellfun(@std,rois(rindex).Raw).^2; % same thing
         case '95CI'
-            se = 1.96*cellfun(@std,rois(rindex).Raw); % assumes normally distributed
+            se = 1.96*cellfun(@std,rois(rindex).Raw'); % assumes normally distributed
+        case 'BS95CI'
+            se = rois(rindex).CI95;
     end
     if normalize(index)
         if isequal(normalize(index),1)
@@ -272,9 +267,21 @@ for index = 1:numel(ROIindex)
         se = se/normalize(index);
     end
     for s = 1:numStimuli
-        h(s,index) = errorbar(s,data(StimIndex(s)),se(StimIndex(s)),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize); %plot curve
+        if size(se,1)==1
+            h(s,index) = errorbar(s,data(StimIndex(s)),se(StimIndex(s)),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize); %plot curve
+        else
+            h(s,index) = errorbar(s,data(StimIndex(s)),se(1,StimIndex(s)),se(2,StimIndex(s)),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize); %plot curve
+        end
     end
-        
+    
+    % Plot each trial's average dF/F for each stimulus
+    if showDataPoints
+        plotSpread(cat(1,rois(rindex).Raw{StimIndex}),'distributionIdx',repelem(1:numStimuli,cellfun(@numel,rois(rindex).Raw(StimIndex)))','binWidth',0.5,'distributionColors',[0,0,0]) %plot raw data points for all stimuli        for s = 1:numStimuli
+%         for sindex = 1:numStimuli
+%             plot(s*ones(rois(rindex).nTrials(s),1), rois(rindex).Raw{StimIndex(s)}, 'k.') %plot raw data points for all stimuli
+%         end
+    end
+    
     % Set axes labels
     if ~isempty(YLim)
         if isnumeric(YLim)

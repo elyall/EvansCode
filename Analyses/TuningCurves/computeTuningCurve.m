@@ -136,6 +136,7 @@ fprintf('Computing tuning curves...');
 % Initialize output
 [ROIdata.rois(ROIindex).curve] = deal(nan(1, numStimuli));
 [ROIdata.rois(ROIindex).StdError] = deal(nan(1, numStimuli));
+[ROIdata.rois(ROIindex).CI95] = deal(nan(2,numStimuli));
 [ROIdata.rois(ROIindex).nTrials] = deal(nan(1, numStimuli));
 [ROIdata.rois(ROIindex).Raw] = deal(cell(numStimuli, 1));
 if ~isempty(ControlID)
@@ -154,8 +155,9 @@ for rindex = ROIindex
         StimulusDFoF(isnan(StimulusDFoF)) = []; % remove nan trials (ROI didn't exist in trial either due to motion or bad merge across datasets)
         
         % Save tuning curves
-        ROIdata.rois(rindex).curve(sindex) = mean(StimulusDFoF);                 % evoked dF/F over all trials for current stimulus
-        ROIdata.rois(rindex).StdError(sindex) = std(StimulusDFoF)/sqrt(numel(StimulusDFoF)); % standard error for stimulus
+        ROIdata.rois(rindex).curve(sindex) = mean(StimulusDFoF);                             % mean evoked dF/F over all trials for current stimulus
+        ROIdata.rois(rindex).StdError(sindex) = std(StimulusDFoF)/sqrt(numel(StimulusDFoF)); % standard error of the mean
+        ROIdata.rois(rindex).CI95(:,sindex) = bootci(10000,@mean,StimulusDFoF,'type','bca'); % bootstrapped confidence intervals of the mean
         ROIdata.rois(rindex).Raw{sindex} = StimulusDFoF;
         ROIdata.rois(rindex).nTrials(sindex) = numel(StimulusDFoF);
         

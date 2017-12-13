@@ -1,8 +1,8 @@
 function [LinDiff,CI] = LinDiff(Raw,StimLog,varargin)
 
-N = 1000; % # of bootstraps
+N = 10000; % # of bootstraps
 alpha = 0.05;
-verbose = true;
+verbose = false;
 labels = {};
 
 %% Parse input arguments
@@ -40,7 +40,8 @@ StimLog = cellfun(@find, mat2cell(StimLog,ones(32,1),5),'UniformOutput',false);
 Index = find(numW>1);
 numMult = sum(numW>1);
 LinDiff = nan(numROIs,numMult);
-CI = nan(numROIs,numMult,2);
+CI = nan(numROIs,2,numMult);
+parfor_progress(numMult*numROIs);
 for s = 1:numMult
     if numW(Index(s))==2
         func = @(x,y,z) z-(x+y);
@@ -52,10 +53,11 @@ for s = 1:numMult
         func = @(u,v,w,x,y,z) z-(u+v+w+x+y);
     end
     parfor r = 1:numROIs
-        [LinDiff(r,s),CI(r,s,:)] = BootStrap(N,func,[Raw(r,StimLog{Index(s)}+1),Raw(r,Index(s))],'alpha',alpha);
+        [LinDiff(r,s),CI(r,:,s)] = BootStrap(N,func,[Raw(r,StimLog{Index(s)}+1),Raw(r,Index(s))],'alpha',alpha);
+        parfor_progress;
     end
 end
-
+parfor_progress(0);
 
 %% Plot results
 if verbose

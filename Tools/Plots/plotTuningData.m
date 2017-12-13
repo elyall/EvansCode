@@ -11,7 +11,7 @@ showDataPoints = false;
 showStimStars = true;
 showN = false;
 showPValues = false;
-ErrorBars = 'SE'; % 'SE', 'std', 'var', or '95CI'
+ErrorBars = 'SE'; % 'SE', 'std', 'var', '95CI', 'none', or matrix of size [nROIs,1or2,numStimuli]
 
 % Plot colors & display options
 normalize = false;
@@ -242,31 +242,33 @@ for index = 1:numel(ROIindex)
     end
     hold on
     
-    % Plot each trial's average dF/F for each stimulus
-    if showDataPoints
-        for s = 1:numStimuli
-            plot(s*ones(numel(Data{rindex,StimIndex(s)}),1), Data{rindex,StimIndex(s)}, 'k.') %plot raw data points for all stimuli
-        end
-    end
-    
-    % Gather data & compute error
+    % Gather data
     if iscell(Data)
         raw = Data(rindex,StimIndex);
         N = cellfun(@numel,raw);
         data = cellfun(@mean,raw);
     else
         data = Data(rindex,StimIndex);
-        ErrorBars = 'none';
     end
-    switch ErrorBars
-        case 'SE'
-            se = cellfun(@std,raw)./sqrt(N);
-        case 'std'
-            se = cellfun(@std,raw);
-        case 'var'
-            se = cellfun(@var,raw);
-        case '95CI'
-            se = 1.96*cellfun(@std,raw); % assumes normally distributed
+    
+    % Determine error
+    if ischar(ErrorBars)
+        switch ErrorBars
+            case 'none'
+                se = [];
+            case 'SE'
+                se = cellfun(@std,raw)./sqrt(N);
+            case 'std'
+                se = cellfun(@std,raw);
+            case 'var'
+                se = cellfun(@var,raw);
+            case '95CI'
+                se = 1.96*cellfun(@std,raw); % assumes normally distributed
+        end
+    elseif isnumeric(ErrorBars)
+        se = squeeze(ErrorBars(rindex,:,:));
+    else
+        ErrorBars = 'none';
     end
     
     % Normalize data
@@ -280,13 +282,20 @@ for index = 1:numel(ROIindex)
     
     % Plot tuning
     for s = 1:numStimuli
-        if ~strcmpi(ErrorBars,'none')
-            h(s,index) = errorbar(s,data(s),se(s),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize); %plot curve
-        else
+        if isempty(se)
             h(s,index) = plot(s,data(s),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
+        elseif size(se,1)==1
+            h(s,index) = errorbar(s,data(s),se(s),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
+        else
+            h(s,index) = errorbar(s,data(s),se(1,s),se(2,s),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
         end
     end
-        
+    
+    % Plot each trial's average dF/F for each stimulus
+    if showDataPoints
+        plotSpread(cat(1,raw{:}),'distributionIdx',repelem(1:numStimuli,cellfun(@numel,raw))','binWidth',0.4,'distributionColors',[0,0,0]) %plot raw data points for all stimuli        for s = 1:numStimuli
+    end
+    
     % Set axes: limits, ticks, & labels
     if ~isempty(YLim)
         if isnumeric(YLim)
@@ -345,8 +354,10 @@ for index = 1:numel(ROIindex)
     if ~isempty(HorzLines)
         XLim = get(gca,'XLim');
         for l = 1:numel(HorzLines)
-            plot(XLim, [HorzLines(l) HorzLines(l)], 'b-');
+            plot(XLim, [HorzLines(l) HorzLines(l)], 'k-');
         end
+        temp = get(gca,'Children');
+        set(gca,'Children',temp([2:end,1]));
         set(gca,'XLim',XLim);
     end
     if ~isempty(VertLines)
