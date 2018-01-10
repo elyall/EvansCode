@@ -92,6 +92,9 @@ InfoFile = fullfile(p, strcat(fn,'.mat'));
 load(InfoFile, 'info', '-mat');
 info.frame = info.frame + 1;    % change 0 indexing to 1 indexing
 info.line = info.line + 1;      % change 0 indexing to 1 indexing
+info.frame(info.event_id~=1) = [];
+info.line(info.event_id~=1) = [];
+info.event_id(info.event_id~=1) = [];
 
 
 %% Initialize outputs
