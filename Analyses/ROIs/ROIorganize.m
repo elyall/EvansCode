@@ -216,7 +216,9 @@ for rindex = ROIindex
             end
             
         catch
-            warning('More frames requested than in ROIdata, filling rest with NaNs');
+            if rindex==ROIindex(1)
+                warning('More frames requested than in ROIdata, filling rest with NaNs');
+            end
             temp = ROIdata.rois(rindex).rawdata(currentIndex(1):end);
             ROIdata.rois(rindex).data(nindex,1:numel(temp)) = temp;
             if neuropil
