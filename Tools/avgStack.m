@@ -53,10 +53,13 @@ end
 
 %% Load data
 if ischar(Images)
+    Images = {Images};
+end
+if iscell(Images)
     ImagesFile = Images;
-    Images = load2P(ImagesFile, 'Frames', [2,inf]);
+    Images = load2P(ImagesFile, 'Frames', [1,inf]);
     if saveOut && isempty(saveFile)
-        saveFile = [ImagesFile(1:end-4),'_avg.tif'];
+        saveFile = [ImagesFile{1}(1:end-4),'_avg.tif'];
     end
 end
 
@@ -106,6 +109,6 @@ end
 
 %% Save output
 if saveOut
-    save2P(saveFile, Avg, 'CLim', true);
+    save2P(saveFile, Avg, 'CLim', true, 'Class', 'uint16');
 end
 
