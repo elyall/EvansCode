@@ -231,6 +231,9 @@ if iscellstr(Images)
             case '.exp'
                 temp = load(ImageFiles{findex}, 'ImageFiles', 'Map', '-mat');
                 Images{findex} = squeeze(temp.ImageFiles.Average(:,:,1,1));
+            otherwise
+                temp = imread(ImageFiles{findex});
+                Images{findex} = temp;
         end
         if isfield(temp, 'Map')
             Maps{findex} = temp.Map;
