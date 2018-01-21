@@ -160,10 +160,13 @@ trialdFoF = repmat({zeros([Config(1).size(1:2), numFrames])},numStims,1);
 % trialdFoF = cell(numStims,1);
 
 % Cycle through stimuli computing averages
+totalFrames = Config.Frames;
+ExpStimFrames = AnalysisInfo.ExpStimFrames;
+StimID = AnalysisInfo.StimID;
 parfor sindex = 1:numStims
     
     % Determine trials to average
-    currentTrials = find(AnalysisInfo.StimID == StimIDs(sindex));
+    currentTrials = find(StimID == StimIDs(sindex));
     currentTrials(~ismember(currentTrials, TrialIndex)) = []; % remove unwanted trials
     numTrials = numel(currentTrials);
     
@@ -174,12 +177,17 @@ parfor sindex = 1:numStims
 %     trialdFoF{sindex} = zeros([Config(1).size(1:end-2), numTrials]);
     
     % Cycle through trials adding each to the average
+    badTrials = 0;
     for tindex = 1:numTrials
         
         % Load trial
-        StimFrames = AnalysisInfo.ExpStimFrames(currentTrials(tindex),:);
+        StimFrames = ExpStimFrames(currentTrials(tindex),:);
         relativeID = [find(depthID>=StimFrames(1),1,'first'), find(depthID<StimFrames(2),1,'last')];
-        [frames, loadObj] = load2P(ImageFiles{1},...
+        if relativeID(1)+numFramesAfter > totalFrames % overflow on existing frames
+            badTrials = badTrials+1; % should only occur once per file
+            continue
+        end
+        [frames, loadObj] = load2P(ImageFiles,...
             'Type',     'Direct',...
             'Depth',    Depth,...
             'Channel',  Channel,...
@@ -211,6 +219,7 @@ parfor sindex = 1:numStims
         % Save for later calculation
         trialdFoF{sindex}(:,:,tindex) = mean(frames(:,:,numFramesBefore+1:numFramesBefore+diff(relativeID)+1), 3);
     end
+    numTrials = numTrials - badTrials;
     AvgTrial{sindex} = uint16(AvgTrial{sindex}/numTrials); % if not concerned about precision clipping high values after sum, otherwise comment out and amend above
     AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex}/numTrials; % if not concerned about precision clipping high values after sum, otherwise comment out and amend above
     
