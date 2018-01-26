@@ -1,4 +1,4 @@
-function sbxAlignmaster(fname,Depth,rect)
+function sbxAlignmaster(fname,Depth,rect,Frames)
 
     global info
     
@@ -24,10 +24,12 @@ function sbxAlignmaster(fname,Depth,rect)
         str = '';
     end
     
-    Frames = idDepth([fname,'.sbx'],[],'Depth',Depth)';    
-    if Depth==1
-        Frames(1) = []; % throw out very first frame as it's wrong (blank row in T added in at end)
+    if ~exist('Frames','var') || isempty(Frames)
+        Frames = idDepth([fname,'.sbx'],[],'Depth',Depth)';
+    else
+        Frames = idDepth([fname,'.sbx'],[],'Depth',Depth,'Frames',Frames,'IndexType','absolute')';
     end
+    Frames(Frames==1) = []; % throw out very first frame as it's wrong (blank row in T added in at end)
     numFrames = numel(Frames);
     Frames = [Frames;1:numFrames];
 
