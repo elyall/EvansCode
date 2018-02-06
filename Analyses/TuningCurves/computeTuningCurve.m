@@ -157,7 +157,7 @@ for rindex = ROIindex
         % Save tuning curves
         ROIdata.rois(rindex).curve(sindex) = mean(StimulusDFoF);                             % mean evoked dF/F over all trials for current stimulus
         ROIdata.rois(rindex).StdError(sindex) = std(StimulusDFoF)/sqrt(numel(StimulusDFoF)); % standard error of the mean
-        ROIdata.rois(rindex).CI95(:,sindex) = bootci(10000,{@mean,StimulusDFoF},'type','bca'); % bootstrapped confidence intervals of the mean
+%         ROIdata.rois(rindex).CI95(:,sindex) = bootci(10000,{@mean,StimulusDFoF},'type','bca'); % bootstrapped confidence intervals of the mean
         ROIdata.rois(rindex).Raw{sindex} = StimulusDFoF;
         ROIdata.rois(rindex).nTrials(sindex) = numel(StimulusDFoF);
         
@@ -182,8 +182,8 @@ for rindex = ROIindex
     % Compute whether ROI is "tuned"
     if ~any(isnan(ROIdata.rois(rindex).curve))
         N = cellfun(@numel, ROIdata.rois(rindex).Raw(firstStim:end));
-        dict = cellfun(@(x,y) repmat(x,y,1), num2cell(1:numel(N))', num2cell(N), 'UniformOutput',false);
-        ROIdata.rois(rindex).TunedPValue = anovan(cat(1,ROIdata.rois(rindex).Raw{firstStim:end}), cat(1,dict{:}), 'model','full','display','off');
+        dict = repelem(1:numel(N),N)';
+        ROIdata.rois(rindex).TunedPValue = anovan(cat(1,ROIdata.rois(rindex).Raw{firstStim:end}), dict, 'model','full','display','off');
     else
         ROIdata.rois(rindex).TunedPValue = nan;
     end

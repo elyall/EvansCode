@@ -319,7 +319,10 @@ if showColorBar
         
     % Display colorbar title
     if ~isempty(cbLabel)
-        ylabel(cbH, cbLabel, 'FontSize', cbFontSize);
+        ylH = ylabel(cbH, cbLabel, 'FontSize', cbFontSize);
+        if flipColorbar
+           set(ylH,'Rotation',270,'VerticalAlignment','top')
+        end
     end
 end
 

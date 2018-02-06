@@ -9,7 +9,7 @@ showDataPoints = false;
 showStimStars = true;
 showN = false;
 showPValues = false;
-ErrorBars = 'BS95CI'; % 'SE', 'std', 'var', '95CI', or 'BS95CI'
+ErrorBars = 'SE'; % 'SE', 'std', 'var', '95CI', or 'BS95CI'
 
 % Plot colors & display options
 normalize = false;
@@ -276,7 +276,7 @@ for index = 1:numel(ROIindex)
     
     % Plot each trial's average dF/F for each stimulus
     if showDataPoints
-        plotSpread(cat(1,rois(rindex).Raw{StimIndex}),'distributionIdx',repelem(1:numStimuli,cellfun(@numel,rois(rindex).Raw(StimIndex)))','binWidth',0.5,'distributionColors',[0,0,0]) %plot raw data points for all stimuli        for s = 1:numStimuli
+        plotSpread(cat(1,rois(rindex).Raw{StimIndex}),'distributionIdx',repelem(1:numStimuli,cellfun(@numel,rois(rindex).Raw(StimIndex)))','binWidth',0.5,'distributionColors',[.5,.5,.5]) %plot raw data points for all stimuli        for s = 1:numStimuli
 %         for sindex = 1:numStimuli
 %             plot(s*ones(rois(rindex).nTrials(s),1), rois(rindex).Raw{StimIndex(s)}, 'k.') %plot raw data points for all stimuli
 %         end

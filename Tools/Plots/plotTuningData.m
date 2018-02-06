@@ -4,14 +4,16 @@ ROIindex = [1,inf];
 
 saveOut = false;
 saveFile = ''; % filename to save plots to
+
 StimIndex = [1,inf];
+Grouping = [];
 
 % Items to display
 showDataPoints = false;
 showStimStars = true;
 showN = false;
 showPValues = false;
-ErrorBars = 'SE'; % 'SE', 'std', 'var', '95CI', 'none', or matrix of size [nROIs,1or2,numStimuli]
+ErrorBars = 'SE'; % 'SE', 'std', 'var', '95CI', 'none', or matrix of size [1or2,numStimuli,nROIs]
 
 % Plot colors & display options
 normalize = false;
@@ -53,7 +55,13 @@ while index<=length(varargin)
     try
         switch varargin{index}
             case 'ROIindex'
-                ROIindex = varargin{index+1}
+                ROIindex = varargin{index+1};
+                index = index + 2;
+            case 'StimIndex'
+                StimIndex = varargin{index+1};
+                index = index + 2;
+            case 'Grouping'
+                Grouping = varargin{index+1};
                 index = index + 2;
             case 'showDataPoints'
                 showDataPoints = true;
@@ -209,7 +217,9 @@ if StimIndex(end) == inf
     StimIndex = [StimIndex(1:end-1),StimIndex(end-1)+1:size(Data,2)];
 end
 numStimuli = numel(StimIndex);
-
+if isempty(Grouping)
+    Grouping = mat2cell(1:numStimuli,1,ones(1,numStimuli));
+end
 
 %% Determine plotting colors
 if ischar(Colors)
@@ -266,7 +276,7 @@ for index = 1:numel(ROIindex)
                 se = 1.96*cellfun(@std,raw); % assumes normally distributed
         end
     elseif isnumeric(ErrorBars)
-        se = squeeze(ErrorBars(rindex,:,:));
+        se = squeeze(ErrorBars(:,:,rindex));
     else
         ErrorBars = 'none';
     end
@@ -281,19 +291,19 @@ for index = 1:numel(ROIindex)
     end
     
     % Plot tuning
-    for s = 1:numStimuli
+    for s = 1:numel(Grouping)
         if isempty(se)
-            h(s,index) = plot(s,data(s),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
+            h(s,index) = plot(Grouping{s},data(Grouping{s}),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
         elseif size(se,1)==1
-            h(s,index) = errorbar(s,data(s),se(s),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
+            h(s,index) = errorbar(Grouping{s},data(Grouping{s}),se(Grouping{s}),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
         else
-            h(s,index) = errorbar(s,data(s),se(1,s),se(2,s),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
+            h(s,index) = errorbar(Grouping{s},data(Grouping{s}),se(1,Grouping{s}),se(2,Grouping{s}),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
         end
     end
     
     % Plot each trial's average dF/F for each stimulus
     if showDataPoints
-        plotSpread(cat(1,raw{:}),'distributionIdx',repelem(1:numStimuli,cellfun(@numel,raw))','binWidth',0.4,'distributionColors',[0,0,0]) %plot raw data points for all stimuli        for s = 1:numStimuli
+        plotSpread(cat(1,raw{:}),'distributionIdx',repelem(1:numStimuli,cellfun(@numel,raw))','binWidth',0.4,'distributionColors',[.5,.5,.5]) %plot raw data points for all stimuli        for s = 1:numStimuli
     end
     
     % Set axes: limits, ticks, & labels

@@ -1,4 +1,5 @@
 function Images = avgImgsN(Images,N,MCdata)
+% AVGIMGSN produces mean image by averaging largest or smallest N pixels
 
 direction = 'descend';
 FrameIndex = [1,inf];

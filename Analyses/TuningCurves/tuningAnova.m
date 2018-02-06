@@ -1,8 +1,10 @@
-function [PValues, ROIdata] = tuningAnova(ROIdata, varargin)
+function [PValues, ROIdata] = tuningAnova(Data, varargin)
 
 
 StimIndex = [2 inf];
 ROIindex = [1 inf];
+
+StimShape = [];
 
 saveOut = false;
 saveFile = '';
@@ -18,6 +20,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'ROIindex'
                 ROIindex = varargin{index+1};
+                index = index + 2;
+            case 'StimShape'
+                StimShape = varargin{index+1};
                 index = index + 2;
             case {'Save', 'save'}
                 saveOut = true;
@@ -35,22 +40,26 @@ while index<=length(varargin)
     end
 end
 
-if ~exist('ROIdata', 'var') || isempty(ROIdata)
-    [ROIdata,p] = uigetfile({'*.rois;*.mat'}, 'Select ROI files:', directory);
-    if isnumeric(ROIdata)
+if ~exist('Data', 'var') || isempty(Data)
+    [Data,p] = uigetfile({'*.rois;*.mat'}, 'Select ROI files:', directory);
+    if isnumeric(Data)
         return
     end
-    ROIdata = {fullfile(p, ROIdata)};
+    Data = {fullfile(p, Data)};
 end
 
 
 %% Load data
-if ischar(ROIdata)
-    ROIFile = ROIdata;
+if ischar(Data)
+    ROIFile = Data;
     load(ROIFile, 'ROIdata', '-mat');
     if saveOut && isempty(saveFile)
         saveFile = ROIFile;
     end
+    Data = ROIdata;
+elseif isstruct(Data)
+    ROIdata = Data;
+    Data = gatherROIdata(ROIdata,'Raw');
 end
 if saveOut && isempty(saveFile)
     warning('Cannot save output as no file specified');
@@ -58,50 +67,53 @@ if saveOut && isempty(saveFile)
 end
 
 
-%% Determine ROIs to analyze
+%% Determine data to analyze
+[numROIs,numStims] = size(Data);
+
+% Determine ROIs to analyze
 if ROIindex(end) == inf
-    ROIindex = [ROIindex(1:end-1), ROIindex(end-1)+1:numel(ROIdata.rois)];
+    ROIindex = [ROIindex(1:end-1), ROIindex(end-1)+1:numROIs];
 end
 numROIs = numel(ROIindex);
+Data = Data(ROIindex,:);
 
-
-%% Determine stimuli to analyze
-numStims = length(ROIdata.rois(ROIindex(1)).curve);
+% Determine stimuli to analyze
 if StimIndex(end) == inf
     StimIndex = [StimIndex(1:end-1), StimIndex(end-1)+1:numStims];
 end
 numStims = numel(StimIndex);
+Data = Data(:,StimIndex);
 
 
 %% Compute anova
 
-% Initialize output
-PValues = nan(numROIs, 1); % [btwn positions, btwn pre and post, interaction btwn the two]
+N = cellfun(@numel,Data); % determine # of trials for each stimulus
 
 % Compute significance
-parfor_progress(numROIs);
-for rindex = 1:numROIs
+PValues = nan(numROIs, 1+numel(StimShape));
+% fid = parfor_progress(numROIs);
+parfor rindex = 1:numROIs
     
-    % Gather data
-    temp = ROIdata.rois(ROIindex(rindex)).Raw;
-    N = cellfun(@numel, temp);
-    N = max(N(:));
-    
-    % Organize data
-    dFoF = [];
-    for tindex = StimIndex
-        dFoF = cat(1, dFoF, [temp{tindex}; nan(N-numel(temp{tindex}),1)]);
+    current = cat(1,Data{rindex,:});          % gather data
+    group = repelem(1:numStims,N(rindex,:))'; % define grouping (each stimulus is unique)
+    if ~isempty(StimShape) % create other groupings
+        group = repmat(group,1,3);
+        [X,Y] = meshgrid(1:StimShape(2),1:StimShape(1));
+%         X = X+numStims;  % offset group ID
+%         Y = Y+max(X(:)); % offest group ID
+        group(:,2) = repelem(X(:),N(rindex,:)); % each column is unique
+        group(:,3) = repelem(Y(:),N(rindex,:)); % each row is unique
     end
+%     PValues(rindex,:) = anovan(current, group, 'model', 'linear', 'display', 'off'); % compute N-way ANOVA (DOESN'T WORK AS ADVERTISED)
+    p = nan(1,1+numel(StimShape));
+    for gindex = 1:size(group,2)
+        p(gindex) = anova1(current, group(:,gindex), 'off');
+    end
+    PValues(rindex,:) = p;
     
-    % Create dictionary
-    g1 = reshape(repmat(1:numStims, N, 1), numStims*N, 1);
-    
-    % Compute 2-way ANOVA
-    PValues(rindex) = anovan(dFoF, g1, 'model','full','display','off');
-    
-    parfor_progress;
+%     parfor_progress(fid);
 end
-parfor_progress(0);
+% parfor_progress(fid,0);
 
 
 %% Distribute to struct
