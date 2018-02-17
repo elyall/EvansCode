@@ -56,6 +56,9 @@ if ischar(Raw) || iscellstr(Raw)
     end
     [Raw,FileIndex,ROIindex,~,~,ROIs] = gatherROIdata(ROIFiles,'Raw');
 end
+if ischar(saveFiles)
+    saveFiles = {saveFiles};
+end
 
 
 %% Compute 95% CI
