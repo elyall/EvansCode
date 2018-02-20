@@ -1,10 +1,12 @@
 function [CI95,ROIs] = computeBootStrappedCI(Raw,varargin)
 
+N = 10000;
 ROIs = {};
 ROIindex = [];
 FileIndex = [];
 Type = 'cper';  % 'norm', 'per', 'cper', 'bca', or 'stud' (see: BOOTCI)
 Seed = 73;      % seed for random # generator
+verbose = false;
 
 saveOut = false;
 saveFiles = {};
@@ -15,6 +17,9 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
+            case 'N'
+                N = varargin{index+1};
+                index = index + 2;
             case 'ROIs'
                 ROIs = varargin{index+1};
                 index = index + 2;
@@ -33,6 +38,9 @@ while index<=length(varargin)
             case 'Seed'
                 Seed = varargin{index+1};
                 index = index + 2;
+            case 'verbose'
+                verbose = true;
+                index = index + 1;
             case {'save','Save'}
                 saveOut = true;
                 index = index + 1;
@@ -72,12 +80,21 @@ opts = statset('Streams',stream);
 [numROIs,numStim] = size(Raw);
 fprintf('Computing bootstrapped confidence intervals for %d ROIs...',numROIs);
 
-CI95 = nan(numROIs,2,numStim);
+CI95 = nan(2,numStim,numROIs);
+if verbose
+    p = parfor_progress(numROIs);
+end
 parfor ind = 1:numROIs
     for sind = 1:numStim
         reset(stream); % reset random # generator
-        CI95(ind,:,sind) = bootci(10000,{@mean,Raw{ind,sind}},'type',Type,'Options',opts); % bootstrapped confidence intervals of the mean
+        CI95(:,sind,ind) = bootci(N,{@mean,Raw{ind,sind}},'type',Type,'Options',opts); % bootstrapped confidence intervals of the mean
     end
+    if verbose
+        parfor_progress(p);
+    end
+end
+if verbose
+    parfor_progress(p,0);
 end
 
 fprintf('\tComplete\n');
@@ -86,7 +103,7 @@ fprintf('\tComplete\n');
 %% Distribute to ROIdata structure
 if (nargout>1 || (saveOut && ~isempty(saveFiles))) && ~isempty(ROIs)
     for ind = 1:numROIs
-        ROIs{FileIndex(ind)}.rois(ROIindex(ind)).CI95 = squeeze(CI95(ind,:,:));
+        ROIs{FileIndex(ind)}.rois(ROIindex(ind)).CI95 = CI95(:,:,ind);
     end
     if saveOut
         for ind = 1:numel(ROIs)
@@ -101,3 +118,5 @@ if (nargout>1 || (saveOut && ~isempty(saveFiles))) && ~isempty(ROIs)
         end
     end
 end
+
+CI95 = permute(CI95,[3,1,2]); % index ROIs in first dimension

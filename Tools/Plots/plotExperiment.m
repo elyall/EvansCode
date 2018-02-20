@@ -8,7 +8,7 @@ ExpStimFrames = [];
 % Computations
 NeuropilWeight = false;
 baselinePrctile = 0;
-adjustment = ''; % '', 'zscore', 'normalize'
+adjustment = 'normalize'; % '', 'zscore', 'normalize'
 NormalizeBy = [];
 SubtractOff = [];
 smoothType = ''; % '', 'moving', 'lowess', 'loess', 'sgolay', 'rlowess', or 'rloess'

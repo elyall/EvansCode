@@ -1,9 +1,9 @@
-function [eigVec,eigVal,capVar] = computePCA(ActivityMatrix, varargin)
+function [eigVec,eigVal,capVar,projPts] = computePCA(ActivityMatrix, varargin)
 % ActivityMatrix is 
 verbose = false;
 ROIindex = [1 inf];
 TrialIndex = [1 inf];
-StimID = [];
+GroupID = [];
 Labels = [];
 Colors = [];
 
@@ -23,8 +23,8 @@ while index<=length(varargin)
             case 'verbose'
                 verbose = true;
                 index = index + 1;
-            case 'StimID'
-                StimID = varargin{index+1};
+            case {'ID','IDs','Group','idx','StimID'}
+                GroupID = varargin{index+1};
                 index = index + 2;
             case 'Labels'
                 Labels = varargin{index+1};
@@ -76,53 +76,57 @@ end
 
 % Keep only requested data
 ActivityMatrix = ActivityMatrix(TrialIndex,ROIindex);
-if ~isempty(StimID) && length(StimID) > size(ActivityMatrix,1)
-    StimID = StimID(TrialIndex);
+if ~isempty(GroupID) && length(GroupID) > size(ActivityMatrix,1)
+    GroupID = GroupID(TrialIndex);
 end
 
 
 %% Compute PCA
 Mean = mean(ActivityMatrix);
 ActivityMatrix = ActivityMatrix - Mean;
-[eigVec,eigVal] = eig(cov(ActivityMatrix));
-capVar = diag(eigVal); 
-capVar = capVar/sum(capVar); % variance captured by each eigenvector
+
+% [eigVec,eigVal] = eig(cov(ActivityMatrix));
+% eigVec = fliplr(eigVec);
+% eigVal = rot90(rot90(eigVal));
+% capVar = diag(eigVal); 
+% capVar = capVar/sum(capVar)*100; % variance captured by each eigenvector
+% projPts = ActivityMatrix*eigVec;
+
+[eigVec,projPts,eigVal,~,capVar] = pca(ActivityMatrix);
 
 
 %% Plot trials in PCA space
 if verbose
     
-    % Project points onto top 3 PCs
-    projPts = ActivityMatrix*eigVec(:,end-2:end);
-    
     figure;
-    if isempty(StimID) % plot as if single stimulus
+    subplot(1,3,1);
+    if isempty(GroupID) % plot as if single stimulus
         if isempty(Colors)
             Colors = [0,0,0];
         end
-        scatter3(projPts(:,1),projPts(:,2),projPts(:,3),24,Colors);
+        scatter3(projPts(:,1),projPts(:,2),projPts(:,3),24,Colors,'.');
         
     else % stimuli info provided 
         hold on;
         
         % Determine Stims
-        StimIDs = unique(StimID);
+        IDs = unique(GroupID);
         if isempty(Labels)
-            Labels = strcat('Stim',{' '},cellstr(num2str(StimIDs)));
+            Labels = strcat('Stim',{' '},cellstr(num2str(IDs)));
         end
-        numStim = numel(StimIDs);
+        numStim = numel(IDs);
         if isempty(Colors)
             Colors = jet(numStim);
         end
         
         % Plot trials for each stimuli
-        stimMean = nan(numStim,3);
+%         groupMean = nan(numStim,3);
         h = nan(numStim,1);
         for sindex=1:numStim
-            ind = StimID==StimIDs(sindex);
-            h(sindex) = scatter3(projPts(ind,1),projPts(ind,2),projPts(ind,3),12,Colors(sindex,:),'filled');
-            stimMean(sindex,:) = mean(projPts(ind,:));
-%             h(sindex) = scatter3(stimMean(sindex,1),stimMean(sindex,2),stimMean(sindex,3),24,Colors(sindex,:),'*');
+            ind = GroupID==IDs(sindex);
+            h(sindex) = scatter3(projPts(ind,1),projPts(ind,2),projPts(ind,3),12,Colors(sindex,:),'.');
+%             groupMean(sindex,:) = mean(projPts(ind,1:3));
+%             h(sindex) = scatter3(groupMean(sindex,1),groupMean(sindex,2),groupMean(sindex,3),24,Colors(sindex,:),'*');
         end
         legend(h,Labels,'Location','BestOutside');
         legend boxoff
@@ -130,7 +134,16 @@ if verbose
     end
     xlabel('PC 1'); ylabel('PC 2'); zlabel('PC 3');
     grid on
-    plotVar = sum(capVar(end-2:end));
-    title(sprintf('Top 3 PCs that account for %.2f%% of variance',plotVar*100)); 
+    title(sprintf('Top 3 PCs that account for %.2f%% of variance',sum(capVar(1:3)))); 
+    
+    subplot(1,3,2);
+    plot(capVar,'o');
+    xlabel('principle component');
+    ylabel('% variance captured');
+    title('Variance captured by each PC');
+    
+    subplot(1,3,3);
+    plot(eigVec(:,1:3));
+    legend('PC1','PC2','PC3');
 end
 

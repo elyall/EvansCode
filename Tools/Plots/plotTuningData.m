@@ -7,10 +7,11 @@ saveFile = ''; % filename to save plots to
 
 StimIndex = [1,inf];
 Grouping = [];
+PValues = [];
 
 % Items to display
 showDataPoints = false;
-showStimStars = true;
+showStimStars = false;
 showN = false;
 showPValues = false;
 ErrorBars = 'SE'; % 'SE', 'std', 'var', '95CI', 'none', or matrix of size [1or2,numStimuli,nROIs]
@@ -62,6 +63,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'Grouping'
                 Grouping = varargin{index+1};
+                index = index + 2;
+            case 'PValues'
+                PValues = varargin{index+1};
                 index = index + 2;
             case 'showDataPoints'
                 showDataPoints = true;
@@ -148,6 +152,12 @@ while index<=length(varargin)
     end
 end
 
+if isempty(PValues)
+    showStimStars = false;
+    showPValues = false;
+end
+
+
 %% Load in data
 if ischar(Data)
     Data = {Data};
@@ -225,8 +235,12 @@ end
 if ischar(Colors)
     Colors = repmat({Colors}, numStimuli, 1);
 elseif isnumeric(Colors)
-    Colors = repmat({Colors}, numStimuli, 1);
-elseif iscellstr(Colors) && numel(Colors) == 1
+    if size(Colors,1)==1
+        Colors = repmat({Colors}, numStimuli, 1);
+    else
+        Colors = mat2cell(Colors,ones(size(Colors,1),1),size(Colors,2));
+    end
+elseif iscell(Colors) && numel(Colors) == 1
     Colors = repmat(Colors, numStimuli, 1);
 end
 
@@ -276,9 +290,12 @@ for index = 1:numel(ROIindex)
                 se = 1.96*cellfun(@std,raw); % assumes normally distributed
         end
     elseif isnumeric(ErrorBars)
-        se = squeeze(ErrorBars(:,:,rindex));
+        se = squeeze(ErrorBars(:,StimIndex,rindex));
     else
         ErrorBars = 'none';
+    end
+    if ~isempty(PValues)
+        p = PValues(rindex,StimIndex);
     end
     
     % Normalize data
@@ -334,15 +351,13 @@ for index = 1:numel(ROIindex)
         title(Title{AxesIndex(index)});
     end
     
-%     % Plot stars for stimuli that evoked a significant response
-%     if showStimStars
-%         Ydim = get(gca,'YLim');
-%         for s = 1:numStimuli
-%             if rois(rindex).PValueCorrected(StimIndex(s))<.05
-%                 text(s,Ydim(2)-(Ydim(2)-Ydim(1))/10,'*','Color',[0,1,1],'FontSize',15,'HorizontalAlignment','center'); %display significance star
-%             end
-%         end
-%     end
+    % Plot stars for stimuli that evoked a significant response
+    if showStimStars
+        Ydim = get(gca,'YLim');
+        for s = find(p<.05)
+            text(s,Ydim(2)-(Ydim(2)-Ydim(1))/10,'*','Color',[0,1,1],'FontSize',15,'HorizontalAlignment','center'); %display significance star
+        end
+    end
     
     % Display number of trials per average
     if showN
@@ -352,13 +367,13 @@ for index = 1:numel(ROIindex)
         end
     end
     
-%     % Display p-values
-%     if showPValues
-%         Ydim = get(gca,'YLim');
-%         for s = 1:numStimuli
-%             text(s,Ydim(1)+(Ydim(2)-Ydim(1))/20,sprintf('p=%.3f',rois(rindex).PValueCorrected(StimIndex(s))),'HorizontalAlignment','center');
-%         end
-%     end
+    % Display p-values
+    if showPValues
+        Ydim = get(gca,'YLim');
+        for s = 1:numStimuli
+            text(s,Ydim(1)+(Ydim(2)-Ydim(1))/20,sprintf('p=%.3f',p(s)),'HorizontalAlignment','center');
+        end
+    end
     
     % Plot lines
     if ~isempty(HorzLines)

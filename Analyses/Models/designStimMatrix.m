@@ -36,6 +36,11 @@ end
 
 % Add run speed
 if ~isempty(ExtraVar)
-    newStimMat = [newStimMat,ExtraVar];
+    try
+        newStimMat = [newStimMat,ExtraVar];
+    catch
+        newStimMat = [newStimMat,ExtraVar'];
+    end
 end
 
+newStimMat = double(newStimMat);

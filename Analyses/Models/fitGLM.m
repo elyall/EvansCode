@@ -1,4 +1,4 @@
-function [beta,pred,mse,mdl,Filter,combinations] = fitGLM(Stim, Data, numLags, varargin)
+function [beta,pred,mse,mdl,Filter,combinations,res] = fitGLM(Stim, Data, numLags, varargin)
 % Stim is numSamples by numPredictors
 % Data is numSamples by N
 
@@ -11,7 +11,7 @@ beta = [];               % initial coefficients
 constant = true;         % booleon specifying whether to include a constant term or not
 
 InteractionTerms = [1]; % list of order of interactions to include
-RunSpeed = [];
+ExtraVars = [];
 verbose = false;
 Labels = {};
 
@@ -39,8 +39,8 @@ while index<=length(varargin)
             case {'InteractionTerms','Terms'}
                 InteractionTerms = varargin{index+1};
                 index = index + 2;
-            case 'RunSpeed'
-                RunSpeed = varargin{index+1};
+            case 'ExtraVars'
+                ExtraVars = varargin{index+1};
                 index = index + 2;
             case 'verbose'
                 verbose = true;
@@ -69,13 +69,19 @@ if islogical(InteractionTerms) && isequal(InteractionTerms,true)
     Stim = Stim*Stim';
     combinations = num2cell(1:T);
 else
-    [Stim,combinations] = designStimMatrix(Stim,InteractionTerms,RunSpeed);
+    [Stim,combinations] = designStimMatrix(Stim,InteractionTerms,ExtraVars);
 end
 numConds = size(Stim,2);
 
 
 %% Create lagged stimuli
-Stim = lagmatrix(Stim,0:numLags); % create lagged stimuli
+try
+    Stim = lagmatrix(Stim,0:numLags); % create lagged stimuli
+catch
+    Stim = arrayfun(@(x) cat(1,zeros(x,numConds),Stim(1:end-x,:)), 0:numLags, 'UniformOutput', false);
+    Stim = cat(2,Stim{:});
+end
+
 Stim(isnan(Stim)) = 0;
 if constant
     Stim = [ones(T,1),Stim]; % add constant variable (i.e. intercept)
@@ -102,6 +108,10 @@ pred = nan(T,N);
 for n = 1:N
     switch type
         
+        case 'regress'
+            beta(:,n) = regress(Data(:,n),Stim);
+            pred(:,n) = Stim*beta(:,n);
+            
         case 'glmfit'
             [beta(:,n),Dev,Stats] = glmfit(Stim,Data(:,n),Distribution, 'Link', Link, 'B0', beta(:,n), 'Constant', 'off');
             pred(:,n) = Stim*beta(:,n); % compute prediction
@@ -121,6 +131,7 @@ for n = 1:N
     end
 end
 mse = mean((pred-Data).^2); % compute error
+res = Data - pred;
 switch type
     case 'fitnlm'
         Filter = reshape(beta(constant+1:end-1,:),numConds,numLags+1,N); % reshape weights

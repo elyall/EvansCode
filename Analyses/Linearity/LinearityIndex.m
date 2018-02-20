@@ -24,6 +24,10 @@ parfor index = 1:numROIs
     end
 end
 Index = (Actual-Sum)./Sum;
+% Index = Actual./Sum;
+% Index = (Actual-Sum)./(Actual+Sum); % screwed up by negative values
+
+
 
 if verbose
     figure;

@@ -9,7 +9,7 @@ showDataPoints = false;
 showStimStars = true;
 showN = false;
 showPValues = false;
-ErrorBars = 'SE'; % 'SE', 'std', 'var', '95CI', or 'BS95CI'
+ErrorBars = 'BS95CI'; % 'SE', 'std', 'var', '95CI', or 'BS95CI'
 
 % Plot colors & display options
 normalize = false;
