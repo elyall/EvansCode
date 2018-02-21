@@ -1,3 +1,4 @@
+% GLM - time
 
 % Gather data
 [~,order] = sort(M,'descend');

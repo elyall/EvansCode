@@ -12,6 +12,7 @@ Vars = {Vars(:).name};
 
 
 %% Save to file
+fprintf('Saving variables to: %s...',SaveFile);
 if exist(SaveFile,'file') % save to temporary file first, then rename it and overwrite original
     delimeter = strfind(SaveFile,'.');
     delimeter = delimeter(end);
@@ -23,4 +24,4 @@ else
     save(SaveFile, Vars{:}, '-mat', '-v7.3');
     status = true;
 end
-
+fprintf('\tComplete\n');

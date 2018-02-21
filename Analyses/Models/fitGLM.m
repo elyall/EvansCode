@@ -9,8 +9,9 @@ Link = 'identity';       % see: glmfit or fitglm
 % Link = -1;
 beta = [];               % initial coefficients
 constant = true;         % booleon specifying whether to include a constant term or not
+numNonRegressors = 0;
 
-InteractionTerms = [1]; % list of order of interactions to include
+InteractionTerms = false;% list of order of interactions to include
 ExtraVars = [];
 verbose = false;
 Labels = {};
@@ -35,6 +36,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'constant'
                 constant = varargin{index+1};
+                index = index + 2;
+            case 'numNonRegressors'
+                numNonRegressors = varargin{index+1};
                 index = index + 2;
             case {'InteractionTerms','Terms'}
                 InteractionTerms = varargin{index+1};
@@ -63,23 +67,28 @@ if ~exist('numLags','var') || isempty(numLags)
 end
 
 
-%% Create interaction terms
+%% Create stim matrix
+
+% Create interaction terms
 T = size(Stim,1);
 if islogical(InteractionTerms) && isequal(InteractionTerms,true)
     Stim = Stim*Stim';
     combinations = num2cell(1:T);
-else
+elseif ~isequal(InteractionTerms,false)
     [Stim,combinations] = designStimMatrix(Stim,InteractionTerms,ExtraVars);
+else
+    combinations = [];
 end
-numConds = size(Stim,2);
+numConds = size(Stim,2) - numNonRegressors;
 
-
-%% Create lagged stimuli
-try
-    Stim = lagmatrix(Stim,0:numLags); % create lagged stimuli
-catch
-    Stim = arrayfun(@(x) cat(1,zeros(x,numConds),Stim(1:end-x,:)), 0:numLags, 'UniformOutput', false);
-    Stim = cat(2,Stim{:});
+% Create lagged stimuli
+if numLags
+    try
+        Stim = lagmatrix(Stim,0:numLags); % create lagged stimuli
+    catch
+        Stim = arrayfun(@(x) cat(1,zeros(x,size(Stim,2)),Stim(1:end-x,:)), 0:numLags, 'UniformOutput', false);
+        Stim = cat(2,Stim{:});
+    end
 end
 
 Stim(isnan(Stim)) = 0;
@@ -87,17 +96,18 @@ if constant
     Stim = [ones(T,1),Stim]; % add constant variable (i.e. intercept)
 end
 
+
 %% Initialize outputs
 N = size(Data,2);
 mdl = cell(1,N);
-L = size(Stim,2);
+L = size(Stim,2) - numNonRegressors;
 if strcmp(type,'fitnlm')
     L = L+1;
 end
 if isempty(beta)
     beta = zeros(L,N);
-elseif size(beta,1)~=L
-    error('inital weights must be of size # of predictors (%d currently) by 1 (or by N, %d currently)',L,N);
+% elseif size(beta,1)~=L
+%     error('inital weights must be of size # of predictors (%d currently) by 1 (or by N, %d currently)',L,N);
 elseif size(beta,2)~=N
     beta = repmat(beta(:,1),1,N); % use same inital weights for all units
 end
@@ -132,6 +142,7 @@ for n = 1:N
 end
 mse = mean((pred-Data).^2); % compute error
 res = Data - pred;
+
 switch type
     case 'fitnlm'
         Filter = reshape(beta(constant+1:end-1,:),numConds,numLags+1,N); % reshape weights
@@ -144,14 +155,14 @@ end
 if verbose
     for index = 1:N
         if isempty(Labels)
-            Labels = cellfun(@num2str,combinations,'UniformOutput',false);
+%             Labels = cellfun(@num2str,combinations,'UniformOutput',false);
         end
 
         figure;
         subplot(2,2,1);
         if numLags == 0 % Display data values per combination
             Stim = logical(Stim);
-            temp = [{Data(~any(Stim(:,constant+1:end),2),index)}, cellfun(@(ind) Data(ind,index), mat2cell(Stim(:,constant+1:end),T,ones(numConds,1)), 'UniformOutput',false)];
+            temp = [{Data(~any(Stim(:,constant+1:end-numNonRegressors),2),index)}, cellfun(@(ind) Data(ind,index), mat2cell(Stim(:,constant+1:end-numNonRegressors),T,ones(numConds,1)), 'UniformOutput',false)];
             plotSpread(temp,'showMM',1);
             set(gca,'XTick',1:numConds+1,'Xticklabel',[{'none'},Labels],'XTickLabelRotation',90);
             ylabel('Fluorescence');

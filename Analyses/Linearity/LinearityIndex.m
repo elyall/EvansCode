@@ -23,11 +23,18 @@ parfor index = 1:numROIs
         Actual(index,c) = Curves(index,MultIndices(c));
     end
 end
-Index = (Actual-Sum)./Sum;
+
+
+% Index = (Actual-Sum)./Sum;
+% Index = (Actual-Sum)./(Sum-min(Sum(:))+1);
+% Index = (Actual-Sum)./(Sum+1);
 % Index = Actual./Sum;
-% Index = (Actual-Sum)./(Actual+Sum); % screwed up by negative values
+Index = (Actual-Sum)./(Actual+Sum); % screwed up by negative values
 
-
+x = -min([Sum(:);Actual(:)]) + 1;
+temp1 = Actual + x;
+temp2 = Sum + x;
+Index = (temp1-temp2)./(temp1+temp2); % screwed up by negative values
 
 if verbose
     figure;

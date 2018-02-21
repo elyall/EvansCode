@@ -74,6 +74,9 @@ end
 
 %% Label unlabeled ROIs
 for findex = 1:numFiles
+    if ~isfield(ROIs{findex}.rois(1),'label')
+        ROIs{findex}.rois(1).label = '';
+    end
     unlabeledIndex = cellfun(@isempty,{ROIs{findex}.rois(:).label});
     if any(unlabeledIndex)
         [ROIs{findex}.rois(unlabeledIndex).label] = deal({'none'});
@@ -125,7 +128,7 @@ for findex = 1:numFiles
 end
 
 % If cells within cells, pull out and concatenate cells
-while all(cellfun(@iscell,Data))
+while all(cellfun(@iscell,Data)) && all(cellfun(@(x) isequal(size(Data{1}),size(x)), Data(2:end)))
     if all(cellfun(@isrow,Data))
         Data = cat(1,Data{:}); 
     elseif all(cellfun(@iscolumn,Data))

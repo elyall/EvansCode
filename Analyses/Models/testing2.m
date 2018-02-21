@@ -1,3 +1,5 @@
+% GLM -trial
+
 % Gather data
 [~,order] = sort(M,'descend');
 a = Data(order(1),:);
@@ -50,4 +52,21 @@ mdl = fitnlm(x, a, @div_norm, beta0);
 figure
 plot(a,mdl.predict,'.')
 
+
+%% Population
+dindex = 4;
+
+Data = cat(2,StimMean{DataIndex==dindex});
+Data = Data(TrialIndex{dindex},:);
+
+ID = StimID{dindex}(TrialIndex{dindex});
+x = StimLog(ID+1,:);
+
+% b = fitglm(Data,x);
+
+Vec = arrayfun(@(x) mean(Data(ID==x,:)), unique(ID), 'UniformOutput', false);
+Vec = cat(1,Vec{:})';
+
+lenC = dot(Vec(:,7),Vec(:,2))/norm(Vec(:,2));  % EDITED, twice
+C = lenC*Vec(:,2);
 

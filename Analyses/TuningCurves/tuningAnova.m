@@ -94,7 +94,11 @@ PValues = nan(numROIs, 1+numel(StimShape));
 % fid = parfor_progress(numROIs);
 parfor rindex = 1:numROIs
     
-    current = cat(1,Data{rindex,:});          % gather data
+    try
+        current = cat(1,Data{rindex,:});          % gather data
+    catch
+        current = cat(2,Data{rindex,:})';         % gather data
+    end
     group = repelem(1:numStims,N(rindex,:))'; % define grouping (each stimulus is unique)
     if ~isempty(StimShape) % create other groupings
         group = repmat(group,1,3);

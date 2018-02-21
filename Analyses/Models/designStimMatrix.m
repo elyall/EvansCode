@@ -25,7 +25,7 @@ end
 numCombs = numel(combinations);
 
 % Build stimulus matrix
-newStimMat = false(numObs,numCombs-1); % doesn't include the zero term
+newStimMat = zeros(numObs,numCombs-1); % doesn't include the zero term
 for index = 1:numCombs
     if isempty(combinations{index})
         newStimMat(:,index) = ~any(StimMat,2);
