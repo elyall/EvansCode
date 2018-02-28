@@ -7,7 +7,7 @@ y = x(:,1:end-1)*b(1:end-1);
 
 p = y./(1 + b(end) * x(:,end).^2); 
 
-p = exp(y);     % exponential
+% p = exp(y);     % exponential
 % p = y.^2;       % quadratic
 % y(y<0) = 0;     % rectified
 % p = y;          % linear

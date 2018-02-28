@@ -6,6 +6,7 @@ function Labels = genLabels(Labels,StimLog,Index,Label)
 % conditions in Index
 
 N = size(StimLog,1);
+StimLog = logical(StimLog);
 
 Labels = arrayfun(@(x) Labels(StimLog(x,:)), 1:N, 'UniformOutput',false); % gather relevant pieces
 Labels = arrayfun(@(x) sprintf('%s,',Labels{x}{:}), 1:N, 'UniformOutput',false); % concatenate text

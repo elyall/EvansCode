@@ -15,6 +15,7 @@ smoothType = ''; % '', 'moving', 'lowess', 'loess', 'sgolay', 'rlowess', or 'rlo
 
 % Display
 Type = '2Dlines'; % '2Dlines', '3Dlines', or 'image'
+LineWidth = 2;
 spacing = 1;
 XLabel = 'Time (sec)';
 frameRate = 15.45/4;
@@ -30,6 +31,9 @@ while index<=length(varargin)
         switch varargin{index}
             case 'Type'
                 Type = varargin{index+1};
+                index = index + 2;
+            case 'LineWidth'
+                LineWidth = varargin{index+1};
                 index = index + 2;
             case 'ROIindex'
                 ROIindex = varargin{index+1};
@@ -222,7 +226,7 @@ switch Type
         end
         
         % Plot data
-        h = plot(repmat((0:1/frameRate:range(FrameIndex)/frameRate)',1,numROIs),x);
+        h = plot(repmat((0:1/frameRate:range(FrameIndex)/frameRate)',1,numROIs),x,'LineWidth',LineWidth);
         if ~isempty(Colors)
             for rindex = 1:numROIs
                 h(rindex).Color = Colors(rindex,:);

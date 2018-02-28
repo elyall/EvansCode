@@ -1,8 +1,12 @@
-function [Index,Actual,Sum,Indiv] = LinearityIndex(Curves,Stim)
+function [Index,Actual,Sum,Indiv] = LinearityIndex(Curves,Stim,Add)
 % Curves - ROIs x Stim
 % Stim - Stim x Cond
 
 verbose = false;
+
+if ~exist('Add','var')
+    Add = 0;
+end
 
 CondIndex = find(sum(Stim,2)==1);     % determine row location of single stimuli
 [~,X] = find(Stim(sum(Stim,2)==1,:)); % determine column location of single stimuli
@@ -29,11 +33,10 @@ end
 % Index = (Actual-Sum)./(Sum-min(Sum(:))+1);
 % Index = (Actual-Sum)./(Sum+1);
 % Index = Actual./Sum;
-Index = (Actual-Sum)./(Actual+Sum); % screwed up by negative values
+% Index = (Actual-Sum)./(Actual+Sum); % screwed up by negative values
 
-x = -min([Sum(:);Actual(:)]) + 1;
-temp1 = Actual + x;
-temp2 = Sum + x;
+temp1 = Actual + Add;
+temp2 = Sum + Add;
 Index = (temp1-temp2)./(temp1+temp2); % screwed up by negative values
 
 if verbose

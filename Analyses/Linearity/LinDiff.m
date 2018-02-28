@@ -36,7 +36,7 @@ end
 %% Compute linear difference
 numROIs = size(Raw,1);
 numW = sum(StimLog,2);
-StimLog = cellfun(@find, mat2cell(StimLog,ones(32,1),5),'UniformOutput',false);
+StimLog = cellfun(@find, mat2cell(StimLog,ones(size(StimLog,1),1),size(StimLog,2)),'UniformOutput',false);
 Index = find(numW>1);
 numMult = sum(numW>1);
 LinDiff = nan(numROIs,numMult);

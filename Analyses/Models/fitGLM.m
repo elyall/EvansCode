@@ -115,7 +115,7 @@ pred = nan(T,N);
 
 
 %% Fit GLM
-for n = 1:N
+parfor n = 1:N
     switch type
         
         case 'regress'

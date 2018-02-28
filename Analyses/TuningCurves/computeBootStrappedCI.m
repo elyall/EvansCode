@@ -4,7 +4,7 @@ N = 10000;
 ROIs = {};
 ROIindex = [];
 FileIndex = [];
-Type = 'cper';  % 'norm', 'per', 'cper', 'bca', or 'stud' (see: BOOTCI)
+Type = 'per';   % 'norm', 'per', 'cper', 'bca', or 'stud' (see: BOOTCI)
 Seed = 73;      % seed for random # generator
 verbose = false;
 
@@ -86,8 +86,10 @@ if verbose
 end
 parfor ind = 1:numROIs
     for sind = 1:numStim
-        reset(stream); % reset random # generator
-        CI95(:,sind,ind) = bootci(N,{@mean,Raw{ind,sind}},'type',Type,'Options',opts); % bootstrapped confidence intervals of the mean
+        if ~isempty(Raw{ind,sind})
+            reset(stream); % reset random # generator
+            CI95(:,sind,ind) = bootci(N,{@mean,Raw{ind,sind}},'type',Type,'Options',opts); % bootstrapped confidence intervals of the mean
+        end
     end
     if verbose
         parfor_progress(p);

@@ -97,7 +97,7 @@ if isempty(FileIndex)
     FileIndex = ones(numROIs,1); % assume all come from the first file
 end
 FileIDs = unique(FileIndex);
-numFiles = numel(FileIDs);
+% numFiles = numel(FileIDs);
 
 
 %% Pull out data
@@ -123,12 +123,14 @@ end
 
 % Grab relevant data into cell array
 Data = cell(numROIs,1);
-for findex = 1:numFiles
+Exists = cellfun(@(x) isfield(x.rois, FieldName), ROIs(FileIDs));
+FileIDs(~Exists) = [];
+for findex = 1:numel(FileIDs)
     [Data{FileIndex==FileIDs(findex)}] = deal(ROIs{FileIDs(findex)}.rois(ROIindex(FileIndex==FileIDs(findex))).(FieldName)); % deal all data from current file to the cell array
 end
 
 % If cells within cells, pull out and concatenate cells
-while all(cellfun(@iscell,Data)) && all(cellfun(@(x) isequal(size(Data{1}),size(x)), Data(2:end)))
+while all(cellfun(@iscell,Data(:))) && all(cellfun(@(x) isequal(size(Data{1}),size(x)), Data(2:end)))
     if all(cellfun(@isrow,Data))
         Data = cat(1,Data{:}); 
     elseif all(cellfun(@iscolumn,Data))

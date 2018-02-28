@@ -34,9 +34,10 @@ for rindex = 1:numROIs
     else
         current = current(positions(rindex,:));
     end
+    current(isnan(current)) = [];
     
     % shift bottom of curves to 0
-    if isempty(Min);
+    if isempty(Min)
         current = current - min(current);
     else
         current = current - Min(rindex);

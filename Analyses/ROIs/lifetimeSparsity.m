@@ -54,9 +54,8 @@ if exist('StimIndex','var') && ~isempty(StimIndex)
     nS = numel(StimIDs);
     Data = arrayfun(@(x) mean(Data(:,StimIndex==x),2),1:nS,'UniformOutput',false);
     Data = cat(2,Data{:});
-else
-    nS = size(Data,2); % assume each column is it's own trial-averaged stimulus
 end
+nS = sum(~isnan(Data),2); % assume each column is it's own trial-averaged stimulus
 
 % Min-subtract tuning curves
 if isequal(subtractMin,true)
@@ -77,7 +76,7 @@ switch fix
 end
 
 % Compute lifetime sparseness for each ROI
-s = (1-1/nS*sum(Data,2).^2./sum(Data.^2,2))/(1-1/nS);
+s = (1-1./nS.*nansum(Data,2).^2./nansum(Data.^2,2))./(1-1./nS);
 
 
 %% Display results ordered from largest to smallest sparseness
