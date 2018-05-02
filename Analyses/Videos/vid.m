@@ -274,12 +274,12 @@ end
 
 %% Determine color info
 if isempty(CLim)
-    if numel(Images)<1000000
-        CLim = prctile(Images(:), [.01,99.99]);
-    else
-        CLim = prctile(datasample(Images(:),1000000,'Replace',false),[.01,99.99]);
-    end
-%     CLim = [min(Images(:)),max(Images(:))];
+%     if numel(Images)<1000000
+%         CLim = prctile(Images(:), [.01,99.99]);
+%     else
+%         CLim = prctile(datasample(Images(:),1000000,'Replace',false),[.01,99.99]);
+%     end
+    CLim = [min(Images(:)),max(Images(:))];
 end
 
 % Determine colormap
@@ -310,6 +310,12 @@ if ~showColorBar
     Images(Images>N) = N;           % set upper limit to be within colormap
     Images(Images<1) = 1;           % set lower limit to be within colormap
     CMap = [CMap;Color];            % append overlay color to colormap
+    
+%     if N < intmax('uint8')
+%         Images = uint8(Images);
+%     elseif N < intmax('uint16')
+%         Images = uint16(Images);
+%     end
 end
 
 
@@ -349,7 +355,8 @@ end
 fprintf('Writing video: %s...', Filename);
 
 % Open video
-vidObj = VideoWriter(Filename,'Uncompressed AVI');
+% vidObj = VideoWriter(Filename,'Uncompressed AVI');
+vidObj = VideoWriter(Filename,'Motion JPEG AVI');
 set(vidObj, 'FrameRate',frameRate);
 open(vidObj);
 

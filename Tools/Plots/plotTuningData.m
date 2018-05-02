@@ -14,7 +14,7 @@ showDataPoints = false;
 showStimStars = false;
 showN = false;
 showPValues = false;
-ErrorBars = 'SE'; % 'SE', 'std', 'var', '95CI', 'none', or matrix of size [1or2,numStimuli,nROIs]
+ErrorBars = '95CI'; % 'SE', 'std', 'var', '95CI', 'none', or matrix of size [1or2,numStimuli,nROIs]
 
 % Plot colors & display options
 normalize = false;
@@ -96,6 +96,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'XTickLabel'
                 XTickLabel = varargin{index+1};
+                index = index + 2;
+            case {'XTickRot','XTickLabelRotation'}
+                XTickLabelRotation = varargin{index+1};
                 index = index + 2;
             case 'YLabel'
                 YLabel = varargin{index+1};
@@ -287,7 +290,7 @@ for index = 1:numel(ROIindex)
             case 'var'
                 se = cellfun(@var,raw);
             case '95CI'
-                se = 1.96*cellfun(@std,raw); % assumes normally distributed
+                se = 1.96*cellfun(@std,raw)./sqrt(N); % assumes normally distributed
         end
     elseif isnumeric(ErrorBars)
         se = squeeze(ErrorBars(:,StimIndex,rindex));

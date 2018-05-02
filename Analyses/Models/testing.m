@@ -107,8 +107,19 @@ figure; imagesc(f2);
 p2 = mdl.predict;
 mse2 = sum((p2-a').^2)/var(a)
 % y=exp_nonlin(mdl,x);
+R2 = 1-sum((a-p2').^2)/sum((a-mean(a)).^2);
+R = corr(a',p2);
 
 legend({'actual','regression','nlm'});
+
+xx = (0:length(a)-1)/15.46;
+figure;
+plot(xx,a,'LineWidth',1.5);
+hold on
+plot(xx,p2,'LineWidth',1.5);
+xlabel('Time (s)');
+ylabel('Fluorescence (A.U.)');
+legend('Actual','Prediction'); legend boxoff;
 
 %%
 
