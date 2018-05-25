@@ -1,5 +1,7 @@
 function sbxAlignmaster(fname,Depth,rect,Frames)
 
+% rect - [y_top, y_bottom, x_left, x_right]
+
     global info
     
     if ~exist('rect','var')

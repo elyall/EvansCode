@@ -25,7 +25,10 @@ for rindex = 1:numROIs
     if ~iscell(Curves)
         current = Curves(rindex,:);
     else
-        current = Curves{rindex}';
+        current = Curves{rindex};
+        if iscolumn(current)
+            current = current';
+        end
     end
     
     % Keep only region requested
