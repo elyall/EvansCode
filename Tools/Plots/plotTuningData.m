@@ -184,6 +184,10 @@ if saveOut && isempty(saveFile)
     saveOut = false;
 end
 
+if iscell(Data) && showDataPoints && any(cellfun(@isrow,Data)) % needs to be column for cat() call
+    Data = cellfun(@transpose,Data,'UniformOutput',false);
+end
+
 
 %% Determine ROIs to plot
 if ischar(ROIindex) && strcmp(ROIindex, 'all')
