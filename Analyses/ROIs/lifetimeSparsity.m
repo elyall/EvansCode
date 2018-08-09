@@ -70,7 +70,7 @@ end
 
 % Deal with negative values
 switch fix
-    case 'rectify'
+    case {'rectify','abs'}
         Data = abs(Data); % make all negative values positive
     case 'truncate'
         Data(Data<0) = 0; % turn all negative values to 0

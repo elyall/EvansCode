@@ -65,6 +65,10 @@ end
 
 fprintf('Organizing signals to be trial-wise...');
 
+if ischar(ROIdata)
+    load(ROIdata,'ROIdata','-mat');
+end
+
 if ~isfield(ROIdata,'Config')
     warning('ROIdata does not have image ''Config'' struct attached; assuming numDepths=1 & frameRate=15.49');
     ROIdata.Config.Depth = 1;
@@ -99,7 +103,7 @@ numTrials = numel(TrialIndex);
 % Determine frame indices for each trial
 numFramesBefore = round(secondsBefore*ROIdata.Config.FrameRate);
 numFramesAfter = round(secondsAfter*ROIdata.Config.FrameRate);
-depthID = idDepth(ROIdata.Config,[],'Depth',ROIdata.depth);
+depthID = idDepth(ROIdata.Config,[],'Depth',ROIdata.depth);    % pull out frame indices for depth of current ROIdata struct
 numFramesBefore = round(numFramesBefore/ROIdata.Config.Depth);
 numFramesAfter = round(numFramesAfter/ROIdata.Config.Depth);
 
