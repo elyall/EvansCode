@@ -6,7 +6,7 @@ saveOut = false;
 saveFile = ''; % filename to save plots to
 
 StimIndex = [1,inf];
-Grouping = [];
+Grouping = []; % cell array that where each cell contains x-coordinates of data points corresponding to that line object 
 PValues = [];
 
 % Items to display
@@ -17,6 +17,7 @@ showPValues = false;
 ErrorBars = '95CI'; % 'SE', 'std', 'var', '95CI', 'none', or matrix of size [1or2,numStimuli,nROIs]
 
 % Plot colors & display options
+PlotType = 'normal'; % 'normal' or 'polar'
 normalize = false;
 Colors = {'r'};
 labelAxes = true;
@@ -81,6 +82,9 @@ while index<=length(varargin)
                 index = index + 1;
             case 'ErrorBars'
                 ErrorBars = varargin{index+1};
+                index = index + 2;
+            case 'PlotType'
+                PlotType = varargin{index+1};
                 index = index + 2;
             case 'normalize'
                 normalize = varargin{index+1};
@@ -237,6 +241,10 @@ numStimuli = numel(StimIndex);
 if isempty(Grouping)
     Grouping = mat2cell(1:numStimuli,1,ones(1,numStimuli));
 end
+if strcmp(PlotType,'polar') % set last data point to 360
+    temp = 360/max(cellfun(@max,Grouping));
+    theta = cellfun(@(x) x*temp, Grouping, 'UniformOutput', false);
+end
 
 %% Determine plotting colors
 if ischar(Colors)
@@ -258,15 +266,20 @@ h = nan(numStimuli,numel(ROIindex));
 for index = 1:numel(ROIindex)
     rindex = ROIindex(index);
     
-%     % Fix Label
-%     if ~isfield(rois, 'label') || isempty(rois(rindex).label)
-%         rois(rindex).label = {'none'};
-%     end
+    %     % Fix Label
+    %     if ~isfield(rois, 'label') || isempty(rois(rindex).label)
+    %         rois(rindex).label = {'none'};
+    %     end
     
     % Select axes
     if isnumeric(hA(AxesIndex(index))) && isnan(hA(AxesIndex(index)))
         hF = figure();
-        hA(AxesIndex(index)) = axes();
+        switch PlotType
+            case 'normal'
+                hA(AxesIndex(index)) = axes();
+            case 'polar'
+                hA(AxesIndex(index)) = polaraxes();
+        end
     else
         axes(hA(AxesIndex(index)));
         hF = get(hA(AxesIndex(index)), 'Parent');
@@ -314,41 +327,172 @@ for index = 1:numel(ROIindex)
         se = se/normalize(index);
     end
     
-    % Plot tuning
-    for s = 1:numel(Grouping)
-        if isempty(se)
-            h(s,index) = plot(Grouping{s},data(Grouping{s}),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
-        elseif size(se,1)==1
-            h(s,index) = errorbar(Grouping{s},data(Grouping{s}),se(Grouping{s}),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
-        else
-            h(s,index) = errorbar(Grouping{s},data(Grouping{s}),se(1,Grouping{s}),se(2,Grouping{s}),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
-        end
-    end
-    
-    % Plot each trial's average dF/F for each stimulus
-    if showDataPoints
-        plotSpread(cat(1,raw{:}),'distributionIdx',repelem(1:numStimuli,cellfun(@numel,raw))','binWidth',0.4,'distributionColors',[.5,.5,.5]) %plot raw data points for all stimuli        for s = 1:numStimuli
-    end
-    
-    % Set axes: limits, ticks, & labels
-    if ~isempty(YLim)
-        if isnumeric(YLim)
-            ylim(YLim);
-        elseif ischar(YLim)
-            axis(YLim);
-        end
-    end
-    if ~isempty(XTick) && isempty(XTickLabel)
-        set(gca,'XTick',XTick);
-    else
-        set(gca,'XTick',XTick,'XTickLabel',XTickLabel)
-    end
-    xlim([0,numStimuli+1]);
-    set(gca,'XTickLabelRotation',XTickLabelRotation);
-    if labelAxes
-        xlabel('Stimulus');
-        ylabel(YLabel);
-    end
+    switch PlotType
+        
+        case 'normal'
+            
+            % Plot tuning
+            for s = 1:numel(Grouping)
+                if isempty(se)
+                    h(s,index) = plot(Grouping{s},data(Grouping{s}),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
+                elseif size(se,1)==1
+                    h(s,index) = errorbar(Grouping{s},data(Grouping{s}),se(Grouping{s}),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
+                else
+                    h(s,index) = errorbar(Grouping{s},data(Grouping{s}),se(1,Grouping{s}),se(2,Grouping{s}),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
+                end
+            end
+            
+            % Plot each trial's average dF/F for each stimulus
+            if showDataPoints
+                plotSpread(cat(1,raw{:}),'distributionIdx',repelem(1:numStimuli,cellfun(@numel,raw))','binWidth',0.4,'distributionColors',[.5,.5,.5]) %plot raw data points for all stimuli        for s = 1:numStimuli
+            end
+            
+            % Set axes: limits, ticks, & labels
+            if ~isempty(YLim)
+                if isnumeric(YLim)
+                    ylim(YLim);
+                elseif ischar(YLim)
+                    axis(YLim);
+                end
+            end
+            if ~isempty(XTick) && isempty(XTickLabel)
+                set(gca,'XTick',XTick);
+            else
+                set(gca,'XTick',XTick,'XTickLabel',XTickLabel)
+            end
+            xlim([0,numStimuli+1]);
+            set(gca,'XTickLabelRotation',XTickLabelRotation);
+            if labelAxes
+                xlabel('Stimulus');
+                ylabel(YLabel);
+            end
+            
+            % Plot stars for stimuli that evoked a significant response
+            if showStimStars
+                Ydim = get(gca,'YLim');
+                for s = find(p<.05)
+                    text(s,Ydim(2)-(Ydim(2)-Ydim(1))/10,'*','Color',[0,1,1],'FontSize',15,'HorizontalAlignment','center'); %display significance star
+                end
+            end
+            
+            % Display number of trials per average
+            if showN
+                Ydim = get(gca,'YLim');
+                for s = 1:numStimuli
+                    text(s,Ydim(1)+(Ydim(2)-Ydim(1))/10,sprintf('n=%d',N(s)),'HorizontalAlignment','center');
+                end
+            end
+            
+            % Display p-values
+            if showPValues
+                Ydim = get(gca,'YLim');
+                for s = 1:numStimuli
+                    text(s,Ydim(1)+(Ydim(2)-Ydim(1))/20,sprintf('p=%.3f',p(s)),'HorizontalAlignment','center');
+                end
+            end
+            
+            % Plot lines
+            if ~isempty(HorzLines)
+                XLim = get(gca,'XLim');
+                for l = 1:numel(HorzLines)
+                    plot(XLim, [HorzLines(l) HorzLines(l)], 'k-');
+                end
+                temp = get(gca,'Children');
+                set(gca,'Children',temp([2:end,1]));
+                set(gca,'XLim',XLim);
+            end
+            if ~isempty(VertLines)
+                YLim = get(gca,'YLim');
+                for l = 1:numel(VertLines)
+                    plot([VertLines(l) VertLines(l)], YLim, 'k--');
+                end
+                set(gca,'YLim',YLim);
+            end
+            
+        case {'polar','circ','circular'}
+            
+            % Plot tuning
+            for s = 1:numel(Grouping)
+%                 if isempty(se)
+                    h(s,index) = polarplot(theta{s},data(Grouping{s}),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
+%                 elseif size(se,1)==1
+%                     h(s,index) = errorbar(Grouping{s},data(Grouping{s}),se(Grouping{s}),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
+%                 else
+%                     h(s,index) = errorbar(Grouping{s},data(Grouping{s}),se(1,Grouping{s}),se(2,Grouping{s}),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
+%                 end
+            end
+            
+            % Plot each trial's average dF/F for each stimulus
+            if showDataPoints
+                for s = 1:numel(raw)
+                    polarscatter(theta{s}*ones(numel(raw{s}),1),raw{s},5,[.5,.5,.5],'.');
+                end
+            end
+            
+            % Set axes: limits, ticks, & labels
+            if ~isempty(YLim)
+                if isnumeric(YLim)
+                    rlim(YLim);
+                elseif ischar(YLim)
+                    axis(YLim);
+                end
+            end
+            if ~isempty(XTick) && isempty(XTickLabel)
+                thetaticks(XTick);
+            else
+                thetaticks(XTick);
+                thetaticklabels(XTickLabel);
+            end
+            % thetalim([0,360]);
+            % set(gca,'XTickLabelRotation',XTickLabelRotation);
+            % if labelAxes
+            %     xlabel('Stimulus');
+            %     ylabel(YLabel);
+            % end
+            
+%             % Plot stars for stimuli that evoked a significant response
+%             if showStimStars
+%                 Ydim = get(gca,'YLim');
+%                 for s = find(p<.05)
+%                     text(s,Ydim(2)-(Ydim(2)-Ydim(1))/10,'*','Color',[0,1,1],'FontSize',15,'HorizontalAlignment','center'); %display significance star
+%                 end
+%             end
+%             
+%             % Display number of trials per average
+%             if showN
+%                 Ydim = get(gca,'YLim');
+%                 for s = 1:numStimuli
+%                     text(s,Ydim(1)+(Ydim(2)-Ydim(1))/10,sprintf('n=%d',N(s)),'HorizontalAlignment','center');
+%                 end
+%             end
+%             
+%             % Display p-values
+%             if showPValues
+%                 Ydim = get(gca,'YLim');
+%                 for s = 1:numStimuli
+%                     text(s,Ydim(1)+(Ydim(2)-Ydim(1))/20,sprintf('p=%.3f',p(s)),'HorizontalAlignment','center');
+%                 end
+%             end
+%             
+%             % Plot lines
+%             if ~isempty(HorzLines)
+%                 XLim = get(gca,'XLim');
+%                 for l = 1:numel(HorzLines)
+%                     plot(XLim, [HorzLines(l) HorzLines(l)], 'k-');
+%                 end
+%                 temp = get(gca,'Children');
+%                 set(gca,'Children',temp([2:end,1]));
+%                 set(gca,'XLim',XLim);
+%             end
+%             if ~isempty(VertLines)
+%                 YLim = get(gca,'YLim');
+%                 for l = 1:numel(VertLines)
+%                     plot([VertLines(l) VertLines(l)], YLim, 'k--');
+%                 end
+%                 set(gca,'YLim',YLim);
+%             end
+            
+    end %switch PlotType
     
     % Set Title
     if isequal(Title{AxesIndex(index)}, true)
@@ -357,49 +501,7 @@ for index = 1:numel(ROIindex)
     if ~isempty(Title{AxesIndex(index)})
         title(Title{AxesIndex(index)});
     end
-    
-    % Plot stars for stimuli that evoked a significant response
-    if showStimStars
-        Ydim = get(gca,'YLim');
-        for s = find(p<.05)
-            text(s,Ydim(2)-(Ydim(2)-Ydim(1))/10,'*','Color',[0,1,1],'FontSize',15,'HorizontalAlignment','center'); %display significance star
-        end
-    end
-    
-    % Display number of trials per average
-    if showN
-        Ydim = get(gca,'YLim');
-        for s = 1:numStimuli
-            text(s,Ydim(1)+(Ydim(2)-Ydim(1))/10,sprintf('n=%d',N(s)),'HorizontalAlignment','center');
-        end
-    end
-    
-    % Display p-values
-    if showPValues
-        Ydim = get(gca,'YLim');
-        for s = 1:numStimuli
-            text(s,Ydim(1)+(Ydim(2)-Ydim(1))/20,sprintf('p=%.3f',p(s)),'HorizontalAlignment','center');
-        end
-    end
-    
-    % Plot lines
-    if ~isempty(HorzLines)
-        XLim = get(gca,'XLim');
-        for l = 1:numel(HorzLines)
-            plot(XLim, [HorzLines(l) HorzLines(l)], 'k-');
-        end
-        temp = get(gca,'Children');
-        set(gca,'Children',temp([2:end,1]));
-        set(gca,'XLim',XLim);
-    end
-    if ~isempty(VertLines)
-        YLim = get(gca,'YLim');
-        for l = 1:numel(VertLines)
-            plot([VertLines(l) VertLines(l)], YLim, 'k--');
-        end
-        set(gca,'YLim',YLim);
-    end
-    
+            
     hold off
     
     % Save plot to PDF
