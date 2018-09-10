@@ -207,8 +207,8 @@ if showavgs
     AvgStim = zeros(numStimuli*avgPixelHeight, size(Data, 2));
     AvgStimuliFrames = [];
     for sindex = 1:numStimuli
-        AvgStim((sindex-1)*avgPixelHeight+1:(sindex-1)*avgPixelHeight+avgPixelHeight, :) = repmat(mean(Data(TrialID==sindex, :), 1), avgPixelHeight, 1);
-        AvgStimuliFrames = cat(1, AvgStimuliFrames, repmat(mode(StimFrames(TrialID==sindex, :), 1), avgPixelHeight, 1));
+        AvgStim((sindex-1)*avgPixelHeight+1:(sindex-1)*avgPixelHeight+avgPixelHeight, :) = repmat(mean(Data(StimIndex==sindex, :), 1), avgPixelHeight, 1);
+        AvgStimuliFrames = cat(1, AvgStimuliFrames, repmat(mode(StimFrames(StimIndex==sindex, :), 1), avgPixelHeight, 1));
     end
     
     % Add average stimuli to matrix to display
@@ -227,7 +227,7 @@ if showavgs
         blockLength = repmat(avgPixelHeight, numStimuli,1);
         StimFrames = AvgStimuliFrames;
         if ~isnan(ControlID)
-            ylabels = [{'no contact'}, cellstr([num2str(StimIndex(~ismember(StimIndex, ControlID))), repmat(' avg', numStimuli-1,1)])];
+            ylabels = [{'no contact'}, cellstr([num2str(setdiff(StimOrder,ControlID)'), repmat(' avg', numStimuli-1,1)])'];
         else
             ylabels = cellstr([num2str(StimIndex), repmat(' avg', numStimuli,1)]);
         end

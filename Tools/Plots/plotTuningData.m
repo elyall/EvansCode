@@ -242,8 +242,8 @@ if isempty(Grouping)
     Grouping = mat2cell(1:numStimuli,1,ones(1,numStimuli));
 end
 if strcmp(PlotType,'polar') % set last data point to 360
-    temp = 360/max(cellfun(@max,Grouping));
-    theta = cellfun(@(x) x*temp, Grouping, 'UniformOutput', false);
+    theta = linspace(0,360,numStimuli+1);
+    theta = theta(1:end-1);
 end
 
 %% Determine plotting colors
@@ -414,7 +414,7 @@ for index = 1:numel(ROIindex)
             % Plot tuning
             for s = 1:numel(Grouping)
 %                 if isempty(se)
-                    h(s,index) = polarplot(theta{s},data(Grouping{s}),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
+                    h(s,index) = polarplot(deg2rad(theta(Grouping{s})),data(Grouping{s}),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
 %                 elseif size(se,1)==1
 %                     h(s,index) = errorbar(Grouping{s},data(Grouping{s}),se(Grouping{s}),'Color',Colors{s},'LineStyle','-','LineWidth',BarWidth,'Marker','.','MarkerSize',MarkerSize);
 %                 else
@@ -425,7 +425,7 @@ for index = 1:numel(ROIindex)
             % Plot each trial's average dF/F for each stimulus
             if showDataPoints
                 for s = 1:numel(raw)
-                    polarscatter(theta{s}*ones(numel(raw{s}),1),raw{s},5,[.5,.5,.5],'.');
+                    polarscatter(deg2rad(theta(s))*ones(numel(raw{s}),1),raw{s},5,[.5,.5,.5],'.');
                 end
             end
             
@@ -437,10 +437,12 @@ for index = 1:numel(ROIindex)
                     axis(YLim);
                 end
             end
-            if ~isempty(XTick) && isempty(XTickLabel)
-                thetaticks(XTick);
+            if isempty(XTick)
+                thetaticks(theta);
             else
                 thetaticks(XTick);
+            end
+            if ~isempty(XTickLabel)
                 thetaticklabels(XTickLabel);
             end
             % thetalim([0,360]);
