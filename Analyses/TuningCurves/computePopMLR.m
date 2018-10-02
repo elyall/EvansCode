@@ -1,7 +1,7 @@
 function [Weights, confusionMatrix, stats] = computePopMLR(Data, StimIndex, varargin)
 % Data is numROIs by numTrials
 
-numKFolds = 4;
+numKFolds = 5;
 numRepeats = 1;
 % ControlID = [];
 
@@ -106,7 +106,7 @@ for n = 1:numRepeats
     % Compute MLR
     currentWeights = zeros(numROIs+1, numStims-1, numKFolds);
     predictions = nan(N,numKFolds);
-    parfor k = 1:numKFolds
+    for k = 1:numKFolds
         
         % Compute logistic regression
         [currentWeights(:,:,k),~,stats] = mnrfit(Data(:,KFoldIndices~=k)', StimIndex(KFoldIndices~=k));
