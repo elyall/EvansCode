@@ -59,9 +59,6 @@ end
 %% Load in ROIs
 if ischar(ROIMasks)
     ROIFile = ROIMasks;
-    if saveOut && isempty(saveFile)
-        saveFile = ROIFile;
-    end
     [~,~,ext] = fileparts(ROIFile);
     switch ext
         case '.rois'
@@ -97,6 +94,10 @@ if ischar(MapOrig)
     MapOrig = Map;
 end
 if ischar(MapEnd)
+    if saveOut && isempty(saveFile) && exist('ext','var')
+        [p,f,~] = fileparts(MapEnd);
+        saveFile = fullfile(p,[f,ext]);
+    end
     load(MapEnd, 'Map', '-mat');
     MapEnd = Map;
 end
