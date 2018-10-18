@@ -328,11 +328,12 @@ function sbxAlignmaster(fname,Depth,rect,Frames)
 
     if Depth==1
         T = cat(1,zeros(1,2),T); % add back values for first frame that was ignored
+        Frames = [1,Frames];
     end
     
     try
 
-        save([fname,str,'.align'],'m','v','thestd','sm','k','T','Q','-append');
+        save([fname,str,'.align'],'m','v','thestd','sm','k','T','Q','Frames','-append');
 
     catch
 
@@ -344,7 +345,7 @@ function sbxAlignmaster(fname,Depth,rect,Frames)
 
     tic;
 
-    sbxComputeci(fname,Depth); %Takes about 10 minutes, eats up a ton of RAM
+    sbxComputeci(fname,Depth,Frames); %Takes about 10 minutes, eats up a ton of RAM
 
     toc;
 

@@ -1,4 +1,4 @@
-function [] = sbxComputeci(fname,Depth,rect)
+function [] = sbxComputeci(fname,Depth,rect,Frames)
 
 
     if ~exist('rect','var')
@@ -21,10 +21,13 @@ function [] = sbxComputeci(fname,Depth,rect)
         str = '';
     end
     
-    Frames = idDepth([fname,'.sbx'],[],'Depth',Depth);    
-    if Depth==1
-        Frames(1) = []; % throw out very first frame as it's incomplete and not at the right depth
+    if ~exist('Frames','var') || isempty(Frames)
+        Frames = idDepth([fname,'.sbx'],[],'Depth',Depth);
+    else
+        Frames = idDepth([fname,'.sbx'],[],'Depth',Depth,'Frames',Frames,'IndexType','absolute');
     end
+    Frames(Frames==1) = []; % throw out very first frame as it's wrong (blank row in T added in at end)
+
 
     %%
     global info
