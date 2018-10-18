@@ -157,7 +157,7 @@ for rindex = ROIindex
         % Save tuning curves
         ROIdata.rois(rindex).curve(sindex) = mean(StimulusDFoF);                             % mean evoked dF/F over all trials for current stimulus
         ROIdata.rois(rindex).StdError(sindex) = std(StimulusDFoF)/sqrt(numel(StimulusDFoF)); % standard error of the mean
-%         ROIdata.rois(rindex).CI95(:,sindex) = bootci(10000,{@mean,StimulusDFoF},'type','bca'); % bootstrapped confidence intervals of the mean
+        ROIdata.rois(rindex).CI95(:,sindex) = bootci(10000,{@mean,StimulusDFoF},'type','bca'); % bootstrapped confidence intervals of the mean
         ROIdata.rois(rindex).Raw{sindex} = StimulusDFoF;
         ROIdata.rois(rindex).nTrials(sindex) = numel(StimulusDFoF);
         

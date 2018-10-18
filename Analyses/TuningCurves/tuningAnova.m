@@ -92,7 +92,7 @@ N = cellfun(@numel,Data); % determine # of trials for each stimulus
 % Compute significance
 PValues = nan(numROIs, 1+numel(StimShape));
 % fid = parfor_progress(numROIs);
-parfor rindex = 1:numROIs
+for rindex = 1:numROIs
     
     try
         current = cat(1,Data{rindex,:});          % gather data
