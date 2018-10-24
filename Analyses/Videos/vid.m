@@ -73,8 +73,8 @@ while index<=length(varargin)
                 Color = varargin{index+1};
                 index = index + 2;
             case {'ColorBar','Colorbar','colorbar','showColorbar'}
-                showColorBar = true;
-                index = index + 1;
+                showColorBar = varargin{index+1};
+                index = index + 2;
             case 'cbLabel'
                 cbLabel = varargin{index+1};
                 index = index + 2;

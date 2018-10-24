@@ -22,7 +22,7 @@ StimFrameIndex = [];        % numStim x 2 array specifying frame indices of firs
 % Overlays & colorbar
 Text = {};                  % cell array of text to overlay
 TextIndex = [];             % array of length numFrames indexing which text to display on each frame
-FontSize = 30;              % scalar specifying size of text
+FontSize = 20;              % scalar specifying size of text
 Color = [1,1,1];            % color of overlays
 showColorBar = false;       % whether to display the colorbar
 cbLabel = 'dF/F'; 
