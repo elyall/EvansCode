@@ -328,7 +328,7 @@ function sbxAlignmaster(fname,Depth,rect,Frames)
 
     if Depth==1
         T = cat(1,zeros(1,2),T); % add back values for first frame that was ignored
-        Frames = [1,Frames];
+        Frames = [[1;0],Frames];
     end
     
     try
@@ -345,7 +345,7 @@ function sbxAlignmaster(fname,Depth,rect,Frames)
 
     tic;
 
-    sbxComputeci(fname,Depth,Frames); %Takes about 10 minutes, eats up a ton of RAM
+    sbxComputeci(fname,Depth,Frames(1,:)); %Takes about 10 minutes, eats up a ton of RAM
 
     toc;
 
