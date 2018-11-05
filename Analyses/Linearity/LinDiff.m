@@ -41,7 +41,9 @@ Index = find(numW>1);
 numMult = sum(numW>1);
 LinDiff = nan(numROIs,numMult);
 CI = nan(numROIs,2,numMult);
-p = parfor_progress(numMult*numROIs);
+if verbose
+    p = parfor_progress(numMult*numROIs);
+end
 for s = 1:numMult
     if numW(Index(s))==2
         func = @(x,y,z) z-(x+y);
@@ -54,10 +56,14 @@ for s = 1:numMult
     end
     parfor r = 1:numROIs
         [LinDiff(r,s),CI(r,:,s)] = BootStrap(N,func,[Raw(r,StimLog{Index(s)}+1),Raw(r,Index(s))],'alpha',alpha);
-        parfor_progress(p);
+        if verbose
+            parfor_progress(p);
+        end
     end
 end
-parfor_progress(p,0);
+if verbose
+    parfor_progress(p,0);
+end
 
 %% Plot results
 if verbose
