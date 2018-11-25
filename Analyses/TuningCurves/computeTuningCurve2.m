@@ -5,10 +5,10 @@ function [Curve, SE, stats, Raw, Trials, outliers] = computeTuningCurve2(Data, S
 ROIindex = [1,inf];
 TrialIndex = [1,inf];
 
-DetermineOutliers = false;
+DetermineOutliers = true;
 ControlID = 0; % StimID of control trials, or '[]' if no control trial
 StimIDs = [];
-
+verbose = false;
 % saveOut = false;
 % saveFile = '';
 
@@ -40,6 +40,9 @@ while index<=length(varargin)
 %             case {'SaveFile', 'saveFile'}
 %                 saveFile = varargin{index+1};
 %                 index = index + 2;
+            case 'verbose'
+                verbose = varargin{index+1};
+                index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
                 index = index + 1;
@@ -113,13 +116,13 @@ Data = Data(ROIindex,:);
 
 % Determine outliers for each stimulus
 if DetermineOutliers
-    fprintf('Determining outliers...');
+    if verbose; fprintf('Determining outliers...'); end
     outliers = false(numROIs,numTrials);
     for rindex = 1:numROIs
         outliers(rindex,:) = determineOutliers(Data(rindex,:),'GroupID',StimIndex,'type','medianRule');
     end
     Data(outliers) = nan; % remove outliers from dataset
-    fprintf('\tComplete\n');
+    if verbose; fprintf('\tComplete\n'); end
 else
     outliers = [];
 end
@@ -134,14 +137,16 @@ end
 
 
 %% Calculate average response for each stimulus
-fprintf('Computing tuning curves...');
+if verbose; fprintf('Computing tuning curves...'); end;
 
 % Compute tuning curves
 Trials = arrayfun(@(x) TrialIndex(StimIndex==x), StimIDs, 'UniformOutput',false); % determine trial IDs used for each stim
 Raw = arrayfun(@(x) mat2cell(Data(:,StimIndex==x),ones(numROIs,1),nnz(StimIndex==x)), StimIDs, 'UniformOutput',false); % gather data points
+% CI95 = cellfun(@(x) bootci(10000,{@nanmean,x},'type','bca'), Raw); % untested
 Raw = cat(2,Raw{:});
 Curve = cellfun(@nanmean, Raw);                         % compute tuning curve
 SE = cellfun(@(x) nanstd(x)/sqrt(sum(~isnan(x))), Raw); % compute standard error
+
 
 % Compute whether each stim is significantly driven
 if ControlID
@@ -164,7 +169,7 @@ for u = 1:numROIs
     end
 end
         
-fprintf('\tComplete\n');
+if verbose; fprintf('\tComplete\n'); end;
 
 % 
 % %% Save to file

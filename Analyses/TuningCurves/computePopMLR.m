@@ -71,7 +71,7 @@ else
     end
     if ~isempty(TrialIndex)
         Data = Data(:,TrialIndex);
-        StimIndex = StimIndex(TrialIndex);
+        StimIndex = StimIndex(TrialIndex,:);
     end
 end
 [numROIs,numTrials] = size(Data);
@@ -83,8 +83,9 @@ end
 % StimIndex(StimIndex==ControlID) = max(StimIndex) + 1;
 
 % Determine stimuli indices
-[StimIDs,~,StimIndex] = unique(StimIndex);
-numStims = numel(StimIDs);
+numS = size(StimIndex,2);
+[StimIDs,~,Index] = unique(StimIndex,'rows');
+numStims = size(StimIDs,1);
 
 
 %% Perform analysis
@@ -99,29 +100,29 @@ for n = 1:numRepeats
 %     warning('off', 'MATLAB:nearlySingularMatrix');
     
     % Determine indices for k-means cross validation
-    KFoldIndices = crossvalind('KFold', StimIndex, numKFolds);
+    KFoldIndices = crossvalind('KFold', Index, numKFolds);
     numPerFold = arrayfun(@(x) nnz(KFoldIndices==x), 1:numKFolds);
     N = max(numPerFold);
     
     % Compute MLR
     currentWeights = zeros(numROIs+1, numStims-1, numKFolds);
-    predictions = nan(N,numKFolds);
+    predictions = nan(N,numKFolds,numS);
     for k = 1:numKFolds
         
         % Compute logistic regression
-        [currentWeights(:,:,k),~,stats] = mnrfit(Data(:,KFoldIndices~=k)', StimIndex(KFoldIndices~=k));
+        [currentWeights(:,:,k),~,stats] = mnrfit(Data(:,KFoldIndices~=k)', StimIndex(KFoldIndices~=k,:));
         
         % Validate & generate confusion matrix
         pihat = mnrval(currentWeights(:,:,k), Data(:,KFoldIndices==k)', stats);
         [~,est] = max(pihat,[],2); % determine best guess for each test trial
-        predictions(:,k) = [est;nan(N-numPerFold(k),1)];
+        predictions(:,k,:) = [est;nan(N-numPerFold(k),1)];
         
         parfor_progress;
     end
     
-    pred = zeros(numTrials,1); % reorder predictions to match StimIndex
+    pred = zeros(numTrials,numS); % reorder predictions to match StimIndex
     for k = 1:numKFolds
-        pred(KFoldIndices==k) = predictions(1:numPerFold(k),k);
+        pred(KFoldIndices==k,:) = predictions(1:numPerFold(k),k,:);
     end
     confusionMatrix(:,:,n) = confusionmat(pred,StimIndex); % compute confusion matrix
     Weights(:,:,n) = mean(currentWeights,3);               % take mean of weights over k-folds
