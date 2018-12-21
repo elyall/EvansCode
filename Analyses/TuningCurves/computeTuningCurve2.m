@@ -137,7 +137,7 @@ end
 
 
 %% Calculate average response for each stimulus
-if verbose; fprintf('Computing tuning curves...'); end;
+if verbose; fprintf('Computing tuning curves...'); end
 
 % Compute tuning curves
 Trials = arrayfun(@(x) TrialIndex(StimIndex==x), StimIDs, 'UniformOutput',false); % determine trial IDs used for each stim
@@ -169,7 +169,7 @@ for u = 1:numROIs
     end
 end
         
-if verbose; fprintf('\tComplete\n'); end;
+if verbose; fprintf('\tComplete\n'); end
 
 % 
 % %% Save to file

@@ -1,8 +1,11 @@
-function [Curves, SE, LD, CI, order] = nullTuningAndLD(Data, StimID, StimLog, varargin)
+function [Curves, SE, p, LD, CI, order] = nullTuningAndLD(Data, StimID, StimLog, varargin)
 
 TrialIndex = [1,inf];
 numIters = 100;
-numBoot = 100;
+numBoot = 500;
+
+saveOut = false;
+saveFile = '';
 
 %% Parse input data
 index = 1;
@@ -18,6 +21,12 @@ while index<=length(varargin)
             case 'numBoot'
                 numBoot = varargin{index+1};
                 index = index + 2;
+            case {'Save','save','saveOut'}
+                saveOut = varargin{index+1};
+                index = index + 2;
+            case 'saveFile'
+                saveFile = varargin{index+1};
+                index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
                 index = index + 1;
@@ -30,6 +39,7 @@ end
         
 %% Load in data
 if ischar(Data)
+    saveFile = [Data(1:end-4),'null'];
     load(Data,'ROIdata','-mat');
     Data = ROIdata;
 end
@@ -64,6 +74,7 @@ numMW = nnz(sum(StimLog,2)>1);
 [numROIs,numTrials] = size(Data);
 Curves = nan(numROIs,numStims,numIters);
 SE = nan(numROIs,numStims,numIters); %SE = nan(numROIs,2,numStims,numIters);
+p = nan(numROIs,numStims,numIters);
 LD = nan(numROIs,numMW,numIters);
 CI = nan(numROIs,2,numMW,numIters);
 order = nan(numTrials,numIters);
@@ -74,10 +85,22 @@ for ind = 1:numIters
     current = StimID(order(:,ind));
     
     % Compute tuning
-    [Curves(:,:,ind), SE(:,:,ind), ~, Raw] = computeTuningCurve2(Data, current, 'verbose', false);
+    [Curves(:,:,ind), SE(:,:,ind), temp, Raw] = computeTuningCurve2(Data, current, 'verbose', false);
+    p(:,:,ind) = temp.driven_p_corr;
     
     % Compute linear difference
     [LD(:,:,ind), CI(:,:,:,ind)] = LinDiff(Raw,StimLog,'N',numBoot);
     
 end
+
+
+%% Save ouput
+if saveOut && ~isempty(saveFile)
+    if exist(saveFile,'file')
+        save(saveFile,'C','SE','p','pLD','pCI','ord','-append');
+    else
+        save(saveFile,'C','SE','p','pLD','pCI','ord','-v7.3');
+    end
+end
+
 

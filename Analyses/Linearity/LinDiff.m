@@ -41,14 +41,9 @@ Index = find(numW>1);
 numMult = sum(numW>1);
 LinDiff = nan(numROIs,numMult);
 CI = nan(numROIs,2,numMult);
-if N==0
-    Curves = cellfun(@nanmean, Raw);
-end
-if verbose
-    p = parfor_progress(numMult*numROIs);
-end
-for s = 1:numMult
-    if N~=0
+if verbose; p = parfor_progress(numMult*numROIs); end
+if N~=0
+    parfor s = 1:numMult
         if numW(Index(s))==2
             func = @(x,y,z) z-(x+y);
         elseif numW(Index(s))==3
@@ -58,19 +53,19 @@ for s = 1:numMult
         elseif numW(Index(s))==5
             func = @(u,v,w,x,y,z) z-(u+v+w+x+y);
         end
-        parfor r = 1:numROIs
+        for r = 1:numROIs
             [LinDiff(r,s),CI(r,:,s)] = BootStrap(N,func,[Raw(r,StimLog{Index(s)}+1),Raw(r,Index(s))],'alpha',alpha);
-            %         if verbose
-            %             parfor_progress(p);
-            %         end
+            %             if verbose; parfor_progress(p); end
         end
-    else
+    end
+else
+    Curves = cellfun(@nanmean, Raw);
+    parfor s = 1:numMult
         LinDiff(:,s) = Curves(:,Index(s)) - sum(Curves(:,StimLog{Index(s)}+1),2);
     end
 end
-if verbose
-    parfor_progress(p,0);
-end
+if verbose; parfor_progress(p,0); end
+
 
 %% Plot results
 if verbose
