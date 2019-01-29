@@ -93,9 +93,17 @@ if isempty(MCdataIndex) % build dictionary
     numMCFiles = numel(MCdata);
     numDataFiles = numel(unique(loadObj.FrameIndex(FrameIndex,1)));
     if numMCFiles ~= numDataFiles*numDepths
-        error('Specify MCdata object dictionary');
+        MCFiles = {MCdata.FullFilename};
+        ImgFiles = {loadObj.files.FullFilename};
+        try
+            MCdataIndex = cellfun(@(x) find(contains(MCFiles,x)),ImgFiles)';
+            MCdataIndex = cat(2,MCdataIndex,ones(size(MCdataIndex,1),1)); % assumes first depth
+        catch
+            error('Specify MCdata object dictionary');
+        end
+    else % assume they match in order they are given
+        MCdataIndex = [repelem(1:numDataFiles,numDepths)',repmat(DepthIndex',numDataFiles,1)];
     end
-    MCdataIndex = [repelem(1:numDataFiles,numDepths)',repmat(DepthIndex',numDataFiles,1)];
 end
     
     
@@ -112,24 +120,18 @@ switch MCdata(1).type
         for iF = 1:numFrames
             for iC = 1:numChannels
                 for iD = 1:numDepths
-                    
-                    % to specify depth of image passed in
-                    if ~exist('depthIndex', 'var')
-                        Di = iD;
-                    else
-                        Di = depthIndex;
-                    end
-                    
-                    if iF == 1 % initialize variables
-                        [Images(:,:,iD,iC,iF), B, xi, yi] = applyDoLucasKanade(...
-                            Images(:,:,iD,iC,iF),...
-                            MCdata(FileIndex(iF,1)).dpx(:,FileIndex(iF,2),Di),...
-                            MCdata(FileIndex(iF,1)).dpy(:,FileIndex(iF,2),Di));
-                    else % use previously created variables
+                    cD = DepthIndex(iD);
+                    mind = ismember(MCdataIndex,[FileID(iF,1),cD],'rows');
+                    if iF ~= 1 % use previously created variables
                         Images(:,:,iD,iC,iF) = applyDoLucasKanade(...
                             Images(:,:,iD,iC,iF),...
-                            MCdata(FileIndex(iF,1)).dpx(:,FileIndex(iF,2),Di),...
-                            MCdata(FileIndex(iF,1)).dpy(:,FileIndex(iF,2),Di), B, xi, yi);
+                            MCdata(mind).dpx(:,FileID(iF,2),cD),...
+                            MCdata(mind).dpy(:,FileID(iF,2),cD), 16, B, xi, yi);
+                    else % iF == 1 % initialize variables
+                        [Images(:,:,iD,iC,iF), B, xi, yi] = applyDoLucasKanade(...
+                            Images(:,:,iD,iC,iF),...
+                            MCdata(mind).dpx(:,FileID(iF,2),cD),...
+                            MCdata(mind).dpy(:,FileID(iF,2),cD));
                     end
                 end
             end

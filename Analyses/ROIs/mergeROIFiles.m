@@ -73,7 +73,7 @@ for findex = 2:numFiles
     
     % Append trial info
     ROIs{1}.DataInfo.numStimFrames = cat(1, ROIs{1}.DataInfo.numStimFrames, ROIs{findex}.DataInfo.numStimFrames);
-    ROIs{1}.DataInfo.TrialIndex = cat(2, ROIs{1}.DataInfo.TrialIndex, ROIs{findex}.DataInfo.TrialIndex + max(ROIs{1}.DataInfo.TrialIndex));
+    ROIs{1}.DataInfo.TrialIndex = cat(1, ROIs{1}.DataInfo.TrialIndex, ROIs{findex}.DataInfo.TrialIndex + max(ROIs{1}.DataInfo.TrialIndex));
     ROIs{1}.DataInfo.StimID = cat(1, ROIs{1}.DataInfo.StimID, ROIs{findex}.DataInfo.StimID);
     
     % Append individual roi data

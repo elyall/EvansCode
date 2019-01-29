@@ -59,8 +59,11 @@ elseif ischar(Images) % File is specified
 elseif iscellstr(Images)
     ImageFiles = Images;
     LoadImgs = true;
-elseif ~isa(Images, 'double')
-    Images = double(Images);
+else
+    LoadImgs = false;
+    if ~isa(Images, 'double')
+        Images = double(Images);
+    end
 end
 
 if ~exist('Template', 'var') || isempty(Template)
