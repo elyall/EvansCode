@@ -1,4 +1,4 @@
-function [val,ci,bootdist] = BootStrap(N,bootfunc,data,varargin)
+function [val,ci,p,bootdist] = BootStrap(N,bootfunc,data,varargin)
 % BOOTSTRAP runs bootstrp on multiple random variables that are not sampled
 % at the same point in time.
 %
@@ -74,6 +74,15 @@ if nargout > 1
     lower = prctile(bootdist,pct1,1);
     upper = prctile(bootdist,pct2,1);
     ci =[lower;upper]; % return
+    
+    %% Compute p-value
+%     p = nan(1,3);
+%     [~,p(3)] = lillietest(bootdist);
+%     if ~lillietest(bootdist)
+%         [~,p(2)] = ttest(bootdist);
+%     else
+        p = signrank(bootdist);
+%     end
     
     %% Plot output
     if verbose

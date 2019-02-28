@@ -1,54 +1,56 @@
 function [p,nuldist,actual] = permutationTest(Data, GroupID, varargin)
 
-numPerms = 10000;
+numPerms = 1000;
 func = @(x,y) mean(x)-mean(y);
 
 % saveOut = false;
 % saveFile = '';
 
 
-%% Parse input arguments
-index = 1;
-while index<=length(varargin)
-    try
-        switch varargin{index}
-            case 'numPerms'
-                numPerms = varargin{index+1};
-                index = index + 2;
-            case 'func'
-                func = varargin{index+1};
-                index = index + 2;
-%             case {'save','Save'}
-%                 saveOut = true;
-%                 index = index + 1;
-%             case 'saveFile'
-%                 saveFile = varargin{index+1};
+% %% Parse input arguments
+% index = 1;
+% while index<=length(varargin)
+%     try
+%         switch varargin{index}
+%             case 'numPerms'
+%                 numPerms = varargin{index+1};
 %                 index = index + 2;
-            otherwise
-                warning('Argument ''%s'' not recognized',varargin{index});
-                index = index + 1;
-        end
-    catch
-        warning('Argument %d not recognized',index);
-        index = index + 1;
-    end
-end
-
-if iscell(Data)
-    if ~exist('GroupID','var') || isempty(GroupID)
+%             case 'func'
+%                 func = varargin{index+1};
+%                 index = index + 2;
+% %             case {'save','Save'}
+% %                 saveOut = true;
+% %                 index = index + 1;
+% %             case 'saveFile'
+% %                 saveFile = varargin{index+1};
+% %                 index = index + 2;
+%             otherwise
+%                 warning('Argument ''%s'' not recognized',varargin{index});
+%                 index = index + 1;
+%         end
+%     catch
+%         warning('Argument %d not recognized',index);
+%         index = index + 1;
+%     end
+% end
+% 
+% if iscell(Data)
+%     if ~exist('GroupID','var') || isempty(GroupID)
         GroupID = repelem(1:numel(Data),cellfun(@numel,Data))';
-    end
-    try
+%     end
+%     try
         Data = cat(1,Data{:});
-    catch
-        Data = cat(2,Data{:})';
-    end
-elseif isrow(Data)
-    Data = Data';
-end
+%     catch
+%         Data = cat(2,Data{:})';
+%     end
+% elseif isrow(Data)
+%     Data = Data';
+% end
 N = numel(Data);
 [Groups,~,GroupID] = unique(GroupID); % ensure GroupID is 1:N
-nGroups = numel(Groups);
+% if numel(Groups)~=2
+%     error('Can only do permutation test with 2 groups!');
+% end
 
 
 %% Calculate actual value
@@ -97,7 +99,7 @@ actual = func(Data(GroupID==1),Data(GroupID==2));
 Mean = mean(nuldist); % compute mean of null distribution
 tempnul = nuldist-Mean; % mean-center null distribution
 tempactual = actual-Mean; % rectify actual with distribution
-p = sum(abs(tempnul)>abs(tempactual))/numPerms; % compute p value(s)
+p = sum(abs(tempnul)>abs(tempactual))/numPerms; % compute two-sided p value(s)
 
 
 % %% Save outputs

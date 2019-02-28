@@ -1,4 +1,4 @@
-function saveEPS(fn,hF)
+function savePDF(fn,hF)
 
 if ~exist('fn','var') || isempty(fn)
     fn = 'temp.eps';
@@ -7,4 +7,4 @@ if ~exist('hF','var') || isempty(hF)
     hF = gcf;
 end
 
-print(hF,fn,'-painters','-depsc','-tiff','-r300');
+print(hF,fn,'-painters','-dpdf','-r300');

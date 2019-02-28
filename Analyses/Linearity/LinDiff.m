@@ -1,4 +1,4 @@
-function [LinDiff,CI] = LinDiff(Raw,StimLog,varargin)
+function [LinDiff,CI,p] = LinDiff(Raw,StimLog,varargin)
 
 N = 10000; % # of bootstraps
 alpha = 0.05;
@@ -41,6 +41,7 @@ Index = find(numW>1);
 numMult = sum(numW>1);
 LinDiff = nan(numROIs,numMult);
 CI = nan(numROIs,2,numMult);
+p = nan(numROIs,numMult);
 if verbose; p = parfor_progress(numMult*numROIs); end
 if N~=0
     parfor s = 1:numMult
@@ -54,7 +55,7 @@ if N~=0
             func = @(u,v,w,x,y,z) z-(u+v+w+x+y);
         end
         for r = 1:numROIs
-            [LinDiff(r,s),CI(r,:,s)] = BootStrap(N,func,[Raw(r,StimLog{Index(s)}+1),Raw(r,Index(s))],'alpha',alpha);
+            [LinDiff(r,s),CI(r,:,s),p(r,s)] = BootStrap(N,func,[Raw(r,StimLog{Index(s)}+1),Raw(r,Index(s))],'alpha',alpha);
             %             if verbose; parfor_progress(p); end
         end
     end

@@ -4,7 +4,14 @@ if ~exist('test','var') || isempty(test)
     test = 'Wilcoxon';
 end
 
-if islogical(GroupID) && size(GroupID,2)>1
+if iscell(Data)
+    GroupID = repelem(1:numel(Data),cellfun(@numel,Data));
+    try 
+        Data = cat(1,Data{:});
+    catch
+        Data = cat(2,Data{:});
+    end
+elseif islogical(GroupID) && size(GroupID,2)>1
     temp = GroupID;
     GroupID = zeros(size(temp,1),1);
     for ind = 1:size(temp,2)
