@@ -26,8 +26,8 @@ while index<=length(varargin)
                 TrialIndex = varargin{index+1};
                 index = index + 2;
             case {'Outliers','DetermineOutliers','outliers'}
-                DetermineOutliers = ~DetermineOutliers;
-                index = index + 1;
+                DetermineOutliers = varargin{index+1};
+                index = index + 2;
             case 'ControlID'
                 ControlID = varargin{index+1};
                 index = index + 2;

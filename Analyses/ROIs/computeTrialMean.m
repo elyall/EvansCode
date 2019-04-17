@@ -1,7 +1,9 @@
-function [ROIdata,Means] = computeTrialMean(ROIdata, varargin)
+function [ROIdata,Means,Neuropil] = computeTrialMean(ROIdata, varargin)
 
 ROIindex = [1 inf];
 FrameIndex = []; % default takes mean over whole stim period; set to 'VertPole' to analyze last 500ms of stim
+
+Neuropil = true;
 
 saveOut = false;
 saveFile = '';
@@ -18,6 +20,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'FrameIndex'
                 FrameIndex = varargin{index+1};
+                index = index + 2;
+            case 'Neuropil'
+                Neuropil = varargin{index+1};
                 index = index + 2;
             case {'Save', 'save'}
                 saveOut = true;
@@ -43,8 +48,6 @@ if ~exist('ROIdata','var') || isempty(ROIdata)
     ROIdata = fullfile(p,ROIdata);
 end
 
-fprintf('Calculating mean activity per trial...');
-
 
 %% Load ROI data
 if ischar(ROIdata)
@@ -60,8 +63,8 @@ if saveOut && isempty(saveFile)
 end
 
 % Compute dF/F
-if ~isfield(ROIdata.rois, 'dFoF')
-    ROIdata = computeDFoF(ROIdata);
+if ~isfield(ROIdata.rois, 'dFoF') || (Neuropil && ~isfield(ROIdata.rois,'neuropil_dFoF'))
+    ROIdata = computeDFoF(ROIdata,'Neuropil',Neuropil);
 end
 numTrials = size(ROIdata.rois(1).dFoF,1);
 
@@ -71,6 +74,9 @@ if ~isfield(ROIdata,'Config')
     ROIdata.Config.Depth = 1;
     ROIdata.Config.FrameRate = 15.49;
 end
+
+fprintf('Calculating mean activity per trial...');
+
 
 %% Determine data to analyze
 if ROIindex(end) == inf
@@ -100,11 +106,17 @@ end
 
 % Initialize output
 [ROIdata.rois(ROIindex).stimMean] = deal(nan(numTrials,1));
+if Neuropil
+    [ROIdata.rois(ROIindex).neuropil_mean] = deal(nan(numTrials,1));
+end
 
 % Compute mean for each trial
 for rindex = ROIindex
     for tindex = 1:numTrials
         ROIdata.rois(rindex).stimMean(tindex) = nanmean(ROIdata.rois(rindex).dFoF(tindex,FrameIndex{tindex}),2); % nan frames may exist due to motion artifacts
+        if Neuropil
+            ROIdata.rois(rindex).neuropil_mean(tindex) = nanmean(ROIdata.rois(rindex).neuropil_dFoF(tindex,FrameIndex{tindex}),2); % nan frames may exist due to motion artifacts
+        end
     end
 end
 fprintf('\tComplete\n');
@@ -113,6 +125,7 @@ fprintf('\tComplete\n');
 %% Output means
 if nargout > 1
     Means = reshape([ROIdata.rois(ROIindex).stimMean],numTrials,numel(ROIindex))';
+    Neuropil = reshape([ROIdata.rois(ROIindex).neuropil_mean],numTrials,numel(ROIindex))';
 end
 
 

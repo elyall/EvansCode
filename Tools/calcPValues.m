@@ -1,7 +1,21 @@
 function [p,Label] = calcPValues(Data,GroupID,Names,test)
+% Unpaired two-sample significance testing
+%
+% Data - vector of data points, or cell array of data points where each
+% cell is a unique group
+%
+% GroupID - (ignored if Data is cell array) vector of length equal to Data
+% vector specifying which group each data point is a part of, or logical
+% matrix of height equal to length of Data vector and width equal to number
+% of groups specifying which data point is a part of which group.
+% (GroupID==0 is ignored)
+%
+% Names - cell array of strings equal in length to the number of groups
+%
+% test - 'ranksum' or 'ttest2' specifying which test to use
 
 if ~exist('test','var') || isempty(test)
-    test = 'Wilcoxon';
+    test = 'ranksum';
 end
 
 if iscell(Data)
@@ -34,9 +48,9 @@ p = nan(1,size(combs,1));
 Label = cell(size(combs,1),1);
 for c = 1:size(combs,1)
     switch test
-        case {'Wilcoxon','ranksum'}
+        case {'ranksum'}
             p(c) = ranksum(Data(GroupID==combs(c,1)),Data(GroupID==combs(c,2)));
-        case {'t','ttest','t-test'}
+        case {'t','ttest','ttest2','t-test'}
             p(c) = ttest2(Data(GroupID==combs(c,1)),Data(GroupID==combs(c,2)));
     end
 

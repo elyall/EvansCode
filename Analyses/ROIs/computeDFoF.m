@@ -3,9 +3,11 @@ function ROIdata = computeDFoF(ROIdata, varargin)
 saveOut = false;
 saveFile = '';
 
+Neuropil = true;
 NeuropilWeight = [];
 ROIindex = [1 inf];
 numFramesBaseline = [];
+
 directory = cd;
 
 %% Check input arguments
@@ -21,6 +23,9 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
+            case 'Neuropil'
+                Neuropil = varargin{index+1};
+                index = index + 2;
             case 'NeuropilWeight'
                 NeuropilWeight = varargin{index+1};
                 index = index + 2;
@@ -128,6 +133,33 @@ for rindex = ROIindex
 end
 
 fprintf('\tComplete\n');
+
+%% 
+
+if Neuropil
+    
+    fprintf('Calculating trial-wise dF/F (neuropil)...');
+
+    % Initialize output
+    [ROIdata.rois(ROIindex).neuropil_dFoF] = deal(zeros(H,W));
+    
+    % Compute dF/F for each trial for each ROI
+    for rindex = ROIindex
+        
+        % Extract all trials for current stimulus
+        data = ROIdata.rois(rindex).neuropil;
+        
+        % Compute Fluorescence baseline for each trial
+        baseline = nanmedian(data(:, ROIdata.DataInfo.numFramesBefore - numFramesBaseline + 1:ROIdata.DataInfo.numFramesBefore), 2);
+        
+        % Compute dF/F signal for each trial
+        ROIdata.rois(rindex).neuropil_dFoF = bsxfun(@rdivide, bsxfun(@minus, data, baseline), baseline);
+        
+    end
+    
+    fprintf('\tComplete\n');
+    
+end
 
 
 %% Save to file

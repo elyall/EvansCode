@@ -1,7 +1,7 @@
 function NeuropilWeight = determineNeuropilWeight(Data, Neuropil, ROIindex, varargin)
 
 type = 'individual'; % 'same' or 'individual'
-maxWeight = .65;
+maxWeight = 1;
 outlierWeight = 8; % # of std dev's
 FrameIndex = [2 inf];
 directory = cd;
