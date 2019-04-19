@@ -1,6 +1,6 @@
 function [LinDiff,CI,p] = LinDiff(Raw,StimLog,varargin)
 
-N = 10000; % # of bootstraps
+numBoot = 10000; % # of bootstraps
 alpha = 0.05;
 verbose = false;
 labels = {};
@@ -11,7 +11,7 @@ while index<=length(varargin)
     try
         switch varargin{index}
             case 'N'
-                N = varargin{index+1};
+                numBoot = varargin{index+1};
                 index = index + 2;
             case 'alpha'
                 alpha = varargin{index+1};
@@ -43,8 +43,8 @@ LinDiff = nan(numROIs,numMult);
 CI = nan(numROIs,2,numMult);
 p = nan(numROIs,numMult);
 if verbose; p = parfor_progress(numMult*numROIs); end
-if N~=0
-    parfor s = 1:numMult
+if numBoot~=0
+    for s = 1:numMult
         if numW(Index(s))==2
             func = @(x,y,z) z-(x+y);
         elseif numW(Index(s))==3
@@ -54,8 +54,10 @@ if N~=0
         elseif numW(Index(s))==5
             func = @(u,v,w,x,y,z) z-(u+v+w+x+y);
         end
-        for r = 1:numROIs
-            [LinDiff(r,s),CI(r,:,s),p(r,s)] = BootStrap(N,func,[Raw(r,StimLog{Index(s)}+1),Raw(r,Index(s))],'alpha',alpha);
+        parfor r = 1:numROIs
+            try
+                [LinDiff(r,s),CI(r,:,s),p(r,s)] = BootStrap(numBoot,func,[Raw(r,StimLog{Index(s)}+1),Raw(r,Index(s))],'alpha',alpha);
+            end
             %             if verbose; parfor_progress(p); end
         end
     end

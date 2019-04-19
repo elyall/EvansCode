@@ -9,6 +9,7 @@ DetermineOutliers = true;
 ControlID = 0; % StimID of control trials, or '[]' if no control trial
 StimIDs = [];
 verbose = false;
+% numBoot = 10000;
 % saveOut = false;
 % saveFile = '';
 
@@ -33,6 +34,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'StimIDs'
                 StimIDs = varargin{index+1};
+                index = index + 2;
+            case {'N','numBoot'}
+                numBoot = varargin{index+1};
                 index = index + 2;
 %             case {'Save', 'save'}
 %                 saveOut = true;
@@ -142,7 +146,7 @@ if verbose; fprintf('Computing tuning curves...'); end
 % Compute tuning curves
 Trials = arrayfun(@(x) TrialIndex(StimIndex==x), StimIDs, 'UniformOutput',false); % determine trial IDs used for each stim
 Raw = arrayfun(@(x) mat2cell(Data(:,StimIndex==x),ones(numROIs,1),nnz(StimIndex==x)), StimIDs, 'UniformOutput',false); % gather data points
-% CI95 = cellfun(@(x) bootci(10000,{@nanmean,x},'type','bca'), Raw); % untested
+% CI95 = cellfun(@(x) bootci(numBoot,{@nanmean,x},'type','bca'), Raw); % untested
 Raw = cat(2,Raw{:});
 Curve = cellfun(@nanmean, Raw);                         % compute tuning curve
 SE = cellfun(@(x) nanstd(x)/sqrt(sum(~isnan(x))), Raw); % compute standard error

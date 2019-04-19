@@ -1,8 +1,9 @@
-function [Curves, SE, p, LD, CI, order] = nullTuningAndLD(Data, StimID, StimLog, varargin)
+function [nullCurves, nullSE, nullP, nullLD, nullCI, order] = nullTuningAndLD(Data, StimID, StimLog, varargin)
 
 TrialIndex = [1,inf];
 numIters = 100;
 numBoot = 500;
+% full number of iterations = numIters x numBoot
 
 saveOut = false;
 saveFile = '';
@@ -72,11 +73,11 @@ StimID = StimID(TrialIndex);
 numStims = size(StimLog,1);
 numMW = nnz(sum(StimLog,2)>1);
 [numROIs,numTrials] = size(Data);
-Curves = nan(numROIs,numStims,numIters);
-SE = nan(numROIs,numStims,numIters); %SE = nan(numROIs,2,numStims,numIters);
-p = nan(numROIs,numStims,numIters);
-LD = nan(numROIs,numMW,numIters);
-CI = nan(numROIs,2,numMW,numIters);
+nullCurves = nan(numROIs,numStims,numIters);
+nullSE = nan(numROIs,numStims,numIters); %SE = nan(numROIs,2,numStims,numIters);
+nullP = nan(numROIs,numStims,numIters);
+nullLD = nan(numROIs,numMW,numIters);
+nullCI = nan(numROIs,2,numMW,numIters);
 order = nan(numTrials,numIters);
 for ind = 1:numIters
     
@@ -85,11 +86,11 @@ for ind = 1:numIters
     current = StimID(order(:,ind));
     
     % Compute tuning
-    [Curves(:,:,ind), SE(:,:,ind), temp, Raw] = computeTuningCurve2(Data, current, 'verbose', false);
-    p(:,:,ind) = temp.driven_p_corr;
+    [nullCurves(:,:,ind), nullSE(:,:,ind), temp, Raw] = computeTuningCurve2(Data, current, 'verbose', false, 'outliers', false);
+    nullP(:,:,ind) = temp.driven_p_corr;
     
     % Compute linear difference
-    [LD(:,:,ind), CI(:,:,:,ind)] = LinDiff(Raw,StimLog,'N',numBoot);
+    [nullLD(:,:,ind), nullCI(:,:,:,ind)] = LinDiff(Raw,StimLog,'N',numBoot);
     
 end
 
@@ -97,9 +98,9 @@ end
 %% Save ouput
 if saveOut && ~isempty(saveFile)
     if exist(saveFile,'file')
-        save(saveFile,'C','SE','p','pLD','pCI','ord','-append');
+        save(saveFile,'nullCurves','nullSE','nullP','nullLD','nullCI','order','-append');
     else
-        save(saveFile,'C','SE','p','pLD','pCI','ord','-v7.3');
+        save(saveFile,'nullCurves','nullSE','nullP','nullLD','nullCI','order','-v7.3');
     end
 end
 
