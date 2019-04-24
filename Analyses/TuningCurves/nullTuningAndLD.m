@@ -90,6 +90,10 @@ for ind = 1:numIters
     nullP(:,:,ind) = temp.driven_p_corr;
     
     % Compute linear difference
+    Baseline = cellfun(@nanmean, Raw(:,1));
+    for r = 1:size(Raw,1)
+        Raw(r,:) = cellfun(@(x) x-Baseline(r), Raw(r,:), 'UniformOutput', false);
+    end
     [nullLD(:,:,ind), nullCI(:,:,:,ind)] = LinDiff(Raw,StimLog,'N',numBoot);
     
 end
