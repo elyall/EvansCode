@@ -19,7 +19,7 @@ TrialStart = 1; % first trial to analyze
 
 % set file to analyze
 File = {};
-File = [File,{'/media/elyall/Data/7734/180112/7734_338_000'}]; % 1st depth
+% File = [File,{'/media/elyall/Data/7734/180112/7734_338_000'}]; % 1st depth
 % d = rem(N-1,4)+1;
 for d = 1:4
     % L2/3
@@ -49,7 +49,7 @@ for R = 1:3
 
 % Load ROIdata
 ROIdata = ROIs;
-fprintf('Analyzing %s\n',[File{N},'.rois']);
+fprintf('Analyzing %s\n',[File{N},str{R},'.rois']);
 
 % Load Experiment info
 BaseName = closestFile(File{N},'.sbx'); % determine closest file
@@ -70,8 +70,9 @@ if ~exist('TrialIndex','var') || isempty(TrialIndex)
 	glm = true;
 	ld = true;
 end
-numFramesBefore = ceil(ROIdata.Config.FrameRate/ROIdata.Config.Depth*secsBefore);
-numFramesAfter = ceil(ROIdata.Config.FrameRate/ROIdata.Config.Depth*secsAfter);
+
+numFramesBefore = ceil(ROIdata.Config.FrameRate/ROIdata.Config.Depth*secsBefore); %trialwise
+numFramesAfter = ceil(ROIdata.Config.FrameRate/ROIdata.Config.Depth*secsAfter); % trialwise
 
 
 % Set save names
@@ -83,29 +84,34 @@ if tc
 % Compute tuning curves
 NeuropilWeight = determineNeuropilWeight(ROIdata); % determine NeuropilWeight
 Data = arrayfun(@(x) ROIdata.rois(x).rawdata - NeuropilWeight(x)*ROIdata.rois(x).rawneuropil,1:numel(ROIdata.rois),'UniformOutput',false);
-Data = cat(1,Data{:});
+Data = cat(1,Data{:})';
 if R == 1 % oopsi
-    Data = estimateSpikeTiming(Data'); % estimate spikes
+    Data = estimateSpikeTiming(Data); % estimate spikes
 elseif R == 2 % catch
-    Baseline = computeBaseline(Data',AnalysisInfo,'type','catch',numFrames,ceil(ROIdata.Config.FrameRate/ROIdata.Config.Depth));
-    Data = (Data - Baseline./Baseline);
+    Baseline = computeBaseline(Data,AnalysisInfo,'type','catch','numFrames',ceil(ROIdata.Config.FrameRate/ROIdata.Config.Depth));
+    Data = (Data - Baseline)./Baseline; % dF/F
 elseif R == 3 % movprc
-    Baseline = computeBaseline(Data',AnalysisInfo,'type','movprctile',numFrames,2*floor(ROIdata.Config.FrameRate/ROIdata.Config.Depth/2)+1);
-    Data = (Data - Baseline./Baseline);
+    numFrames = round(60*ROIdata.Config.FrameRate/ROIdata.Config.Depth); % compute over 1 min of frames
+    numFrames = 2*floor(numFrames/2)+1; % ensure odd
+    Baseline = computeBaseline(Data,AnalysisInfo,'type','movprctile','numFrames',numFrames);
+    Data = (Data - Baseline)./Baseline; % dF/F
 end
 depthID = idDepth(ROIdata.Config,[],'Depth',ROIdata.depth);    % pull out frame indices for depth of current ROIdata struct
 [Data,numFramesBefore,numStimFrames] = trialOrganize(Data, AnalysisInfo, depthID,'numFramesBefore',numFramesBefore,'numFramesAfter',numFramesAfter); % organize trials to numTrials by numFrames
-ROIdata = distributeROIdata(ROIdata,'data',squeeze(mat2cell(permute(Data,[2,1,3]),size(Data,2),size(Data,1),ones(size(Data,3),1))));
+ROIdata = distributeROIdata(ROIdata,'dFoF',squeeze(mat2cell(permute(Data,[2,1,3]),size(Data,2),size(Data,1),ones(size(Data,3),1))));
 if R == 1
     [Data,Baseline] = computeEvokedSpikes(Data,1:numFramesBefore); % compute evoked response
 end
 FrameIndex = arrayfun(@(x) numFramesBefore+1:numFramesBefore+numStimFrames(x), 1:numel(numStimFrames), 'UniformOutput', false);
 Data = computeTrialMean2(Data,FrameIndex);   % compute stim mean
+Data = mat2cell(Data,ones(size(Data,1),1),size(Data,2));
+Data = cellfun(@transpose, Data, 'UniformOutput',false);
 ROIdata = distributeROIdata(ROIdata,'stimMean',Data);
 [ROIdata,~,outliers] = computeTuningCurve(ROIdata, [], TrialIndex,...
         'ControlID', ControlID,...
-        'StimIDs',   StimID);
-save(ROIFile,'NeuropilWeight','TrialIndex','ROIdata','outliers','-v7.3');
+        'StimIDs',   StimID,...
+        'numBoot',   0);
+% save(ROIFile,'NeuropilWeight','TrialIndex','ROIdata','outliers','Baseline','-v7.3');
 fprintf('Completed computeTuningCurve: %s\n', ROIFile);
 else
 load(ROIFile,'ROIdata','TrialIndex','outliers','-mat');
@@ -131,7 +137,7 @@ parfor r = 1:numROIs
     mse(r) = mean((mdl.predict-Data).^2); % compute error
 end
 PW_GLM = PW_GLM';
-save(ROIFile,'PW_GLM','mse','-append');
+% save(ROIFile,'PW_GLM','mse','-append');
 fprintf('Completed GLM weights: %s\n', ROIFile);
 end
 

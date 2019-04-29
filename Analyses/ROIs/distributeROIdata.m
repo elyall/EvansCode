@@ -31,10 +31,12 @@ while index<=length(varargin)
 end
 
 % Convert data to cell array
-if ismatrix(Data)
-    Data = mat2cell(Data,ones(size(Data,1),1),size(Data,2));
-elseif isnumeric(Data)
-    error('Convert matrix to cell array of length numROIs');
+if isnumeric(Data)
+    if ismatrix(Data)
+        Data = mat2cell(Data,ones(size(Data,1),1),size(Data,2));
+    else
+        error('Convert matrix to cell array of length numROIs');
+    end
 end
 
 
@@ -48,6 +50,9 @@ if isempty(ROIs)
 end
 if ~iscell(ROIs)
     ROIs = {ROIs};
+    cellout = false;
+else
+    cellout = true;
 end
 numFiles = numel(ROIs);
 if iscellstr(ROIs)
@@ -85,9 +90,10 @@ for f = 1:numel(FileIDs)
 end
 
 
+if ~cellout
+    ROIs = ROIs{1};
+end
 
-
-    
     
     
         
