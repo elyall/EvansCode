@@ -111,7 +111,7 @@ ROIdata = distributeROIdata(ROIdata,'stimMean',Data);
         'ControlID', ControlID,...
         'StimIDs',   StimID,...
         'numBoot',   0);
-% save(ROIFile,'NeuropilWeight','TrialIndex','ROIdata','outliers','Baseline','-v7.3');
+save(ROIFile,'NeuropilWeight','TrialIndex','ROIdata','outliers','Baseline','-v7.3');
 fprintf('Completed computeTuningCurve: %s\n', ROIFile);
 else
 load(ROIFile,'ROIdata','TrialIndex','outliers','-mat');
