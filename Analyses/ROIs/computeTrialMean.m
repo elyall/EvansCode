@@ -2,6 +2,7 @@ function [ROIdata,Means,Neuropil] = computeTrialMean(ROIdata, varargin)
 
 ROIindex = [1 inf];
 FrameIndex = []; % default takes mean over whole stim period; set to 'VertPole' to analyze last 500ms of stim
+type = 'dFoF' % 'dFoF' or 'spikes'
 
 Neuropil = true;
 
@@ -113,9 +114,15 @@ end
 % Compute mean for each trial
 for rindex = ROIindex
     for tindex = 1:numTrials
-        ROIdata.rois(rindex).stimMean(tindex) = nanmean(ROIdata.rois(rindex).dFoF(tindex,FrameIndex{tindex}),2); % nan frames may exist due to motion artifacts
-        if Neuropil
-            ROIdata.rois(rindex).neuropil_mean(tindex) = nanmean(ROIdata.rois(rindex).neuropil_dFoF(tindex,FrameIndex{tindex}),2); % nan frames may exist due to motion artifacts
+        switch type
+            case 'dFoF'
+                ROIdata.rois(rindex).stimMean(tindex) = nanmean(ROIdata.rois(rindex).dFoF(tindex,FrameIndex{tindex}),2); % nan frames may exist due to motion artifacts
+                if Neuropil
+                    ROIdata.rois(rindex).neuropil_mean(tindex) = nanmean(ROIdata.rois(rindex).neuropil_dFoF(tindex,FrameIndex{tindex}),2); % nan frames may exist due to motion artifacts
+                end
+            case 'spikes'
+                ROIdata.rois(rindex).stimMean(tindex) = nanmean(ROIdata.rois(rindex).spikes(tindex,FrameIndex{tindex}),2); % nan frames may exist due to motion artifacts
+
         end
     end
 end

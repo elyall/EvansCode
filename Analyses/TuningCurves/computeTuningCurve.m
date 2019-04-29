@@ -4,7 +4,7 @@ FitTuningCurves = false; % gaussian fit
 DetermineOutliers = true;
 ControlID = 0; % StimID of control trials, or '[]' if no control trial
 StimIDs = [];
-numboot = 10000;
+numBoot = 10000;
 
 saveOut = false;
 saveFile = '';
@@ -27,6 +27,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'StimIDs'
                 StimIDs = varargin{index+1};
+                index = index + 2;
+            case 'numBoot'
+                numBoot = varargin{index+1};
                 index = index + 2;
             case {'Save', 'save'}
                 saveOut = true;
@@ -158,7 +161,9 @@ for rindex = ROIindex
         % Save tuning curves
         ROIdata.rois(rindex).curve(sindex) = mean(StimulusDFoF);                             % mean evoked dF/F over all trials for current stimulus
         ROIdata.rois(rindex).StdError(sindex) = std(StimulusDFoF)/sqrt(numel(StimulusDFoF)); % standard error of the mean
-        ROIdata.rois(rindex).CI95(:,sindex) = bootci(numboot,{@mean,StimulusDFoF},'type','bca'); % bootstrapped confidence intervals of the mean
+        if numBoot
+            ROIdata.rois(rindex).CI95(:,sindex) = bootci(numBoot,{@mean,StimulusDFoF},'type','bca'); % bootstrapped confidence intervals of the mean
+        end
         ROIdata.rois(rindex).Raw{sindex} = StimulusDFoF;
         ROIdata.rois(rindex).nTrials(sindex) = numel(StimulusDFoF);
         
