@@ -16,7 +16,7 @@ secsBefore = 1;
 secsAfter = 2;
 ControlID = 0;  % for computing significance in tuning curve
 TrialStart = 1; % first trial to analyze
-SaveDir = '/media/elyall/Data3/dFoFnew/';
+% SaveDir = '/media/elyall/Data3/dFoFnew/';
 SaveDir = '/global/scratch/elyall/dFoFnew/';
 
 % set file to analyze
@@ -65,7 +65,7 @@ end
 load([File{N},'.rois'], 'ROIdata', 'TrialIndex', '-mat');
 ROIs = ROIdata;
 
-for R = 3
+for R = 1:3
 
 % Load ROIdata
 ROIdata = ROIs;
@@ -126,6 +126,9 @@ if R == 1
 end
 FrameIndex = arrayfun(@(x) numFramesBefore+1:numFramesBefore+numStimFrames(x), 1:numel(numStimFrames), 'UniformOutput', false);
 Data = computeTrialMean2(Data,FrameIndex);   % compute stim mean
+if TrialIndex(end) == inf
+    TrialIndex = cat(2, TrialIndex(1:end-1), TrialIndex(end-1)+1:size(Data,2));
+end
 Data = mat2cell(Data,ones(size(Data,1),1),size(Data,2));
 Data = cellfun(@transpose, Data, 'UniformOutput',false);
 ROIdata = distributeROIdata(ROIdata,'stimMean',Data);
