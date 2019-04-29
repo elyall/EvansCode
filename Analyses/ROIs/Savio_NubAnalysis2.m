@@ -1,7 +1,7 @@
 function Savio_NubAnalysis(N)
 
-% addpath(genpath('/global/home/users/elyall/Code/Matlab/'))
-% parpool('local', 20);
+addpath(genpath('/global/home/users/elyall/Code/Matlab/'))
+parpool('local', 20);
 
 
 % User defined inputs
@@ -10,28 +10,24 @@ glm = true;
 ld = false;
 nul = false;
 ho = false;
-str = {'_oopsi','_catch','_movprc'};  % save name
 
+str = {'_oopsi','_catch','_movprc'};  % save name
 secsBefore = 1;
 secsAfter = 2;
 ControlID = 0;  % for computing significance in tuning curve
 TrialStart = 1; % first trial to analyze
+SaveDir = '/media/elyall/Data3/dFoFnew/';
+SaveDir = '/global/scratch/elyall/dFoFnew/';
 
 % set file to analyze
 File = {};
-% File = [File,{'/media/elyall/Data/7734/180112/7734_338_000'}]; % 1st depth
-% d = rem(N-1,4)+1;
+% L2/3
 for d = 1:4
-    % L2/3
-    File = [File,{['/global/scratch/elyall/6994/170725/6994_210_000_depth',num2str(d)]}];
     File = [File,{['/global/scratch/elyall/7142/170710/7142_220_002_depth',num2str(d)]}];
+    File = [File,{['/global/scratch/elyall/6994/170725/6994_210_000_depth',num2str(d)]}];
     File = [File,{['/global/scratch/elyall/7120/170731/7120_250_003_depth',num2str(d)]}];
     File = [File,{['/global/scratch/elyall/7197/170807/7197_160_001_depth',num2str(d)]}];
-    % L2/3 anesthetized
-    File = [File,{['/global/scratch/elyall/9025/181021/9025_180_002_depth',num2str(d)]}];
-    File = [File,{['/global/scratch/elyall/9019/181021/9019_165_000_depth',num2str(d)]}];
 end
-File = [File,{'/global/scratch/elyall/9445/181015/9445_180_005'}];
 % L4
 File = [File,{'/global/scratch/elyall/7734/180112/7734_338_000'}];
 File = [File,{'/global/scratch/elyall/7734/180112/7734_308_001'}];
@@ -39,13 +35,37 @@ File = [File,{'/global/scratch/elyall/7736/180117/7736_300_000'}];
 File = [File,{'/global/scratch/elyall/7736/180117/7736_265_001'}];
 File = [File,{'/global/scratch/elyall/7737/180118/7737_291_000'}];
 File = [File,{'/global/scratch/elyall/7737/180118/7737_326_001'}];
+% L2/3 anesthetized
+File = [File,{'/global/scratch/elyall/9445/181015/9445_180_005'}];
+for d = 1:4
+    File = [File,{['/global/scratch/elyall/9019/181021/9019_165_000_depth',num2str(d)]}];
+    File = [File,{['/global/scratch/elyall/9025/181021/9025_180_002_depth',num2str(d)]}];
+end
 
+% for d = 1:4
+%     File = [File,{['/media/elyall/Data/7142/170710/7142_220_002_depth',num2str(d)]}];
+%     File = [File,{['/media/elyall/Data/6994/170725/6994_210_000_depth',num2str(d)]}];
+%     File = [File,{['/media/elyall/Data/7120/170731/7120_250_003_depth',num2str(d)]}];
+%     File = [File,{['/media/elyall/Data/7197/170807/7197_160_001_depth',num2str(d)]}];
+% end
+% File = [File,{'/media/elyall/Data/7734/180112/7734_338_000'}]; % 1st depth
+% File = [File,{'/media/elyall/Data/7734/180112/7734_308_001'}]; % 2nd depth
+% File = [File,{'/media/elyall/Data/7736/180117/7736_300_000'}]; % 1st depth
+% File = [File,{'/media/elyall/Data/7736/180117/7736_265_001'}]; % 2nd depth
+% File = [File,{'/media/elyall/Data/7737/180118/7737_291_000'}]; % 1st depth
+% File = [File,{'/media/elyall/Data/7737/180118/7737_326_001'}]; % 2nd depth
+% 
+% File = [File,{'/media/elyall/Data2/9445/181015/9445_180_005'}];
+% for d = 1:4
+%     File = [File,{['/media/elyall/Data2/9019/181021/9019_165_000_depth',num2str(d)]}];
+%     File = [File,{['/media/elyall/Data2/9025/181021/9025_180_002_depth',num2str(d)]}];
+% end
 
 
 load([File{N},'.rois'], 'ROIdata', 'TrialIndex', '-mat');
 ROIs = ROIdata;
 
-for R = 1:3
+for R = 3
 
 % Load ROIdata
 ROIdata = ROIs;
@@ -76,19 +96,22 @@ numFramesAfter = ceil(ROIdata.Config.FrameRate/ROIdata.Config.Depth*secsAfter); 
 
 
 % Set save names
-ROIFile  = [File{N},str{R},'.rois'];
-DataFile = [File{N},str{R},'.data'];
-NullFile = [File{N},str{R},'_null.data'];
+[~,fn,~] = fileparts(File{N});
+ROIFile  = fullfile(SaveDir,[fn,str{R},'.rois']);
+DataFile = fullfile(SaveDir,[fn,str{R},'.data']);
+NullFile = fullfile(SaveDir,[fn,str{R},'_null.data']);
 
 if tc
 % Compute tuning curves
 NeuropilWeight = determineNeuropilWeight(ROIdata); % determine NeuropilWeight
 Data = arrayfun(@(x) ROIdata.rois(x).rawdata - NeuropilWeight(x)*ROIdata.rois(x).rawneuropil,1:numel(ROIdata.rois),'UniformOutput',false);
 Data = cat(1,Data{:})';
+depthID = idDepth(ROIdata.Config,[],'Depth',ROIdata.depth);    % pull out frame indices for depth of current ROIdata struct
 if R == 1 % oopsi
     Data = estimateSpikeTiming(Data); % estimate spikes
 elseif R == 2 % catch
-    Baseline = computeBaseline(Data,AnalysisInfo,'type','catch','numFrames',ceil(ROIdata.Config.FrameRate/ROIdata.Config.Depth));
+    numFrames = ceil(ROIdata.Config.FrameRate);
+    Baseline = computeBaseline(Data,AnalysisInfo,'type','catch','numFrames',numFrames,'depthID',depthID);
     Data = (Data - Baseline)./Baseline; % dF/F
 elseif R == 3 % movprc
     numFrames = round(60*ROIdata.Config.FrameRate/ROIdata.Config.Depth); % compute over 1 min of frames
@@ -96,7 +119,6 @@ elseif R == 3 % movprc
     Baseline = computeBaseline(Data,AnalysisInfo,'type','movprctile','numFrames',numFrames);
     Data = (Data - Baseline)./Baseline; % dF/F
 end
-depthID = idDepth(ROIdata.Config,[],'Depth',ROIdata.depth);    % pull out frame indices for depth of current ROIdata struct
 [Data,numFramesBefore,numStimFrames] = trialOrganize(Data, AnalysisInfo, depthID,'numFramesBefore',numFramesBefore,'numFramesAfter',numFramesAfter); % organize trials to numTrials by numFrames
 ROIdata = distributeROIdata(ROIdata,'dFoF',squeeze(mat2cell(permute(Data,[2,1,3]),size(Data,2),size(Data,1),ones(size(Data,3),1))));
 if R == 1
@@ -137,7 +159,7 @@ parfor r = 1:numROIs
     mse(r) = mean((mdl.predict-Data).^2); % compute error
 end
 PW_GLM = PW_GLM';
-% save(ROIFile,'PW_GLM','mse','-append');
+save(ROIFile,'PW_GLM','mse','-append');
 fprintf('Completed GLM weights: %s\n', ROIFile);
 end
 

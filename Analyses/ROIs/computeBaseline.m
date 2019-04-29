@@ -6,6 +6,7 @@ function Baseline = computeBaseline(Data,AnalysisInfo,varargin)
 type = 'catch'; % 'catch' or 'movprctile'
 numFrames = [];
 prc = 5;
+depthID = [];
 
 %% Check input arguments
 index = 1;
@@ -17,6 +18,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'numFrames'
                 numFrames = varargin{index+1};
+                index = index + 2;
+            case 'depthID'
+                depthID = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -37,11 +41,15 @@ if isempty(numFrames)
     end
 end
 
+
 %%
 switch type
     case 'catch'
         %% catch
-        
+        if isempty(depthID)
+            depthID = 1:size(Data,1); % assume single depth
+        end
+
         Index = AnalysisInfo.StimID==0; % index of catch stimuli
         Index = logical([0;Index(1:end-1)]); % index of stimuli after catch
         frames = AnalysisInfo.ExpStimFrames(Index,1)-1;
@@ -50,9 +58,10 @@ switch type
         
         numStim = size(frames,1);
         numROIs = size(Data,2);
-        Frames = nan(numFrames,numROIs,numStim);
+        Frames = nan(numFrames/diff(depthID(1:2)),numROIs,numStim);
         for s = 1:numStim
-            Frames(:,:,s) = Data(frames(s,1):frames(s,2),:); % gather last second after catch before next stim
+            index = depthID>=frames(s,1) & depthID<=frames(s,2);
+            Frames(:,:,s) = Data(index,:); % gather last second after catch before next stim
         end
         Baseline = squeeze(nanmean(nanmean(Frames,1),3)); % average over time and over trials
         
