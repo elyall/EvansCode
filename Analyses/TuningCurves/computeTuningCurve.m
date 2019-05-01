@@ -5,7 +5,7 @@ DetermineOutliers = true;
 ControlID = 0; % StimID of control trials, or '[]' if no control trial
 StimIDs = [];
 numBoot = 10000;
-
+bootOptions = statset('UseParallel',true,'UseSubstreams',true,'Streams',RandStream('mrg32k3a','Seed',173));
 saveOut = false;
 saveFile = '';
 
@@ -162,7 +162,7 @@ for rindex = ROIindex
         ROIdata.rois(rindex).curve(sindex) = mean(StimulusDFoF);                             % mean evoked dF/F over all trials for current stimulus
         ROIdata.rois(rindex).StdError(sindex) = std(StimulusDFoF)/sqrt(numel(StimulusDFoF)); % standard error of the mean
         if numBoot
-            ROIdata.rois(rindex).CI95(:,sindex) = bootci(numBoot,{@mean,StimulusDFoF},'type','bca'); % bootstrapped confidence intervals of the mean
+            ROIdata.rois(rindex).CI95(:,sindex) = bootci(numBoot,{@mean,StimulusDFoF},'type','bca','Options',bootOptions); % bootstrapped confidence intervals of the mean
         end
         ROIdata.rois(rindex).Raw{sindex} = StimulusDFoF;
         ROIdata.rois(rindex).nTrials(sindex) = numel(StimulusDFoF);
