@@ -1,4 +1,4 @@
-function Savio_NubAnalysis(N)
+function Savio_NubAnalysis2(N)
 
 addpath(genpath('/global/home/users/elyall/Code/Matlab/'))
 parpool('local', 20);
@@ -27,20 +27,20 @@ for d = 1:4
     File = [File,{['/global/scratch/elyall/6994/170725/6994_210_000_depth',num2str(d)]}];
     File = [File,{['/global/scratch/elyall/7120/170731/7120_250_003_depth',num2str(d)]}];
     File = [File,{['/global/scratch/elyall/7197/170807/7197_160_001_depth',num2str(d)]}];
-end
+end % 16
 % L4
-File = [File,{'/global/scratch/elyall/7734/180112/7734_338_000'}];
+File = [File,{'/global/scratch/elyall/7734/180112/7734_338_000'}]; % 17
 File = [File,{'/global/scratch/elyall/7734/180112/7734_308_001'}];
 File = [File,{'/global/scratch/elyall/7736/180117/7736_300_000'}];
 File = [File,{'/global/scratch/elyall/7736/180117/7736_265_001'}];
 File = [File,{'/global/scratch/elyall/7737/180118/7737_291_000'}];
-File = [File,{'/global/scratch/elyall/7737/180118/7737_326_001'}];
+File = [File,{'/global/scratch/elyall/7737/180118/7737_326_001'}]; % 22
 % L2/3 anesthetized
-File = [File,{'/global/scratch/elyall/9445/181015/9445_180_005'}];
+File = [File,{'/global/scratch/elyall/9445/181015/9445_180_005'}]; % 23
 for d = 1:4
     File = [File,{['/global/scratch/elyall/9019/181021/9019_165_000_depth',num2str(d)]}];
     File = [File,{['/global/scratch/elyall/9025/181021/9025_180_002_depth',num2str(d)]}];
-end
+end % 31
 
 % for d = 1:4
 %     File = [File,{['/media/elyall/Data/7142/170710/7142_220_002_depth',num2str(d)]}];

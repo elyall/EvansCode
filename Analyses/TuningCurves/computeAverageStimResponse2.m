@@ -1,12 +1,14 @@
-function [AvgTrial, AvgTrialdFoF, StimResponse] = computeAverageStimResponse(ImageFiles, ExperimentFile, TrialIndex, MotionCorrect, varargin)
+function [AvgTrial, AvgTrialdFoF, StimResponse] = computeAverageStimResponse2(ImageFiles, AnalysisInfo, MCdata, varargin)
 
 Depth = 1;
 Channel = 1;
-timeBefore = 2;
-timeAfter = 4;
+timeBefore = 1;
+timeAfter = 3;
 % Filter = [];
 Filter = fspecial('gaussian',5,1);
-Baseline = 'trial-wise'; % scalar specifying the prctile, 'trial-wise', or a frame that represents the baseline
+Baseline = 'catch'; % scalar specifying the trial-wise prctile, 'trial-wise', 'catch', or a frame that represents the baseline
+TrialIndex = [1,inf];
+numFramesBaseline = 16;
 
 saveOut = false;
 saveFile = '';
@@ -18,6 +20,9 @@ index = 1;
 while index<=length(varargin)
     try
         switch varargin{index}
+            case {'TrialIndex','Trials','trials'}
+                TrialIndex = varargin{index+1};
+                index = index + 2;
             case {'Depth','depth'}
                 Depth = varargin{index+1};
                 index = index + 2;
@@ -32,6 +37,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'Baseline'
                 Baseline = varargin{index+1};
+                index = index + 2;
+            case 'numFramesBaseline'
+                numFramesBaseline = varargin{index+1};
                 index = index + 2;
             case {'Save', 'save'}
                 saveOut = true;
@@ -55,62 +63,51 @@ if ~exist('ImageFiles', 'var') || isempty(ImageFiles)
         return
     end
     ImageFiles = fullfile(p, ImageFiles);
-elseif ischar(ImageFiles)
-    if isdir(ImageFiles) % directory input
+elseif ischar(ImageFiles) && isdir(ImageFiles) % directory input
         p = ImageFiles;
         ImageFiles = dir(p);
         ImageFiles = fullfile(p, {ImageFiles(~cellfun(@isempty, regexpi({ImageFiles.name}, '.*(sbx|tif)'))).name});
-    else % single file input
-        ImageFiles = {ImageFiles};
-    end
 end
-
-if ~exist('ExperimentFile','var') || isempty(ExperimentFile)
-    [ExperimentFile, p] = uigetfile({'*.mat'},'Choose Experiment file',directory);
-    if isnumeric(ExperimentFile)
-        return
-    end
-    ExperimentFile = fullfile(p,ExperimentFile);
-    load(ExperimentFile, 'AnalysisInfo', '-mat');
-elseif ischar(ExperimentFile)
-    load(ExperimentFile, 'AnalysisInfo', '-mat');
-elseif isstruct(ExperimentFile)
-    AnalysisInfo = ExperimentFile;
-    clear ExperimentFile
-end
-
-if ~exist('TrialIndex', 'var') || isempty(TrialIndex)
-    TrialIndex = [1 inf];
-elseif islogical(TrialIndex)
-    TrialIndex = find(TrialIndex);
-end
-
-if ~exist('MotionCorrect', 'var') || isempty(MotionCorrect)
-    vars = whos(matfile(ExperimentFile));
-    if any(strcmp(vars, 'MCdata'))
-        MotionCorrect = true;
-    else
-        MotionCorrect = false;
-    end
-end
-
-
-%% Determine file to save to
-if saveOut && isempty(saveFile)
-    if exist('ExperimentFile', 'var')
-        saveFile = ExperimentFile;
-    else
-        saveOut = false;
-    end
+if ischar(ImageFiles) % single file input
+    ImageFiles = {ImageFiles};
 end
 
 
 %% Load in data
-if ~exist('AnalysisInfo', 'var')
-    load(ExperimentFile, 'AnalysisInfo', '-mat');
+
+% Experiment info
+if ~exist('AnalysisInfo','var') || isempty(AnalysisInfo)
+    AnalysisInfo = closestFile(ImageFiles{1},'.exp'); % guess experiment file
+    AnalysisInfo = AnalysisInfo{1};
+    if isempty(AnalysisInfo)
+        [AnalysisInfo, p] = uigetfile({'*.mat'},'Choose Experiment file',directory);
+        if isnumeric(AnalysisInfo)
+            return
+        end
+        AnalysisInfo = fullfile(p,AnalysisInfo);
+    end
+end
+if ischar(AnalysisInfo)
+    load(AnalysisInfo, 'AnalysisInfo', '-mat');
 end
 
+% Motion correction data
+if ~exist('MCdata','var') || isempty(MCdata)
+    MotionCorrect = false;
+else
+    MotionCorrect = true;
+    if ischar(MCdata)
+        load(MCdata, 'MCdata', '-mat');
+    end
+end
+
+
+%% Determine analysis parameters
+
 % Determine trials to analyze
+if islogical(TrialIndex)
+    TrialIndex = find(TrialIndex);
+end
 if TrialIndex(end) == inf
     TrialIndex = [TrialIndex(1:end-1), TrialIndex(1:end-1)+1:size(AnalysisInfo, 1)];
 end
@@ -119,28 +116,39 @@ end
 StimIDs = unique(AnalysisInfo.StimID(TrialIndex));
 numStims = numel(StimIDs);
 
-
-%% Motion correction
-if ischar(MotionCorrect)
-    load(MotionCorrect, 'MCdata', '-mat');
-    MotionCorrect = true;
-elseif isstruct(MotionCorrect)
-    MCdata = MotionCorrect;
-    MotionCorrect = true;
-elseif MotionCorrect == true && ~exist('MCdata', 'var')
-    load(ExperimentFile, 'MCdata', '-mat');
-end
-if ~exist('MCdata','var')
-    MotionCorrect = false;
-end
-
-%% Load image config and determine number of frames before and after
+% Determine number of frames to gather and which frames correspond to the
+% current depth
 Config = load2PConfig(ImageFiles);
-
 numFramesBefore = round(timeBefore*Config.FrameRate/Config.Depth);
 numFramesAfter = round(timeAfter*Config.FrameRate/Config.Depth);
-
 depthID = idDepth(Config.Depth, Config.Frames, 'Depth', Depth);
+
+
+%% Compute baseline
+
+switch Baseline
+    case 'catch'
+        Index = AnalysisInfo.StimID==0; % index of catch stimuli
+        Index = logical([0;Index(1:end-1)]); % index of stimuli after catch
+        frames = AnalysisInfo.ExpStimFrames(Index,1)-1; % last frame before following stimulus
+        frames = [max(frames-numFramesBaseline+1,1),frames]; % list of first and last frames to average
+        FrameIndex = false(Config.Frames,1); % index of frames to average
+        for t = 1:size(frames,1)
+            FrameIndex(frames(t,1):frames(t,2)) = true;
+        end
+        currentDepth = false(Config.Frames,1);
+        currentDepth(Depth:Config.Depth:end) = true; % index of frames corresponding to current depth
+        FrameIndex = all([FrameIndex,currentDepth],2);
+        
+        [frames, ~] = load2P(ImageFiles,...
+            'Type',     'Direct',...
+            'Depth',    Depth,...
+            'Channel',  Channel,...
+            'Frames',   find(FrameIndex),...
+            'Double');
+        Baseline = mean(frames,5);
+end
+
 
 %% Compute average trial
 fprintf('Calculating average trials for:\n');
@@ -163,7 +171,7 @@ trialdFoF = repmat({zeros([Config(1).size(1:2), numFrames])},numStims,1);
 totalFrames = Config.Frames;
 ExpStimFrames = AnalysisInfo.ExpStimFrames;
 StimID = AnalysisInfo.StimID;
-parfor sindex = 1:numStims
+for sindex = 1:numStims
     
     % Determine trials to average
     currentTrials = find(StimID == StimIDs(sindex));
@@ -205,7 +213,7 @@ parfor sindex = 1:numStims
         AvgTrial{sindex} = AvgTrial{sindex} + frames; % if concerned about precision clipping high values during sum add: /numTrials;
         
         % Compute trial's dFoF
-        if ischar(Baseline)
+        if ischar(Baseline) && strcmp(Baseline,'trial-wise')
             baseline = median(frames(:,:,1:numFramesBefore),3);
         elseif isscalar(Baseline)
             baseline = prctile(frames,Baseline,3);
@@ -214,14 +222,14 @@ parfor sindex = 1:numStims
         end
         baseline(baseline<1) = 1; % in reality this never happens but don't want to enhance a small value
         frames = bsxfun(@rdivide, bsxfun(@minus, frames, baseline), baseline);
-        AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex} + frames; % if concerned about precision clipping high values during sum add: /numTrials;
+        AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex} + frames; % if concerned about precision clipping high values during sum, add: /numTrials;
         
         % Save for later calculation
         trialdFoF{sindex}(:,:,tindex) = mean(frames(:,:,numFramesBefore+1:numFramesBefore+diff(relativeID)+1), 3);
     end
     numTrials = numTrials - badTrials;
-    AvgTrial{sindex} = uint16(AvgTrial{sindex}/numTrials); % if not concerned about precision clipping high values after sum, otherwise comment out and amend above
-    AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex}/numTrials; % if not concerned about precision clipping high values after sum, otherwise comment out and amend above
+    AvgTrial{sindex} = uint16(AvgTrial{sindex}/numTrials); % if concerned about precision clipping high values after sum, comment out and amend above
+    AvgTrialdFoF{sindex} = AvgTrialdFoF{sindex}/numTrials; % if concerned about precision clipping high values after sum, comment out and amend above
     
     fprintf('\tfinished stim %d of %d (%d trials)\n',sindex,numStims,numTrials);
 end
@@ -246,7 +254,7 @@ end
 
 
 %% Save to file
-if saveOut
+if saveOut && ~isempty(saveFile)
     if ~exist(saveFile, 'file')
         save(saveFile, 'AvgTrial', 'AvgTrialdFoF', 'StimResponse', 'TrialIndex', '-mat', '-v7.3');
     else

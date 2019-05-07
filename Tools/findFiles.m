@@ -1,5 +1,8 @@
 function OutFiles = findFiles(Files,PTR)
 
+if isempty(Files)
+    Files = uigetdir('Choose directory',pwd);
+end
 if ischar(Files)
     Files = {Files};
 end
