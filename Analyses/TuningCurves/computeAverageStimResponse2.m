@@ -191,7 +191,7 @@ for sindex = 1:numStims
         % Load trial
         StimFrames = ExpStimFrames(currentTrials(tindex),:);
         relativeID = [find(depthID>=StimFrames(1),1,'first'), find(depthID<StimFrames(2),1,'last')];
-        if relativeID(1)+numFramesAfter > totalFrames % trial is last trial of experiment and has less frames available than requested
+        if (relativeID(1)+numFramesAfter) > numel(depthID) % trial is last trial of experiment and has less frames available than requested
             badTrials = badTrials+1; % should occur at most once per experiment (and only if experiment was stopped early or timeAfter is large)
             continue
         end
