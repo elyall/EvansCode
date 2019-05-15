@@ -12,19 +12,31 @@ from distributed import Client
 from matplotlib import pyplot as plt
 
 
-def main(filebase,string='_catch',n_X=15,n_iter=2,n_splits=10,max_iter=100):
-	save_file = filebase+'.h5'
-	data, StimID, StimLog, fn = load(filebase,string)
-	_, N = np.shape(data)
-	number_of_neurons = determine_num(N,n_X)
-	classifiers = return_classifiers(max_iter)
-
-	pred, perc_correct, save_file, number_of_neurons, StimID, classifiers = run(data,StimID,StimLog,number_of_neurons,save_out=True,save_file=save_file,classifiers=classifiers,n_iter=n_iter,n_splits=n_splits)
+def main(filebase, string='_catch', n_X=15, n_iter=2, n_splits=10, max_iter=100, save_out=False):
 	
-	return pred, perc_correct, save_file, number_of_neurons, StimID, classifiers
+	# Gather data
+	data, StimID, StimLog, fn, TrialIndex, NeuronIndex = load(filebase, string) # load in experiment & neural data
+	_, N = np.shape(data)
+	number_of_neurons = determine_num(N, n_X) # determine # of neurons to subsample at log spacing
+	classifiers = return_classifiers(max_iter) # load in classifiers to run
+
+	# Run classifiers
+	pred, perc_correct, number_of_neurons, StimID, classifiers = run(
+		data, StimID, StimLog, number_of_neurons, classifiers=classifiers, 
+		n_iter=n_iter, n_splits=n_splits)
+	
+	# Save output
+	if save_out:
+		save_file = filebase+'.h5'
+		save_file = save(pred, perc_correct, number_of_neurons, StimID, classifiers, 
+			TrialIndex, NeuronIndex, save_file)		
+	else:
+		save_file = ''
+
+	return pred, perc_correct, number_of_neurons, StimID, classifiers, save_file
 
 
-def load(filebase,string):
+def load(filebase, string):
 
 	# Determine filenames
 	expfile = filebase + '.exp'
@@ -38,6 +50,10 @@ def load(filebase,string):
 	StimID = h5f['/TrialInfo/StimID'][:].astype('int')
 	StimLog = h5f['/Experiment/stim/stim'][:].transpose().astype('int64')
 	TrialIndex = h5f['TrialIndex'][:].astype('int') - 1
+	try:
+		NeuronIndex = h5f['NeuronIndex'][:].astype('int') - 1
+	except:
+		NeuronIndex = []
 	h5f.close()
 
 	# Load neural data
@@ -56,6 +72,8 @@ def load(filebase,string):
 	# keep only desired trials
 	StimID = np.squeeze(StimID[TrialIndex])
 	data = np.squeeze(data[TrialIndex,:])
+	if NeuronIndex:
+		data = np.squeeze(data[:,NeuronIndex])
 	StimLog = StimLog[StimID,:]
 
 	# Convert StimLog to vector
@@ -66,7 +84,25 @@ def load(filebase,string):
 	    StimLog[:, i] *= a[i]
 	StimLog = StimLog.sum(axis=1)
 
-	return data, StimID, StimLog, fn
+	return data, StimID, StimLog, fn, TrialIndex, NeuronIndex
+
+
+def save(pred, perc_correct, number_of_neurons, StimID, classifiers, TrialIndex, 
+	NeuronIndex, save_file='temp.h5'):
+
+	# Write output to hdf5 file
+	h5f = h5py.File(save_file, 'w')
+	h5f.create_dataset('/perc_correct', data=perc_correct)
+	h5f.create_dataset('/pred', data=pred)
+	h5f.create_dataset('/number_of_neurons', data=number_of_neurons)
+	h5f.create_dataset('/StimID', data=StimID)
+	asciiList = [n.encode("ascii", "ignore") for n in classifiers]
+	h5f.create_dataset('/classifiers', (len(asciiList),1), 'S10', asciiList)
+	h5f.create_dataset('/TrialIndex', data=TrialIndex)
+	h5f.create_dataset('/NeuronIndex', data=NeuronIndex)
+	h5f.close()
+
+	return save_file
 
 
 def determine_num(num_neurons,N=15):
@@ -98,7 +134,8 @@ def return_classifiers(max_iter=100):
 	return classifiers
 
 
-def run(data,StimID,StimLog,number_of_neurons,save_out=True,save_file='temp.h5',classifiers=return_classifiers(),n_iter=100,n_splits=10):
+def run(data, StimID, StimLog, number_of_neurons, classifiers=return_classifiers(),
+	n_iter=100, n_splits=10):
 
 	e = Client()
 
@@ -152,20 +189,7 @@ def run(data,StimID,StimLog,number_of_neurons,save_out=True,save_file='temp.h5',
 	    pred[:,:,:,n] = out[n][1]
 	    # pred[:,:,:,:,n] = out[n][1]
 
-	# Save output
-	if save_out:
-		h5f = h5py.File(save_file, 'w')
-		h5f.create_dataset('/perc_correct', data=perc_correct)
-		h5f.create_dataset('/pred', data=pred)
-		h5f.create_dataset('/number_of_neurons', data=number_of_neurons)
-		h5f.create_dataset('/StimID', data=StimID)
-		asciiList = [n.encode("ascii", "ignore") for n in list(classifiers.keys())]
-		h5f.create_dataset('/classifiers', (len(asciiList),1), 'S10', asciiList)
-		h5f.close()
-	else:
-		save_file = ''
-
-	return pred, perc_correct, save_file, number_of_neurons, StimID, list(classifiers.keys())
+	return pred, perc_correct, number_of_neurons, StimID, list(classifiers.keys())
 
 
 def load_output(save_file):
@@ -180,7 +204,6 @@ def load_output(save_file):
 
 
 def plot_performance(perc_correct, number_of_neurons, classifiers):
-	# Plot output
 	X = number_of_neurons
 	Y = np.mean(perc_correct,axis=1)
 	E = 1.96*np.std(perc_correct,axis=1)
@@ -192,7 +215,6 @@ def plot_performance(perc_correct, number_of_neurons, classifiers):
 	#     ax.errorbar(X, y, yerr=e, label=l)
 	ax.set_ylabel('Percent Correct')
 	ax.set_xlabel('# of Neurons')
-	ax.set_xscale('log')
 	ax.legend(loc='upper left')
 	return fig, ax
 
