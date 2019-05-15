@@ -240,19 +240,19 @@ def compute_confusion_matrix(pred, StimID, C=0, N=-1):
 
 def Savio(N):
 	File = [];
-	File.append('/global/scratch/elyall/7142/170710/7142_220_002')
-	File.append('/global/scratch/elyall/6994/170725/6994_210_000')
-	File.append('/global/scratch/elyall/7120/170731/7120_250_003')
-	File.append('/global/scratch/elyall/7197/170807/7197_160_001')
-	File.append('/global/scratch/elyall/7734/180112/7734_338_000')
-	File.append('/global/scratch/elyall/7734/180112/7734_308_001')
-	File.append('/global/scratch/elyall/7736/180117/7736_300_000')
-	File.append('/global/scratch/elyall/7736/180117/7736_265_001')
-	File.append('/global/scratch/elyall/7737/180118/7737_291_000')
-	File.append('/global/scratch/elyall/7737/180118/7737_326_001')
-	File.append('/global/scratch/elyall/9445/181015/9445_180_005')
-	File.append('/global/scratch/elyall/9019/181021/9019_165_000')
-	File.append('/global/scratch/elyall/9025/181021/9025_180_002')
+	File.append('/global/scratch/elyall/Decoding/7142_220_002')
+	File.append('/global/scratch/elyall/Decoding/6994_210_000')
+	File.append('/global/scratch/elyall/Decoding/7120_250_003')
+	File.append('/global/scratch/elyall/Decoding/7197_160_001')
+	File.append('/global/scratch/elyall/Decoding/7734_338_000')
+	File.append('/global/scratch/elyall/Decoding/7734_308_001')
+	File.append('/global/scratch/elyall/Decoding/7736_300_000')
+	File.append('/global/scratch/elyall/Decoding/7736_265_001')
+	File.append('/global/scratch/elyall/Decoding/7737_291_000')
+	File.append('/global/scratch/elyall/Decoding/7737_326_001')
+	File.append('/global/scratch/elyall/Decoding/9445_180_005')
+	File.append('/global/scratch/elyall/Decoding/9019_165_000')
+	File.append('/global/scratch/elyall/Decoding/9025_180_002')
 	main(File[N])
 
 	return File, N
