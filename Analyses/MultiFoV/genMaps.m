@@ -1,4 +1,5 @@
 function Maps = genMaps(Data,varargin)
+% Data is 1-dimensional cell array of image stacks
 
 Buffer = [1,1];
 H = 0;

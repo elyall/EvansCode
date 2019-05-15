@@ -132,7 +132,7 @@ if nargout > 2
             indMap = bsxfun(@rdivide, indMap, sum(indMap,3));
             indMap(isnan(indMap)) = 0;
             
-        case 'blend'
+        case {'blend','pretty'}
             fullMap = sum(indMap, 3);
             indMap = double(indMap);
             

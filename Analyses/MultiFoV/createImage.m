@@ -205,6 +205,18 @@ if numFiles > 1
             %         Origin = [Map.XWorldLimits(1), Map.YWorldLimits(1)];
             
             [~, ~, indMap] = mapFoVs(Maps, 'type', 'index'); % for determining what holes to fill
+            
+        case 'layer'
+            
+            % Create map
+            if isempty(indMap)
+                [Dim, Map, indMap] = mapFoVs(Maps, 'type', 'index');
+            end
+            
+            % Create image
+            Image = zeros(size(indMap));
+            Image(indMap) = cat(3,Images{:});
+            
     end
     
     temp = Image(any(indMap,3));

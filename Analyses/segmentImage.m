@@ -75,7 +75,7 @@ BW = imopen(BW, se);
 plotAxis(BW);
 
 % Erode mask with disk
-radius = 5;
+radius = 50;
 decomposition = 0;
 se = strel('disk', radius, decomposition);
 BW = imerode(BW, se);
