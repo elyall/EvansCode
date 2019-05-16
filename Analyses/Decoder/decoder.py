@@ -204,12 +204,27 @@ def load_output(save_file):
 	return pred, perc_correct, number_of_neurons, StimID, classifiers
 
 
-def plot_performance(perc_correct, number_of_neurons, classifiers):
+def load_mult(filenames):
+	out = [load_output(f) for f in filenames]
+	pred = [out[x][0] for x in range(len(out))]
+	perc_correct = [out[x][1] for x in range(len(out))]
+	number_of_neurons = [out[x][2] for x in range(len(out))]
+	StimID = [out[x][3] for x in range(len(out))]
+	classifiers = [out[x][4] for x in range(len(out))]
+
+	return pred, perc_correct, number_of_neurons, StimID, classifiers
+
+
+def plot_performance(perc_correct, number_of_neurons, classifiers, ax=False):
 	X = number_of_neurons
 	Y = np.mean(perc_correct,axis=1)
 	E = 1.96*np.std(perc_correct,axis=1)
 
-	fig, ax = plt.subplots(1,1,figsize=(10,10))
+	if not ax:
+		fig, ax = plt.subplots(1,1,figsize=(10,10))
+	else:
+		fig = ax.get_figure()
+
 	for ind, (y,e,l) in enumerate(zip(Y,E,classifiers)):
 	    ax.plot(X, y, label=l)
 	    ax.fill_between(X, y-e, y+e, alpha=0.1, antialiased=True)
@@ -217,6 +232,14 @@ def plot_performance(perc_correct, number_of_neurons, classifiers):
 	ax.set_ylabel('Percent Correct')
 	ax.set_xlabel('# of Neurons')
 	ax.legend(loc='upper left')
+	return fig, ax
+
+
+def plot_performance_mult(perc_correct, number_of_neurons, classifiers, ax=False):
+	if not ax:
+		fig, ax = plt.subplots(len(perc_correct),1,figsize=(10,10))
+	for a, pc, nn, c in zip(ax.flat,perc_correct,number_of_neurons,classifiers):
+		plot_performance(pc, nn, c, a)
 	return fig, ax
 
 
@@ -231,12 +254,12 @@ def plot_confusion_matrices(pred, StimID, number_of_neurons, C=0):
 		ax.set_title('%d' % number_of_neurons[n])
 	fig.text(0.5, 0.04, 'Predicted Label', ha='center')
 	fig.text(0.04, 0.5, 'True Label', va='center', rotation='vertical')
+	return fig, ax
 
 
 def compute_confusion_matrix(pred, StimID, C=0, N=-1):
 	_, _, n_iter, _ = np.shape(pred)
-	confusion_matrix = metrics.confusion_matrix(np.repeat(StimID,n_iter), np.ravel(pred[:,C,:,N]))
-	return confusion_matrix
+	return metrics.confusion_matrix(np.repeat(StimID,n_iter), np.ravel(pred[:,C,:,N]))
 
 
 def Savio(N):
