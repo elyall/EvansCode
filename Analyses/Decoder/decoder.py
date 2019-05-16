@@ -7,12 +7,12 @@ from scipy.io import loadmat
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn import metrics
 
-from distributed import Client
+from dask.distributed import Client, LocalCluster
 
 from matplotlib import pyplot as plt
 
 
-def main(filebase, string='_catch', n_X=15, n_iter=2, n_splits=10, max_iter=100, save_out=False):
+def main(filebase, string='_catch', n_X=15, n_iter=500, n_splits=10, max_iter=250, save_out=True):
 	
 	# Gather data
 	data, StimID, StimLog, fn, TrialIndex, NeuronIndex = load(filebase, string) # load in experiment & neural data
@@ -40,7 +40,7 @@ def load(filebase, string):
 
 	# Determine filenames
 	expfile = filebase + '.exp'
-	if os.path.isfile(filebase+'.rois'):
+	if os.path.isfile(filebase + string + '.rois'):
 		fn = [filebase + string + '.rois']
 	else:
 		fn = [filebase + "_depth%01d" % d + string + '.rois' for d in [1,2,3,4]]
@@ -137,7 +137,8 @@ def return_classifiers(max_iter=100):
 def run(data, StimID, StimLog, number_of_neurons, classifiers=return_classifiers(),
 	n_iter=100, n_splits=10):
 
-	e = Client()
+	cluster = LocalCluster(n_workers=20)
+	e = Client(cluster)
 
 	def classify(n_neurons):
 
@@ -253,7 +254,7 @@ def Savio(N):
 	File.append('/global/scratch/elyall/Decoding/9445_180_005')
 	File.append('/global/scratch/elyall/Decoding/9019_165_000')
 	File.append('/global/scratch/elyall/Decoding/9025_180_002')
-	main(File[N])
+	main(File[int(N)])
 
 	return File, N
 
