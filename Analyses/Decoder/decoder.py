@@ -67,14 +67,14 @@ def load(filebase, string):
 	    h5f.close()
 	    temp.append(data)
 	data = np.concatenate(temp[:],axis=1)
-	# data = data.nan_2_num(data) # convert nan's to 0's
-	data = data[:,~np.any(np.isnan(data), axis=0)] # remove neurons that have at least 1 nan
 
 	# keep only desired trials & neurons
 	StimID = np.squeeze(StimID[TrialIndex])
 	data = np.squeeze(data[TrialIndex,:])
 	if NeuronIndex:
 		data = np.squeeze(data[:,NeuronIndex])
+	# data = data.nan_2_num(data) # convert nan's to 0's
+	data = data[:,~np.any(np.isnan(data), axis=0)] # remove neurons that have at least 1 nan
 
 	# # Convert StimLog to vector
 	# a = [1,2,4,8,16]
@@ -107,8 +107,11 @@ def save(pred, perc_correct, number_of_neurons, StimLog, StimID, classifiers, Tr
 
 
 def determine_num(num_neurons, N=15):
-	number_of_neurons = np.logspace(0,np.log10(num_neurons),N).round().astype('int') # list of number of neurons to sample
-	return np.unique(number_of_neurons)
+	# n = np.logspace(0,np.log10(num_neurons),N).round().astype('int') # list of number of neurons to sample
+	n = np.logspace(0,np.log10(100),N).round().astype('int') # list of number of neurons to sample
+	n = n[n<num_neurons]
+	n = np.append(n,num_neurons)
+	return np.unique(n)
 
 
 def return_classifiers(max_iter=100):
@@ -127,7 +130,7 @@ def return_classifiers(max_iter=100):
     #'Decision Tree' : DecisionTreeClassifier(),
     #'Extra Tree' : ExtraTreeClassifier(),
     #'Extra Trees' : ExtraTreesClassifier(),
-    'Random Forest': RandomForestClassifier(),
+    #'Random Forest': RandomForestClassifier(),
     #'K Neighbors' : KNeighborsClassifier(),
     # 'Radius Neighbors': RadiusNeighborsClassifier(radius=25.0), # very sensitive to radius
     'Multi-layer Perceptron' : MLPClassifier(max_iter=max_iter),
