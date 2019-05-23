@@ -49,10 +49,6 @@ def load(filebase, string):
 	StimID = h5f['/TrialInfo/StimID'][:].astype('int')
 	StimLog = h5f['/Experiment/stim/stim'][:].transpose().astype('bool')
 	TrialIndex = h5f['TrialIndex'][:].astype('int') - 1
-	try:
-		NeuronIndex = h5f['NeuronIndex'][:].astype('int') - 1
-	except:
-		NeuronIndex = []
 	h5f.close()
 
 	# Load neural data
@@ -64,15 +60,18 @@ def load(filebase, string):
 	    data = np.zeros([numTrials,numNeurons])
 	    for n in np.arange(numNeurons):
 	        data[:,n] = h5f[h5f['ROIdata/rois/stimMean'][n][0]][:]
+	    try:
+	        NeuronIndex = h5f['NeuronIndex'][:].astype('int')-1
+	        data = data[:,NeuronIndex[0]] # keep only desired neurons
+	    except:
+	        pass
 	    h5f.close()
 	    temp.append(data)
 	data = np.concatenate(temp[:],axis=1)
 
-	# keep only desired trials & neurons
+	# keep only desired trials
 	StimID = np.squeeze(StimID[TrialIndex])
 	data = np.squeeze(data[TrialIndex,:])
-	if NeuronIndex:
-		data = np.squeeze(data[:,NeuronIndex])
 	# data = data.nan_2_num(data) # convert nan's to 0's
 	data = data[:,~np.any(np.isnan(data), axis=0)] # remove neurons that have at least 1 nan
 
