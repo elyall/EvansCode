@@ -243,7 +243,7 @@ if ischar(Colors)
             Colors = b2r(CLim(1),CLim(2));
             N = size(Colors,1);
         case 'green'
-            CMap = [zeros(N,1), linspace(0,1,N)', zeros(N,1)];
+            Colors = [zeros(N,1), linspace(0,1,N)', zeros(N,1)];
         case 'gray'
             Colors = gray(N);
         case 'parula'
@@ -353,7 +353,7 @@ open(vidObj);
 % Save each frame to video
 h = {};
 axes(hA); % b2r bug
-parfor_progress(numFrames);
+hP = parfor_progress(numFrames);
 for findex = 1:numFrames
     
     % Set ROI colors
@@ -392,12 +392,12 @@ for findex = 1:numFrames
         delete(h{2});
     end
     
-    parfor_progress;
+    parfor_progress(hP);
 end
 
 close(hF);
 close(vidObj);
-parfor_progress(0);
+parfor_progress(hP,0);
 
 fprintf('\tfinished\n');
 

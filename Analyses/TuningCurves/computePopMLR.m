@@ -10,6 +10,7 @@ FrameIndex = [];
 TrialIndex = [];
 ROIindex = [];      % ROIindex is a list of ROI indices corresponding to which ROIs to pull data from
 FileIndex = [];     % FileIndex is a list of file indices corresponding to which files the ROIs to pull from are in
+verbose = false;
 
 directory = cd;
 
@@ -38,6 +39,9 @@ while index<=length(varargin)
                 index = index + 2;
             case 'FileIndex'
                 FileIndex = varargin{index+1};
+                index = index + 2;
+            case 'verbose'
+                verbose = varargin{index+1};
                 index = index + 2;
             otherwise
                 warning('Argument ''%s'' not recognized',varargin{index});
@@ -94,8 +98,8 @@ numStims = size(StimIDs,1);
 Weights = zeros(numROIs+1, numStims-1, numRepeats);
 confusionMatrix = zeros(numStims, numStims, numRepeats);
 
-parfor_progress(numRepeats*numKFolds);
-for n = 1:numRepeats
+if verbose; parfor_progress(numRepeats*numKFolds); end
+parfor n = 1:numRepeats
 %     warning('off', 'stats:mnrfit:IterOrEvalLimit');
 %     warning('off', 'MATLAB:nearlySingularMatrix');
     
@@ -117,7 +121,7 @@ for n = 1:numRepeats
         [~,est] = max(pihat,[],2); % determine best guess for each test trial
         predictions(:,k,:) = [est;nan(N-numPerFold(k),1)];
         
-        parfor_progress;
+        if verbose; parfor_progress; end
     end
     
     pred = zeros(numTrials,numS); % reorder predictions to match StimIndex
@@ -128,7 +132,7 @@ for n = 1:numRepeats
     Weights(:,:,n) = mean(currentWeights,3);               % take mean of weights over k-folds
     
 end
-parfor_progress(0);
+if verbose; parfor_progress(0); end
 
 % Take mean over repeats
 confusionMatrix = mean(confusionMatrix,3);
