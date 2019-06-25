@@ -1,56 +1,63 @@
 function [p,nuldist,actual] = permutationTest(Data, GroupID, varargin)
 
 numPerms = 1000;
-func = @(x,y) mean(x)-mean(y);
+func = @(x,y) mean(x)-mean(y); % operates along 1st dimension
 
-% saveOut = false;
-% saveFile = '';
+saveOut = false;
+saveFile = '';
 
 
-% %% Parse input arguments
-% index = 1;
-% while index<=length(varargin)
-%     try
-%         switch varargin{index}
-%             case 'numPerms'
-%                 numPerms = varargin{index+1};
-%                 index = index + 2;
-%             case 'func'
-%                 func = varargin{index+1};
-%                 index = index + 2;
-% %             case {'save','Save'}
-% %                 saveOut = true;
-% %                 index = index + 1;
-% %             case 'saveFile'
-% %                 saveFile = varargin{index+1};
-% %                 index = index + 2;
-%             otherwise
-%                 warning('Argument ''%s'' not recognized',varargin{index});
-%                 index = index + 1;
-%         end
-%     catch
-%         warning('Argument %d not recognized',index);
-%         index = index + 1;
-%     end
-% end
-% 
-% if iscell(Data)
-%     if ~exist('GroupID','var') || isempty(GroupID)
+%% Parse input arguments
+index = 1;
+while index<=length(varargin)
+    try
+        switch varargin{index}
+            case 'numPerms'
+                numPerms = varargin{index+1};
+                index = index + 2;
+            case 'func'
+                func = varargin{index+1};
+                index = index + 2;
+            case {'save','Save'}
+                saveOut = true;
+                index = index + 1;
+            case 'saveFile'
+                saveFile = varargin{index+1};
+                index = index + 2;
+            otherwise
+                warning('Argument ''%s'' not recognized',varargin{index});
+                index = index + 1;
+        end
+    catch
+        warning('Argument %d not recognized',index);
+        index = index + 1;
+    end
+end
+
+if iscell(Data)
+    if ~exist('GroupID','var') || isempty(GroupID)
         GroupID = repelem(1:numel(Data),cellfun(@numel,Data))';
-%     end
-%     try
+    end
+    try
         Data = cat(1,Data{:});
-%     catch
-%         Data = cat(2,Data{:})';
-%     end
-% elseif isrow(Data)
-%     Data = Data';
-% end
+    catch
+        Data = cat(2,Data{:})';
+    end
+elseif isrow(Data)
+    Data = Data';
+end
+if islogical(GroupID) && size(GroupID,2)>1
+    temp = GroupID;
+    GroupID = zeros(size(temp,1),1);
+    for ind = 1:size(temp,2)
+        GroupID(temp(:,ind)) = ind;
+    end
+end
 N = numel(Data);
 [Groups,~,GroupID] = unique(GroupID); % ensure GroupID is 1:N
-% if numel(Groups)~=2
-%     error('Can only do permutation test with 2 groups!');
-% end
+if numel(Groups)~=2
+    error('Can only do permutation test with 2 groups!');
+end
 
 
 %% Calculate actual value
@@ -102,13 +109,13 @@ tempactual = actual-Mean; % rectify actual with distribution
 p = sum(abs(tempnul)>abs(tempactual))/numPerms; % compute two-sided p value(s)
 
 
-% %% Save outputs
-% if saveOut && ~isempty(saveFile)
-%     if ~exist(saveFile,'file')
-%         save(saveFile,'dCoM','dSel','p','Actual','ROIindex','-v7.3');
-%     else
-%         save(saveFile,'dCoM','dSel','p','Actual','ROIindex','-append');
-%     end
-%     fprintf('Saved permutation results to: %s\n',saveFile);
-% end
+%% Save outputs
+if saveOut && ~isempty(saveFile)
+    if ~exist(saveFile,'file')
+        save(saveFile,'dCoM','dSel','p','Actual','ROIindex','-v7.3');
+    else
+        save(saveFile,'dCoM','dSel','p','Actual','ROIindex','-append');
+    end
+    fprintf('Saved permutation results to: %s\n',saveFile);
+end
 

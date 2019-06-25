@@ -14,6 +14,8 @@ function [p,Label] = calcPValues(Data,GroupID,Names,test)
 %
 % test - 'ranksum' or 'ttest2' specifying which test to use
 
+MultipleComparisons_correction = true;
+
 if ~exist('test','var') || isempty(test)
     test = 'ranksum';
 end
@@ -53,13 +55,19 @@ for c = 1:size(combs,1)
         case {'t','ttest','ttest2','t-test'}
             p(c) = ttest2(Data(GroupID==combs(c,1)),Data(GroupID==combs(c,2)));
     end
+end
 
+if numel(p)>1 && MultipleComparisons_correction==true
+   [~,~,p] = fdr_bh(p);
+end
+
+for c = 1:length(p)
     if p(c)==0
         L = 'p= 0';
     elseif p(c)<.01
         L = sprintf('p=%.1e',p(c));
     else
-        L = sprintf('p=%.2f',p(c));
+        L = sprintf('p=%.3f',p(c));
     end
     if isempty(Names)
         Label{c} = L;
