@@ -54,6 +54,8 @@ for c = 1:size(combs,1)
             p(c) = ranksum(Data(GroupID==combs(c,1)),Data(GroupID==combs(c,2)));
         case {'t','ttest','ttest2','t-test'}
             p(c) = ttest2(Data(GroupID==combs(c,1)),Data(GroupID==combs(c,2)));
+        case {'ks','kurskalwallis'}
+            p(c) = kruskalwallis(Data,GroupID);
     end
 end
 
